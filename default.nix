@@ -5,8 +5,7 @@ in
 mkShell {
   buildInputs = libraries;
   nativeBuildInputs = [
-    git
-    # needed to compile qemu with user network support
+    # needed to compile qemu 
     ninja
     gnumake
     flex

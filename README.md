@@ -1,6 +1,8 @@
-# GR - Evaluating Confidential Computing with Unikernels
+# CVM_eval
 
-## Prepare the host toolchain
+## Instructions to launch SEV machines
+
+### Prepare the host toolchain
 Compile the custom OVMF and QEMU provided by AMD:
 
 ```bash
@@ -9,9 +11,7 @@ Compile the custom OVMF and QEMU provided by AMD:
 
 ## Misc
 
-- You need to have cloud-config file and a network-config file for your VM, similar to those in the [config](.config/) folder.
-- If you wish to have ssh connection to your VMs, you can adapt the cloud-config files and include your ssh keys, so that cloud-init sets them up automatically in the VM. Example cloud-init configurations that include the placeholders for ssh keys can be found in `config/`
-- The [`prepare_net_cfg.sh`](./prepare_net_cfg.sh) script takes as a parameter the virtual bridge where the VMs will be connected to and modifies the IP prefix in the network configuration (given as a secord parameter) appropriately.
+- [config](.config/) folder contains some configurations for ubuntu cloudimg.
 - Download an ubuntu image: `wget https://cloud-images.ubuntu.com/kinetic/current/kinetic-server-cloudimg-amd64.img`
 
 ## Prepare a NOSEV guest
@@ -53,14 +53,3 @@ sudo LD_LIBRARY_PATH=$LD_LIBRARY_PATH ./sev.sh
 ## Interact with the machines
 - SEV machine: connect using ssh `ssh -p 2222 ubuntu@localhost`
 - NOSEV machine: connect using ssh `ssh -p 2223 ubuntu@localhost`
-
-### Useful links
-- Sample cloud-config and network-config for cloud-init can be found [here](https://gist.github.com/itzg/2577205f2036f787a2bd876ae458e18e).
-- Additional options of the cloud-config, such as running a specific command during initialization, can be found [here](https://www.digitalocean.com/community/tutorials/how-to-use-cloud-config-for-your-initial-server-setup)
-- AMD [host kernels](https://github.com/AMDESE/linux) -- check branch names for each feature (e.g., SEV, ES, SNP)
-- [QEMU](https://github.com/AMDESE/qemu) provided by AMD
-- [OVMF](https://github.com/AMDESE/ovmf) provided by AMD
-
-
-
-remembver to launch benches with sudo

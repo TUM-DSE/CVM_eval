@@ -1,7 +1,0 @@
-group,name,result
-bw_read,blk-nosev.json,16821.355236
-bw_read,nvme-nosev.json,15142.32902
-bw_read,scsi-nosev.json,11100.271003
-bw_write,blk-nosev.json,14124.137931
-bw_write,nvme-nosev.json,12641.975309
-bw_write,scsi-nosev.json,8596.012592

@@ -3,6 +3,4 @@ password: nosev
 hostname: nosev
 chpasswd: { expire: False }
 ssh_pwauth: True
-ssh_authorized_keys:
-  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH/OnqkpTHC72UoZr+oD/3f5fueX1ENrQrYG0eqbQmkT rc@grizzly
 final_message: "Cloud init is done!"
