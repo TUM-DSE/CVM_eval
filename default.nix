@@ -1,6 +1,6 @@
 with import <nixpkgs> { };
 let
-  libraries = [ libslirp pixman zlib zstd glib glibc libpng snappy libuuid ];
+  libraries = [ libslirp pixman zlib zstd glib libpng snappy libuuid ];
 in
 mkShell {
   buildInputs = libraries;
