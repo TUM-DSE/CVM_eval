@@ -2,7 +2,6 @@
 
 set -Eeo pipefail
 
-# try if I should probably download it or not
 [ ! -e kinetic-server-cloudimg-amd64.img ] && wget https://cloud-images.ubuntu.com/kinetic/current/kinetic-server-cloudimg-amd64.img
 mkdir -p OVMF_files
 
