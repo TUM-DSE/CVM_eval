@@ -1,6 +1,7 @@
 from bm import executor
 from bm import params
 from bm import setup
+import utils
 
 import io
 import logging as log
@@ -84,12 +85,17 @@ def cli(
     log.info(f"GENERATED JOB FILE:                  {job_file}")
     log.info(f"GENERATED RESULT FILE:               {result_file}")
 
+
+    utils.cleanup()
+
     setup.generate_job(bm_config, name, job_file)
 
-    setup.setup_ramdisk(bm_config.target_disk, bm_config.encrypted_target_disk, bm_config.encryption_switch, resource_dir)
+    setup.setup_ramdisk(bm_config, resource_dir)
+
 
     executor.run_job(job_file, result_file)
 
+    utils.cleanup()
 
 if __name__ == '__main__':
     cli()

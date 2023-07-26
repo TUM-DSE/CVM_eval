@@ -1,7 +1,9 @@
 """
 Creates `fio` job files
 """
-from bm.params import BenchmarkConfig, SWStackParam, StorageLevelParam, MeasurementTypeParam, ENCRYPTED_RAM_MAP_NAME
+from bm.params import BenchmarkConfig, SWStackParam, StorageLevelParam, \
+    MeasurementTypeParam, ENCRYPTED_RAM_MAP_NAME, INTEGRITY_RAM_MAP_NAME, \
+    ENCRYPTED_INTEGRITY_RAM_MAP_NAME
 
 import configparser
 from dataclasses import dataclass
@@ -11,7 +13,8 @@ import os
 import subprocess
 
 
-CRYPTHDR_NAME = 'crypthdr.img'
+ENCRYPT_HDR_NAME = 'encrypthdr.img'
+ENCRYPT_INTEGRITY_HDR_NAME = 'encrypt-integrity-hdr.img'
 EXIT_SUCCESS = 0
 
 FIO_GLOBAL_LABEL = 'global'
@@ -95,10 +98,6 @@ def generate_job(bm_config: BenchmarkConfig, name, job_file):
         assert False, f"Not a valid benchmark config io sw stack: {bm_config.sw_stack}"
 
 
-    if bm_config.integrity_switch:
-        # TODO
-        assert False, 'not implemented'
-
     if bm_config.storage_level == StorageLevelParam.FILE:
         True # no action required (true by default)
     elif bm_config.storage_level == StorageLevelParam.BLOCK:
@@ -129,9 +128,17 @@ def generate_job(bm_config: BenchmarkConfig, name, job_file):
             FioParamLabels.BLOCK_SIZE.value : f"{fio_config.block_size}K",
             FioParamLabels.IO_DEPTH.value   : fio_config.io_depth,
             FioParamLabels.NUM_JOBS.value   : fio_config.numjobs,
-            # enables encryption
-            FioParamLabels.FILENAME.value : f"{bm_config.target_disk}" if not bm_config.encryption_switch else f"{bm_config.encrypted_target_disk}"
             }
+    
+    # global config: file target ( enable encryption variants )
+    if bm_config.encryption_switch and bm_config.integrity_switch:
+        config[FIO_GLOBAL_LABEL][FioParamLabels.FILENAME.value] = f"{bm_config.encrypted_integrity_target_disk}"
+    elif bm_config.encryption_switch:
+        config[FIO_GLOBAL_LABEL][FioParamLabels.FILENAME.value] = f"{bm_config.encrypted_target_disk}"
+    elif bm_config.integrity_switch:
+        config[FIO_GLOBAL_LABEL][FioParamLabels.FILENAME.value] = f"{bm_config.integrity_target_disk}"
+    else:
+        config[FIO_GLOBAL_LABEL][FioParamLabels.FILENAME.value] = f"{bm_config.target_disk}"
 
     # per IO Type: separate job
     for io_type in fio_config.io_type:
@@ -166,30 +173,67 @@ def generate_job(bm_config: BenchmarkConfig, name, job_file):
         config.write(jobfile, space_around_delimiters=False)
 
 
+def create_crypto_disk_hdr(hdr_path):
+        # create disk encryption header if doesn't exist
+        if not os.path.exists(hdr_path):
+            subprocess.run(['fallocate', '-l', '2M', hdr_path]).check_returncode()
+
+
 # from https://blog.cloudflare.com/speeding-up-linux-disk-encryption/
-def setup_ramdisk(target_disk, encrypted_target_disk, encryption_switch, resource_dir):
+def setup_ramdisk(bm_config, resource_dir):
     # check if ramdisk exists, if not, create it
 
-    if not os.path.exists(target_disk):
-        log.warn(f"No RAMDisk found at {target_disk}; creating 4G RAMDisk. Requires `sudo`.")
+    if not os.path.exists(bm_config.target_disk):
+        log.warn(f"No RAMDisk found at {bm_config.target_disk}; " \
+                "creating 4G RAMDisk. Requires `sudo`.")
         # TODO annotate / replace literals
         # changing target_disk path requires changing rd_nr
-        rd_sp = subprocess.run(['sudo', 'modprobe', 'brd', 'rd_nr=1', 'rd_size=4194304'])
+        subprocess.run(['sudo', 'modprobe', 'brd', 'rd_nr=1', 'rd_size=4194304']).check_returncode()
 
-    if encryption_switch:
-        # enrypted map already exists
-        if not os.path.exists(encrypted_target_disk):
-            log.warn(f"Attempting to encrypt {target_disk}; requires `sudo` and user interaction.")
-            # create disk encryption header if doesn't exist
+    if bm_config.encryption_switch:
+        # enrypted map already exists: skip setup
+        if (not os.path.exists(bm_config.encrypted_target_disk) and not bm_config.integrity_switch) \
+            or (not os.path.exists(bm_config.integrity_target_disk) and bm_config.integrity_switch):
+            log.warn(f"Attempting to encrypt {bm_config.target_disk}; " \
+                    "requires `sudo` and user interaction.")
 
-            crypthdr_path = os.path.join(resource_dir, CRYPTHDR_NAME)
-            
-            if not os.path.exists(crypthdr_path):
-                subprocess.run(['fallocate', '-l', '2M', crypthdr_path]).check_returncode()
-        
-            # disable read / writequeue (again, https://blog.cloudflare.com/speeding-up-linux-disk-encryption/)
-            subprocess.run(['sudo', 'cryptsetup', 'luksFormat', target_disk, '--header', crypthdr_path, '--perf-no_read_workqueue', '--perf-no_write_workqueue']).check_returncode()
+            cryptsetup_cmd = ['sudo', 'cryptsetup', 'luksFormat',
+                  bm_config.target_disk, '--perf-no_read_workqueue',
+                  '--perf-no_write_workqueue']
+            # if integrity on top of encryption
+            # from https://gist.github.com/MawKKe/caa2bbf7edcc072129d73b61ae7815fb
+            selected_hdr = None
+            selected_name = None
+            if bm_config.integrity_switch:
+                cryptsetup_cmd.append('--integrity')
+                cryptsetup_cmd.append('hmac-sha256')
+                selected_hdr = os.path.join(resource_dir, ENCRYPTED_INTEGRITY_RAM_MAP_NAME)
+                selected_name = ENCRYPTED_INTEGRITY_RAM_MAP_NAME
+            else:
+                selected_hdr = os.path.join(resource_dir, ENCRYPT_HDR_NAME)
+                selected_name = ENCRYPTED_RAM_MAP_NAME
+
+            cryptsetup_cmd.append('--header')
+            cryptsetup_cmd.append(selected_hdr)
+            create_crypto_disk_hdr(selected_hdr)
+
+            # disable read / writequeue
+            # https://blog.cloudflare.com/speeding-up-linux-disk-encryption/
+            subprocess.run(cryptsetup_cmd).check_returncode()
             
             # unlock ramdisk
-            subprocess.run(['sudo', 'cryptsetup', 'open', '--header', crypthdr_path, target_disk, ENCRYPTED_RAM_MAP_NAME]).check_returncode()
+            subprocess.run(['sudo', 'cryptsetup', 'open',
+                '--header', selected_hdr, bm_config.target_disk, selected_name]).check_returncode()
+    # only integrity
+    elif bm_config.integrity_switch:
+        # from https://gist.github.com/MawKKe/caa2bbf7edcc072129d73b61ae7815fb
+        # integrity map already exists
+        if not os.path.exists(bm_config.integrity_target_disk):
+            log.warn(f"Attempting to integrity protect {bm_config.target_disk}; " \
+                    "requires `sudo` and user interaction.")
+            subprocess.run(['sudo', 'integritysetup', 'format', '--integrity',
+                'sha256', bm_config.target_disk]).check_returncode()
+            subprocess.run(['sudo', 'integritysetup', 'open', '--integrity',
+                'sha256', bm_config.target_disk, INTEGRITY_RAM_MAP_NAME]).check_returncode()
+
 
