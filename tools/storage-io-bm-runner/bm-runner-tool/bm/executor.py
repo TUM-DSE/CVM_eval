@@ -10,6 +10,7 @@ JSON_FORMAT_ARG = 'json'
 
 
 def run_job(job_file, result_file):
-    subprocess.run(['fio', job_file, OUTPUT_FLAG, result_file]) #, OUTPUT_FORMAT_FLAG,
+    sp = subprocess.run(['fio', job_file, OUTPUT_FLAG, result_file]) #, OUTPUT_FORMAT_FLAG,
         # JSON_FORMAT_ARG])
+    sp.check_returncode()
 
