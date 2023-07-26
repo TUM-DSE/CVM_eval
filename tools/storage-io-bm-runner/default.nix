@@ -12,6 +12,8 @@ in pkgs.mkShell rec {
     fio
     # man pages
     man
+    # cryptsetup
+    cryptsetup
   ];
   postVenvCreation = ''
     unset SOURCE_DATE_EPOCH
