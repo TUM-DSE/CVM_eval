@@ -167,19 +167,19 @@ def generate_job(bm_config: BenchmarkConfig, name, job_file):
 
 
 # from https://blog.cloudflare.com/speeding-up-linux-disk-encryption/
-def setup_ramdisk(target_disk, encrypted_target_disk, encryption_switch, resource_dir):
+def setup_ramdisk(bm_config, resource_dir):
     # check if ramdisk exists, if not, create it
 
-    if not os.path.exists(target_disk):
-        log.warn(f"No RAMDisk found at {target_disk}; creating 4G RAMDisk. Requires `sudo`.")
+    if not os.path.exists(bm_config.target_disk):
+        log.warn(f"No RAMDisk found at {bm_config.target_disk}; creating 4G RAMDisk. Requires `sudo`.")
         # TODO annotate / replace literals
         # changing target_disk path requires changing rd_nr
         rd_sp = subprocess.run(['sudo', 'modprobe', 'brd', 'rd_nr=1', 'rd_size=4194304'])
 
-    if encryption_switch:
+    if bm_config.encryption_switch:
         # enrypted map already exists
-        if not os.path.exists(encrypted_target_disk):
-            log.warn(f"Attempting to encrypt {target_disk}; requires `sudo` and user interaction.")
+        if not os.path.exists(bm_config.encrypted_target_disk):
+            log.warn(f"Attempting to encrypt {bm_config.target_disk}; requires `sudo` and user interaction.")
             # create disk encryption header if doesn't exist
 
             crypthdr_path = os.path.join(resource_dir, CRYPTHDR_NAME)
@@ -187,9 +187,19 @@ def setup_ramdisk(target_disk, encrypted_target_disk, encryption_switch, resourc
             if not os.path.exists(crypthdr_path):
                 subprocess.run(['fallocate', '-l', '2M', crypthdr_path]).check_returncode()
         
+            cryptsetup_cmd = ['sudo', 'cryptsetup', 'luksFormat', bm_config.target_disk, '--header', crypthdr_path, '--perf-no_read_workqueue', '--perf-no_write_workqueue']
+            # if integrity on top of encryption
+            # from https://gist.github.com/MawKKe/caa2bbf7edcc072129d73b61ae7815fb
+            if bm_config.integrity_switch:
+                cryptsetup_cmd.append('--integrity')
+                cryptsetup_cmd.append('hmac-sha256')
+
             # disable read / writequeue (again, https://blog.cloudflare.com/speeding-up-linux-disk-encryption/)
-            subprocess.run(['sudo', 'cryptsetup', 'luksFormat', target_disk, '--header', crypthdr_path, '--perf-no_read_workqueue', '--perf-no_write_workqueue']).check_returncode()
+            subprocess.run(cryptsetup_cmd).check_returncode()
             
             # unlock ramdisk
-            subprocess.run(['sudo', 'cryptsetup', 'open', '--header', crypthdr_path, target_disk, ENCRYPTED_RAM_MAP_NAME]).check_returncode()
+            subprocess.run(['sudo', 'cryptsetup', 'open', '--header', crypthdr_path, bm_config.target_disk, ENCRYPTED_RAM_MAP_NAME]).check_returncode()
+        # only integrity
+        elif bm_config.integrity_switch:
+            # from https://gist.github.com/MawKKe/caa2bbf7edcc072129d73b61ae7815fb
 

@@ -86,7 +86,7 @@ def cli(
 
     setup.generate_job(bm_config, name, job_file)
 
-    setup.setup_ramdisk(bm_config.target_disk, bm_config.encrypted_target_disk, bm_config.encryption_switch, resource_dir)
+    setup.setup_ramdisk(bm_config, resource_dir)
 
     executor.run_job(job_file, result_file)
 
