@@ -23,7 +23,7 @@ IO_ENGINE_PSYNC = 'psync'
 FIO_TRUE = 1
 FIO_FALSE = 0
 FIO_TEST_SIZE = '4G'
-FIO_LOOPS = 10
+FIO_LOOPS = 1
 
 class FioParamLabels(str, enum.Enum):
     IO_ENGINE  = 'ioengine'
@@ -99,9 +99,9 @@ def generate_job(bm_config: BenchmarkConfig, name, job_file):
 
 
     if bm_config.storage_level == StorageLevelParam.FILE:
+        # TODO - is fio on block or file level???
         True # no action required (true by default)
     elif bm_config.storage_level == StorageLevelParam.BLOCK:
-        # TODO
         assert False, 'not implemented'
     elif bm_config.storage_level == StorageLevelParam.DATA:
         # TODO
@@ -164,7 +164,6 @@ def generate_job(bm_config: BenchmarkConfig, name, job_file):
     config[FIO_GLOBAL_LABEL][FioParamLabels.DIRECT.value] = f"{FIO_TRUE}"
     # taken from ../../../fio.sh
     config[FIO_GLOBAL_LABEL][FioParamLabels.SIZE.value] = f"{FIO_TEST_SIZE}"
-    # RAMDisk path
     config[FIO_GLOBAL_LABEL][FioParamLabels.FILENAME.value] = f"{bm_config.target_disk}"
     config[FIO_GLOBAL_LABEL][FioParamLabels.LOOPS.value] = f"{FIO_LOOPS}"
 

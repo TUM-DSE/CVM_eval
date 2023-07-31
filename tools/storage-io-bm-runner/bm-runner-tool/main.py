@@ -45,7 +45,10 @@ log.basicConfig(level=log.INFO)
               help='directory to store test resources')
 @click.option('--no-execute',
               is_flag=True,
-              help='if set, only generates the `fio` file and does not execute the benchmark')
+              help='only generates the `fio` file and does not execute the benchmark')
+@click.option('--no-ramdisk',
+              is_flag=True,
+              help='does not use a ramdisk- uses default disk target instead')
 
 def cli(
         name,
@@ -56,7 +59,8 @@ def cli(
         measurement_type,
         out,
         resource_dir,
-        no_execute):
+        no_execute,
+        no_ramdisk):
     """
     Runs storage IO benchmarks - on a bare-metal host or inside of an optionally
     confidential VM.
@@ -78,7 +82,8 @@ def cli(
             encryption,
             integrity,
             storage_level,
-            measurement_type)
+            measurement_type,
+            not no_ramdisk)
  
     log.info(f"EXECUTING BENCHMARK: <{name}> W/ FOLLOWING PARAMS:")
     log.info(f"P3:      Storage IO Software Stack:  {stack.value}")
@@ -94,7 +99,8 @@ def cli(
 
     setup.generate_job(bm_config, name, job_file)
 
-    setup.setup_ramdisk(bm_config, resource_dir)
+    if not no_ramdisk:
+        setup.setup_ramdisk(bm_config, resource_dir)
 
     if not no_execute:
         executor.run_job(job_file, result_file)
