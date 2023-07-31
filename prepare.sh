@@ -4,7 +4,7 @@ set -Eeo pipefail
 
 [ ! -e kinetic-server-cloudimg-amd64.img ] && wget https://cloud-images.ubuntu.com/kinetic/current/kinetic-server-cloudimg-amd64.img
 mkdir -p OVMF_files
-
+mkdir -p ./usr/fds
 # prepare the nosev machine
 qemu-img convert kinetic-server-cloudimg-amd64.img nosev.img
 qemu-img resize nosev.img +20G
