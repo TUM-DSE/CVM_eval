@@ -25,3 +25,8 @@ ${1}/qemu-system-x86_64 \
 #     -device virtio-blk-pci,drive=drive0,id=virtblk0,num-queues=4 \
 # nvme
     # -device nvme,serial=cafebabe,drive=disk0 \
+
+# QUESTIONS
+# 1. why hosy-phys-bits=true
+# 2. what is machine type=q35
+

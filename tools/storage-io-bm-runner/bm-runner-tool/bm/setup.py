@@ -23,7 +23,7 @@ IO_ENGINE_PSYNC = 'psync'
 FIO_TRUE = 1
 FIO_FALSE = 0
 FIO_TEST_SIZE = '4G'
-FIO_LOOPS = 5
+FIO_LOOPS = 1
 
 class FioParamLabels(str, enum.Enum):
     IO_ENGINE  = 'ioengine'
