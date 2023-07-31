@@ -20,7 +20,9 @@ in pkgs.mkShell rec {
     pip3 install --upgrade pip3
     pip3 install -r requirements.txt
   '';
+    # for generic: nixpkgs - libm
   postShellHook = ''
     unset SOURCE_DATE_EPOCH
+    export LD_LIBRARY_PATH="${lib.makeLibraryPath [ stdenv.cc.cc.lib ]}"
   '';
 }

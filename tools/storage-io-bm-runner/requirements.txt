@@ -1,2 +1,2 @@
 click==8.*
-mypy==1.*
+fio-plot==1.*

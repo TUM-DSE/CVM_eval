@@ -6,6 +6,7 @@ set -Eeo pipefail
 
 build_install_ovmf(){
 	GCCVERS="GCC5"
+        mkdir -p $1
 	git clone --single-branch -b snp-latest https://github.com/AMDESE/ovmf $1/ovmf
 	pushd $1/ovmf >/dev/null
 		git submodule update --init --recursive
