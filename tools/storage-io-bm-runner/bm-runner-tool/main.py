@@ -43,6 +43,9 @@ log.basicConfig(level=log.INFO)
               required=True,
               type=click.Path(dir_okay=True, exists=True),
               help='directory to store test resources')
+@click.option('--no-execute',
+              is_flag=True,
+              help='if set, only generates the `fio` file and does not execute the benchmark')
 
 def cli(
         name,
@@ -52,7 +55,8 @@ def cli(
         storage_level,
         measurement_type,
         out,
-        resource_dir):
+        resource_dir,
+        no_execute):
     """
     Runs storage IO benchmarks - on a bare-metal host or inside of an optionally
     confidential VM.
@@ -92,8 +96,8 @@ def cli(
 
     setup.setup_ramdisk(bm_config, resource_dir)
 
-
-    executor.run_job(job_file, result_file)
+    if not no_execute:
+        executor.run_job(job_file, result_file)
 
     utils.cleanup()
 
