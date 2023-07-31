@@ -42,6 +42,6 @@ if [ $# -lt 1 ]; then
     echo "usage: ./build.sh <dir>"
     exit 1
 fi
-
+mkdir -p $1
 build_install_qemu $1
 build_install_ovmf $1
