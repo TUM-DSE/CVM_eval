@@ -4,10 +4,9 @@ let
   pythonPackages = python310Packages;
 in pkgs.mkShell rec {
   name = "ioPythonEnv";
-  venvDir = "./.venv";
   buildInputs = [
     pythonPackages.python
-    pythonPackages.venvShellHook
+    pythonPackages.click
     # benchmarking
     fio
     # man pages
@@ -15,14 +14,4 @@ in pkgs.mkShell rec {
     # cryptsetup
     cryptsetup
   ];
-  postVenvCreation = ''
-    unset SOURCE_DATE_EPOCH
-    pip3 install --upgrade pip3
-    pip3 install -r requirements.txt
-  '';
-    # for generic: nixpkgs - libm
-  postShellHook = ''
-    unset SOURCE_DATE_EPOCH
-    export LD_LIBRARY_PATH="${lib.makeLibraryPath [ stdenv.cc.cc.lib ]}"
-  '';
 }
