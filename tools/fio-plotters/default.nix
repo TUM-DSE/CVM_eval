@@ -1,7 +1,13 @@
 with import <nixpkgs> {};
 
-pkgs.mkShell rec {
+let
+  pythonPackages = python310Packages;
+in pkgs.mkShell rec {
+  name = "ioPythonEnv";
   buildInputs = [
-    go   
+    pythonPackages.python
+    pythonPackages.click
+    python310Packages.seaborn
+    python310Packages.pandas
   ];
 }
