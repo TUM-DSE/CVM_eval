@@ -32,6 +32,7 @@ JOB_READ_KEY                       = 'read'
 JOB_R_W_BW_KEY   = 'bw'
 JOB_R_W_IOPS_KEY = 'iops'
 JOB_R_W_ALAT_KEY = 'lat_ns'
+JOB_R_W_ALAT_MEAN_KEY = 'mean'
 
 
 @dataclass
@@ -70,7 +71,15 @@ def parse_ctxs(mt_job_ctxs):
                 iot_key = JOB_READ_KEY
             else:
                 assert False, f"could not identify if iotype is r/w: {io_type}"
-            mt_res = job[iot_key][mt_res_key]
+
+            # requires extra key
+            if mt == MT_ALAT:
+                mt_res = job[iot_key][mt_res_key][JOB_R_W_ALAT_MEAN_KEY]
+            else:
+                mt_res = job[iot_key][mt_res_key]
+
+            # round
+            mt_res = round(mt_res)
 
             if io_type not in res_d[mt]:
                 res_d[mt][io_type] = []

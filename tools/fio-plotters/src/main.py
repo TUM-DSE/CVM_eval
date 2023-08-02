@@ -41,7 +41,7 @@ def cli(
     print(f'{fio_input_files}')
     df = json_parser.parse(fio_input_files)
 
-    print(f'{df}')
+    print(df)
 
     # plotter.plot(df, output_dir)
 
