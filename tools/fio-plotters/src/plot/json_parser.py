@@ -1,5 +1,7 @@
-from dataclass import dataclass
+from dataclasses import dataclass
 import json
+
+import pandas as pd
 
 ENV_BM  = 'bare-metal'
 ENV_VM  = 'native-vm'
@@ -33,11 +35,10 @@ JOB_R_W_ALAT_KEY = 'lat_ns'
 
 
 @dataclass
-class JobContext {
+class JobContext:
     job:     dict
     device:  str
     env:     str
-}
 
 
 # row format:
@@ -45,12 +46,13 @@ class JobContext {
 # e.g. bw, bare-metal, kernel, 123
 def parse_ctxs(mt_job_ctxs):
     res_d = {}
-    for mt, job_ctxs in mt_job_ctxs:
+    for mt, job_ctxs in mt_job_ctxs.items():
         if mt not in res_d.keys():
             res_d[mt] = {}
 
         for job_ctx in job_ctxs:
 
+            job = job_ctx.job
             io_type = job[JOB_JOBOPTS_KEY][JOB_JOBOPTS_RW_KEY]
 
             if mt == MT_BW:
@@ -68,14 +70,14 @@ def parse_ctxs(mt_job_ctxs):
                 iot_key = JOB_READ_KEY
             else:
                 assert False, f"could not identify if iotype is r/w: {io_type}"
-            mt_res = job[iot_key][mt_res]
+            mt_res = job[iot_key][mt_res_key]
 
             if io_type not in res_d[mt]:
                 res_d[mt][io_type] = []
 
             res_d[mt][io_type].append([job_ctx.env, job_ctx.device, mt_res])
 
-    return res_d
+    return pd.DataFrame.from_dict(res_d)
 
 
 # parses job context from file path
@@ -83,7 +85,7 @@ def parse_ctxs(mt_job_ctxs):
 # .../env/device/io_type/job.json
 # group by measurement type
 def extract_jobctxs(input_files):
-    job_ctxs = {}
+    mt_job_ctxs = {}
     for f_p in input_files:
         f_a = f_p.split('/')
         mt = f_a[MT_REV_INDEX]
@@ -96,15 +98,15 @@ def extract_jobctxs(input_files):
         if env not in ENVS:
             assert False, f"invalid env {env}"
         with open(f_p, 'r') as f:
-            fio_json = f.load(f)
+            fio_json = json.load(f)
             for job in fio_json[JOB_KEY]:
                 job_ctx = JobContext(job, dev, env)
-                if _mt in job_ctxs.keys():
-                    job_ctxs[_mt].append(job_ctx)
+                if mt in mt_job_ctxs.keys():
+                    mt_job_ctxs[mt].append(job_ctx)
                 else:
-                    job_ctxs[_mt] = [job_ctx]
+                    mt_job_ctxs[mt] = [job_ctx]
 
-    return job_ctxs
+    return mt_job_ctxs
 
 def parse(input_files):
     mt_job_ctxs = extract_jobctxs(input_files)
