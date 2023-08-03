@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import json
 
+from plot.repr import IotGroup
+
 import pandas as pd
 
 ENV_BM  = 'bare-metal'
@@ -23,15 +25,15 @@ MT_REV_INDEX  = -2
 DEV_REV_INDEX = -3
 ENV_REV_INDEX = -4
 
-JOB_KEY                            = 'jobs'
-JOB_JOBOPTS_KEY                    = 'job options'
-JOB_JOBOPTS_RW_KEY                 = 'rw'
-JOB_WRITE_KEY                      = 'write'
-JOB_READ_KEY                       = 'read'
+JOB_KEY            = 'jobs'
+JOB_JOBOPTS_KEY    = 'job options'
+JOB_JOBOPTS_RW_KEY = 'rw'
+JOB_WRITE_KEY      = 'write'
+JOB_READ_KEY       = 'read'
 
-JOB_R_W_BW_KEY   = 'bw'
-JOB_R_W_IOPS_KEY = 'iops'
-JOB_R_W_ALAT_KEY = 'lat_ns'
+JOB_R_W_BW_KEY        = 'bw'
+JOB_R_W_IOPS_KEY      = 'iops'
+JOB_R_W_ALAT_KEY      = 'lat_ns'
 JOB_R_W_ALAT_MEAN_KEY = 'mean'
 
 
@@ -84,9 +86,12 @@ def parse_ctxs(mt_job_ctxs):
             if io_type not in res_d[mt]:
                 res_d[mt][io_type] = []
 
-            res_d[mt][io_type].append([job_ctx.env, job_ctx.device, mt_res])
+            # iotGroup = IotGroup(job_ctx.env, job_ctx.device, mt_res)
+            # res_d[mt][io_type].append(IotGroup)
+            # NOTE: could be changed depending on measurement
+            res_d[mt][io_type].append([f"{job_ctx.env}-{job_ctx.device}", mt_res])
 
-    return pd.DataFrame.from_dict(res_d)
+    return res_d
 
 
 # parses job context from file path

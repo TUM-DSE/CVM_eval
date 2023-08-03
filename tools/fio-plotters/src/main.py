@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from plot import json_parser #, plotter
+from plot import json_parser, plotter
 
 import click
 
@@ -38,12 +38,11 @@ def cli(
         for f_p in fio_input_paths:
             fio_input_files.append(str(f_p))
 
-    print(f'{fio_input_files}')
     df = json_parser.parse(fio_input_files)
 
-    print(df)
+    # print(df)
 
-    # plotter.plot(df, output_dir)
+    plotter.plot(df, output_dir)
 
 
 if __name__ == '__main__':
