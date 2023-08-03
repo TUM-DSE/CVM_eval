@@ -161,7 +161,7 @@ def generate_job(bm_config: BenchmarkConfig, name, job_file, loops, size):
     # see https://github.com/TUM-DSE/CVM_eval/issues/9#issuecomment-1647732269
     config[FIO_GLOBAL_LABEL][FioParamLabels.DIRECT.value] = f"{FIO_TRUE}"
     # taken from ../../../fio.sh
-    config[FIO_GLOBAL_LABEL][FioParamLabels.SIZE.value] = f"{size}"
+    config[FIO_GLOBAL_LABEL][FioParamLabels.SIZE.value] = f"{size}G"
     config[FIO_GLOBAL_LABEL][FioParamLabels.FILENAME.value] = f"{bm_config.target_disk}"
     config[FIO_GLOBAL_LABEL][FioParamLabels.LOOPS.value] = f"{loops}"
 
