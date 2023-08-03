@@ -28,6 +28,7 @@ ENV_REV_INDEX = -4
 JOB_KEY            = 'jobs'
 JOB_JOBOPTS_KEY    = 'job options'
 JOB_JOBOPTS_RW_KEY = 'rw'
+JOB_JOBOPTS_MIX_KEY = 'mix'
 JOB_WRITE_KEY      = 'write'
 JOB_READ_KEY       = 'read'
 
@@ -57,6 +58,10 @@ def parse_ctxs(mt_job_ctxs):
 
             job = job_ctx.job
             io_type = job[JOB_JOBOPTS_KEY][JOB_JOBOPTS_RW_KEY]
+            # check if mix
+            for key in job[JOB_JOBOPTS_KEY].keys():
+                if JOB_JOBOPTS_MIX_KEY in key:
+                    io_type = f'{JOB_JOBOPTS_MIX_KEY}{io_type}'
 
             if mt == MT_BW:
                 mt_res_key = JOB_R_W_BW_KEY
