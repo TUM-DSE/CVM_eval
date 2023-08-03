@@ -65,4 +65,4 @@ def plot(mt_data_dict, output_dir):
             fig = plot.get_figure()
             fig.savefig(f'{output_dir}/{mt}-{iot}-out.png')
             print(f'{output_dir}/{mt}-{iot}-out.png')
-k           plt.clf()
+            plt.clf()
