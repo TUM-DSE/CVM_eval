@@ -2,7 +2,8 @@ import enum
 import os
 
 # taken from `fio.sh`
-DEFAULT_DISK_TARGET = '/mnt/a'
+# nvme on ryan
+DEFAULT_DISK_TARGET = '/nvme/a'
 RAMDISK_PATH = '/dev/ram0'
 ENCRYPTED_RAM_MAP_NAME = 'encrypted-ram'
 ENCRYPTED_RAM_MAP_PATH = os.path.join('/dev', 'mapper', ENCRYPTED_RAM_MAP_NAME)
