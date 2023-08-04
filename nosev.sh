@@ -18,7 +18,8 @@ fi
 # sed -i "s/- \[temp\]/- \[sudo, bash, \/run\/fio.sh, nosev, "$1"\]/" ./config/cloud-config-nosev.yml
 # sudo cloud-localds cloud-config-nosev.iso config/cloud-config-nosev.yml
 
-./usr/local/bin/qemu-system-x86_64 \
+# ./usr/local/bin/qemu-system-x86_64 \
+./usr/qemu/usr/bin/qemu-system-x86_64 \
     -enable-kvm \
     -cpu EPYC-v4,host-phys-bits=true \
     -smp 16 \
