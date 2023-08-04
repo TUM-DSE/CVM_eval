@@ -13,7 +13,8 @@ ENVS    = [ENV_BM, ENV_VM, ENV_SEV]
 DEV_KERNEL      = 'kernel'
 DEV_VIRTIO_BLK  = 'virtio-blk'
 DEV_VIRTIO_SCSI = 'virtio-scsi'
-DEVS            = [DEV_KERNEL, DEV_VIRTIO_BLK, DEV_VIRTIO_SCSI]
+DEV_VIRTIO_NVME = 'virtio-nvme'
+DEVS            = [DEV_KERNEL, DEV_VIRTIO_BLK, DEV_VIRTIO_SCSI, DEV_VIRTIO_NVME]
 
 MT_BW   = 'bw'
 MT_ALAT = 'avg-lat'
