@@ -25,7 +25,7 @@ PALETTE = sns.color_palette("pastel")
 WIDTH   = 7 # \textwidth is 7 inch
 HEIGHT  = 1.8
 
-HATCHES = ['//', '\\\\', '|']
+HATCHES = ['**', '//', '\\\\', '|', '--', '+', 'x']
 
 
 def legend_without_duplicate_labels(ax):
