@@ -91,12 +91,12 @@ loops=1
 
 #### Rand-Read
 
-![iops rand read](./images/iops-mixread-out.png)
+![iops rand read](./images/iops-randread-out.png)
 
 
 #### Rand-Write
 
-![iops rand write](./images/iops-mixwrite-out.png)
+![iops rand write](./images/iops-randwrite-out.png)
 
 
 ### Average Latency
