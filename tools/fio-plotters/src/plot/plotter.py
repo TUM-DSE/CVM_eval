@@ -12,7 +12,7 @@ import time
 # sns settings
 sns.set_style("whitegrid")
 sns.set_style("ticks", {"xtick.major.size": 8, "ytick.major.size": 8})
-sns.set_context("paper", rc={"font.size": 5, "axes.titlesize": 5, "axes.labelsize": 8})
+sns.set_context("paper", rc={"axes.labelsize": 8, "font.size": 8, "axes.titlesize": 5, "axes.labelsize": 8})
 
 FIRST_COL_LABEL = 'io type'
 SCND_COL_LABEL = 'io stack'
@@ -27,15 +27,37 @@ HEIGHT  = 1.8
 
 HATCHES = ['**', '//', '\\\\', '|', '--', '+', 'x']
 
+BW_TITLE   = 'Bandwidth - higher is better'
+IOPS_TITLE = 'IOPS - higher is better'
+ALAT_TITLE = 'Average Latency - lower is better'
+
+BW_Y_AXIS_LABEL = 'KiB/s'
+IOPS_Y_AXIS_LABEL = 'IOPS'
+ALAT_Y_AXIS_LABEL = 'ns'
 
 def legend_without_duplicate_labels(ax):
     handles, labels = ax.get_legend_handles_labels()
     unique = [(h, l) for i, (h, l) in enumerate(zip(handles, labels)) if l not in labels[:i]]
     ax.legend(*zip(*unique))
 
+
 def add_values_on_bars(ax):
     for container in ax.containers:
-        ax.bar_label(container, fmt='%.1f')
+        ax.bar_label(container, fmt='%.0f')
+
+
+def add_plot_mt_styling(ax, mt):
+    if mt == MT_BW:
+        ax.set_title(BW_TITLE, fontdict={'size': 12})
+        ax.set(ylabel=BW_Y_AXIS_LABEL)
+    elif mt == MT_IOPS:
+        ax.set_title(IOPS_TITLE, fontdict={'size': 12})
+        ax.set(ylabel=IOPS_Y_AXIS_LABEL)
+    elif mt == MT_ALAT:
+        ax.set_title(ALAT_TITLE, fontdict={'size': 12})
+        ax.set(ylabel=ALAT_Y_AXIS_LABEL)
+    else:
+        assert False, f"invalid measurement type: {mt}"
 
 
 # https://stackoverflow.com/questions/67416696/how-to-add-the-repeated-hatches-to-each-bar-in-seaborn-barplot
@@ -74,6 +96,7 @@ def plot(mt_data_dict, output_dir):
             legend_without_duplicate_labels(plot)
             add_values_on_bars(plot)
             apply_hatches(plot)
+            add_plot_mt_styling(plot, mt)
             fig = plot.get_figure()
             fig.savefig(f'{output_dir}/{mt}-{iot}-out.png')
             print(f'{output_dir}/{mt}-{iot}-out.png')
