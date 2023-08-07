@@ -25,6 +25,8 @@ PALETTE = sns.color_palette("pastel")
 WIDTH   = 7 # \textwidth is 7 inch
 HEIGHT  = 1.8
 
+HATCHES = ['//', '\\\\', '|']
+
 
 def legend_without_duplicate_labels(ax):
     handles, labels = ax.get_legend_handles_labels()
@@ -34,6 +36,16 @@ def legend_without_duplicate_labels(ax):
 def add_values_on_bars(ax):
     for container in ax.containers:
         ax.bar_label(container, fmt='%.1f')
+
+
+# https://stackoverflow.com/questions/67416696/how-to-add-the-repeated-hatches-to-each-bar-in-seaborn-barplot
+def apply_hatches(ax):
+    for bars, hatch in zip(ax.containers, HATCHES):
+        # Set a different hatch for each group of bars
+        for bar in bars:
+            bar.set_hatch(hatch)
+    # create the legend again to show the new hatching
+    ax.legend(title='Class')
 
 # mt : iot (grouped), (unique triplet) env, device, mt_res
 # NOTE: this code is a mess, some refactoring wouldn't hurt
@@ -57,12 +69,13 @@ def plot(mt_data_dict, output_dir):
                 .sort_values(by=[SCND_COL_LABEL])\
                 .reset_index(drop=True)
 
-            # TODO URGENT FIXME: avg latency readrand w/ iops bars overlapping
             plot = sns.barplot(x=FIRST_COL_LABEL, y=THIRD_COL_LABEL, hue=SCND_COL_LABEL,
                 data=df, palette=PALETTE, edgecolor = 'w')
             legend_without_duplicate_labels(plot)
             add_values_on_bars(plot)
+            apply_hatches(plot)
             fig = plot.get_figure()
             fig.savefig(f'{output_dir}/{mt}-{iot}-out.png')
             print(f'{output_dir}/{mt}-{iot}-out.png')
             plt.clf()
+
