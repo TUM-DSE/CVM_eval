@@ -26,17 +26,21 @@ MT_REV_INDEX  = -2
 DEV_REV_INDEX = -3
 ENV_REV_INDEX = -4
 
-JOB_KEY            = 'jobs'
-JOB_JOBOPTS_KEY    = 'job options'
-JOB_JOBOPTS_RW_KEY = 'rw'
+JOB_KEY             = 'jobs'
+JOB_JOBOPTS_KEY     = 'job options'
+JOB_JOBOPTS_RW_KEY  = 'rw'
 JOB_JOBOPTS_MIX_KEY = 'mix'
-JOB_WRITE_KEY      = 'write'
-JOB_READ_KEY       = 'read'
+JOB_WRITE_KEY       = 'write'
+JOB_READ_KEY        = 'read'
 
 JOB_R_W_BW_KEY        = 'bw'
 JOB_R_W_IOPS_KEY      = 'iops'
 JOB_R_W_ALAT_KEY      = 'lat_ns'
 JOB_R_W_ALAT_MEAN_KEY = 'mean'
+
+JOB_R_W_BW_STDDEV_KEY   = 'bw_dev'
+JOB_R_W_ALAT_STDDEV_KEY = 'stddev'
+JOB_R_W_IOPS_STDDEV_KEY = 'iops_stddev'
 
 
 @dataclass
@@ -66,10 +70,13 @@ def parse_ctxs(mt_job_ctxs):
 
             if mt == MT_BW:
                 mt_res_key = JOB_R_W_BW_KEY
+                mt_stddev_key = JOB_R_W_BW_STDDEV_KEY
             elif mt == MT_IOPS:
                 mt_res_key = JOB_R_W_IOPS_KEY
+                mt_stddev_key = JOB_R_W_IOPS_STDDEV_KEY
             elif mt == MT_ALAT:
                 mt_res_key = JOB_R_W_ALAT_KEY
+                mt_stddev_key = JOB_R_W_ALAT_STDDEV_KEY
             else:
                 assert False, f"invalid mt: {mt}"
             # r/w my be e.g. randread; need to check if r or w
@@ -83,8 +90,10 @@ def parse_ctxs(mt_job_ctxs):
             # requires extra key
             if mt == MT_ALAT:
                 mt_res = job[iot_key][mt_res_key][JOB_R_W_ALAT_MEAN_KEY]
+                mt_stddev = job[iot_key][mt_res_key][mt_stddev_key]
             else:
                 mt_res = job[iot_key][mt_res_key]
+                mt_stddev = job[iot_key][mt_stddev_key]
 
             # round
             mt_res = round(mt_res)
@@ -95,7 +104,7 @@ def parse_ctxs(mt_job_ctxs):
             # iotGroup = IotGroup(job_ctx.env, job_ctx.device, mt_res)
             # res_d[mt][io_type].append(IotGroup)
             # NOTE: could be changed depending on measurement
-            res_d[mt][io_type].append([f"{job_ctx.env}-{job_ctx.device}", mt_res])
+            res_d[mt][io_type].append([f"{job_ctx.env}-{job_ctx.device}", mt_res, mt_stddev])
 
     return res_d
 

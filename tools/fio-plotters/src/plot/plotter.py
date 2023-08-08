@@ -17,6 +17,7 @@ sns.set_context("paper", rc={"axes.labelsize": 8, "font.size": 8, "axes.titlesiz
 FIRST_COL_LABEL = 'io type'
 SCND_COL_LABEL = 'io stack'
 THIRD_COL_LABEL = 'mt res'
+FOURTH_COL_LABEL = 'mt stddev'
 
 READ_IOT_TYPE_ID = 'read'
 WRITE_IOT_TYPE_ID = 'write'
@@ -39,6 +40,21 @@ def legend_without_duplicate_labels(ax):
     handles, labels = ax.get_legend_handles_labels()
     unique = [(h, l) for i, (h, l) in enumerate(zip(handles, labels)) if l not in labels[:i]]
     ax.legend(*zip(*unique))
+
+def add_stddev(plot, df):
+    # plt.errorbar(x=range(len(df[FIRST_COL_LABEL])), y=df[THIRD_COL_LABEL], yerr=df[FOURTH_COL_LABEL], fmt='none', color='black', capsize=4)
+
+    # Get the x and y coordinates of the bars
+    x_coords = []
+    y_coords = []
+    for container in plot.containers:
+        rect = container[0]
+        x_coords.append(rect.get_x() + rect.get_width() / 2)
+        y_coords.append(rect.get_height())
+    breakpoint()
+
+    # Add the standard deviation as error bars to the specific bar chart container
+    plt.errorbar(x=x_coords, y=y_coords, yerr=df[FOURTH_COL_LABEL], fmt='none', color='black')
 
 
 def add_values_on_bars(ax):
@@ -80,11 +96,17 @@ def plot(mt_data_dict, output_dir):
 
         print(f'{mt}\n')
         for iot, iot_group in iot_group_dict.items():
-            iot_group_collection = {FIRST_COL_LABEL: [], SCND_COL_LABEL: [], THIRD_COL_LABEL: []}
+            iot_group_collection = {
+                    FIRST_COL_LABEL: [],
+                    SCND_COL_LABEL: [],
+                    THIRD_COL_LABEL: [],
+                    FOURTH_COL_LABEL: []
+                }
             for iot_group_member in iot_group:
                 iot_group_collection[FIRST_COL_LABEL].append(iot)
                 iot_group_collection[SCND_COL_LABEL].append(iot_group_member[0])
                 iot_group_collection[THIRD_COL_LABEL].append(iot_group_member[1])
+                iot_group_collection[FOURTH_COL_LABEL].append(iot_group_member[2])
 
             df = pd.DataFrame(data=iot_group_collection)\
                 .drop_duplicates(subset=[FIRST_COL_LABEL, SCND_COL_LABEL])\
@@ -97,6 +119,7 @@ def plot(mt_data_dict, output_dir):
             add_values_on_bars(plot)
             apply_hatches(plot)
             add_plot_mt_styling(plot, mt)
+            add_stddev(plot, df)
             fig = plot.get_figure()
             fig.savefig(f'{output_dir}/{mt}-{iot}-out.png')
             print(f'{output_dir}/{mt}-{iot}-out.png')
