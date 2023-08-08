@@ -22,8 +22,6 @@ IO_ENGINE_PSYNC = 'psync'
 
 FIO_TRUE = 1
 FIO_FALSE = 0
-FIO_TEST_SIZE = '4G'
-FIO_LOOPS = 5
 
 class FioParamLabels(str, enum.Enum):
     IO_ENGINE  = 'ioengine'
@@ -74,7 +72,7 @@ AVG_LATENCY_CONFIG = FioTestConfig(
 
 
 
-def generate_job(bm_config: BenchmarkConfig, name, job_file):
+def generate_job(bm_config: BenchmarkConfig, name, job_file, loops, size):
     config = configparser.ConfigParser()
 
     io_engine_arg = None
@@ -163,9 +161,9 @@ def generate_job(bm_config: BenchmarkConfig, name, job_file):
     # see https://github.com/TUM-DSE/CVM_eval/issues/9#issuecomment-1647732269
     config[FIO_GLOBAL_LABEL][FioParamLabels.DIRECT.value] = f"{FIO_TRUE}"
     # taken from ../../../fio.sh
-    config[FIO_GLOBAL_LABEL][FioParamLabels.SIZE.value] = f"{FIO_TEST_SIZE}"
+    config[FIO_GLOBAL_LABEL][FioParamLabels.SIZE.value] = f"{size}G"
     config[FIO_GLOBAL_LABEL][FioParamLabels.FILENAME.value] = f"{bm_config.target_disk}"
-    config[FIO_GLOBAL_LABEL][FioParamLabels.LOOPS.value] = f"{FIO_LOOPS}"
+    config[FIO_GLOBAL_LABEL][FioParamLabels.LOOPS.value] = f"{loops}"
 
     # write result to job file
     with open(job_file, 'w') as jobfile:

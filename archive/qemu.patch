@@ -1,0 +1,12 @@
+diff --git a/target/i386/sev.h b/target/i386/sev.h
+index 8918281d69..0c3a82a201 100644
+--- a/target/i386/sev.h
++++ b/target/i386/sev.h
+@@ -18,6 +18,7 @@
+ #include CONFIG_DEVICES /* CONFIG_SEV */
+ #endif
+ 
++#include <linux/types.h>
+ #include "exec/confidential-guest-support.h"
+ 
+ #define SEV_POLICY_NODBG        0x1

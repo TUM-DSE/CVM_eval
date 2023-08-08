@@ -49,6 +49,12 @@ log.basicConfig(level=log.INFO)
 @click.option('--no-ramdisk',
               is_flag=True,
               help='does not use a ramdisk- uses default disk target instead')
+@click.option('--loops',
+              default=5,
+              help='how often bm is executed')
+@click.option('--size',
+              default=4,
+              help='how many GB is fio test size')
 
 def cli(
         name,
@@ -60,7 +66,9 @@ def cli(
         out,
         resource_dir,
         no_execute,
-        no_ramdisk):
+        no_ramdisk,
+        loops,
+        size):
     """
     Runs storage IO benchmarks - on a bare-metal host or inside of an optionally
     confidential VM.
@@ -97,7 +105,7 @@ def cli(
 
     utils.cleanup()
 
-    setup.generate_job(bm_config, name, job_file)
+    setup.generate_job(bm_config, name, job_file, loops, size)
 
     if not no_ramdisk:
         setup.setup_ramdisk(bm_config, resource_dir)
