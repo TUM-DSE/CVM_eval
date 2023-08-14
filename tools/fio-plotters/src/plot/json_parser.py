@@ -10,11 +10,12 @@ ENV_VM  = 'native-vm'
 ENV_SEV = 'sev'
 ENVS    = [ENV_BM, ENV_VM, ENV_SEV]
 
-DEV_KERNEL      = 'kernel'
-DEV_VIRTIO_BLK  = 'virtio-blk'
-DEV_VIRTIO_SCSI = 'virtio-scsi'
-DEV_VIRTIO_NVME = 'nvme'
-DEVS            = [DEV_KERNEL, DEV_VIRTIO_BLK, DEV_VIRTIO_SCSI, DEV_VIRTIO_NVME]
+DEV_KERNEL             = 'kernel'
+DEV_VIRTIO_BLK         = 'virtio-blk'
+DEV_VIRTIO_SCSI        = 'virtio-scsi'
+DEV_VIRTIO_NVME        = 'nvme'
+DEV_SPDK_VHOST_USR_BLK = 'spdk-vhost-user-blk'
+DEVS                   = [DEV_KERNEL, DEV_VIRTIO_BLK, DEV_VIRTIO_SCSI, DEV_VIRTIO_NVME, DEV_SPDK_VHOST_USR_BLK]
 
 MT_BW   = 'bw'
 MT_ALAT = 'avg-lat'

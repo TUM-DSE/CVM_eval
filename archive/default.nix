@@ -22,6 +22,8 @@ mkShell {
     fio
     jupyter
     python310Packages.seaborn
+    # vhost target
+    spdk
   ];
   LD_LIBRARY_PATH = lib.makeLibraryPath libraries;
 }

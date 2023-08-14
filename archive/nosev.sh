@@ -7,13 +7,29 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
-if [ "$1" == "blk" ]; then
+set -x
+
+echo "$1"
+if [[ "$1" == "blk" ]]; then
     device_type="virtio-blk-pci,drive=disk0,id=virtblk0,num-queues=4"
-elif [ "$1"=="nvme" ]; then
+elif [[ "$1" == "nvme" ]]; then
     device_type="nvme,serial=cafebabe,drive=disk0"
-elif [ "$1"=="scsi" ]; then
-    device_type="virtio-scsi-pci,id=scsi0,disable-legacy=on,iommu_platform=true"
+elif [[ "$1" == "scsi" ]]; then
+    device_type="virtio-scsi-pci,id=scsi0,disable-legacy=on,iommu_platform=true -device scsi-hd,drive=disk0"
+elif [[ "$1" == "encr-blk" ]] ; then
+     device_type='virtio-blk,drive=drive0 \
+        -object secret,id=sec0,data=ODc1MzkzMTk=,format=base64 \
+        -drive if=none,driver=luks,key-secret=sec0,\
+        id=drive0,file.driver=file \
+        file.filename=./demo.luks \'
+else
+    echo 'not a valid option'
+    exit 1
 fi
+
+drive_img='./nosev.img'
+
+
 # rm -f cloud-config-nosev.iso
 # sed -i "s/- \[temp\]/- \[sudo, bash, \/run\/fio.sh, nosev, "$1"\]/" ./config/cloud-config-nosev.yml
 # sudo cloud-localds cloud-config-nosev.iso config/cloud-config-nosev.yml
@@ -28,8 +44,10 @@ fi
     -drive if=pflash,format=raw,unit=0,file=./OVMF_files/OVMF_CODE_nosev.fd,readonly=on \
     -drive if=pflash,format=raw,unit=1,file=./OVMF_files/OVMF_VARS_nosev.fd \
     -drive file=cloud-config-nosev.iso,media=cdrom,index=0 \
-    -drive file=nosev.img,if=none,id=disk0,format=raw \
-    -device $device_type \
+    -drive file=${drive_img},if=none,id=disk0,format=raw \
+    -device virtio-blk-pci,drive=disk0,id=virtblk0,num-queues=4 \
+    -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename=/dev/nvme1n1 \
+    -device virtio-blk,drive=q1 \
     -nographic \
     -device virtio-net-pci,netdev=net0 \
     -netdev user,id=net0,hostfwd=tcp::2223-:22

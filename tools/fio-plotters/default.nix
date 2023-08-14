@@ -9,5 +9,6 @@ in pkgs.mkShell rec {
     pythonPackages.click
     python310Packages.seaborn
     python310Packages.pandas
+    python310Packages.binary
   ];
 }

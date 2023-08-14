@@ -1,5 +1,12 @@
-usr/
-OVMF_files/
 *.img
 *.iso
 .ipynb_checkpoints/
+archive/
+
+*.luks
+
+.direnv/
+build/
+result
+result-fd
+logs/

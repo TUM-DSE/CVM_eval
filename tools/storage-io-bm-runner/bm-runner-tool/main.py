@@ -39,6 +39,10 @@ log.basicConfig(level=log.INFO)
               default='./results.json',
               type=click.File('w'),
               help='result output file')
+@click.option('--target-disk',
+              type=click.Path(dir_okay=True, exists=True),
+              default='/mnt/a',
+              help='target disk mount point')
 @click.option('--resource-dir',
               required=True,
               type=click.Path(dir_okay=True, exists=True),
@@ -46,9 +50,6 @@ log.basicConfig(level=log.INFO)
 @click.option('--no-execute',
               is_flag=True,
               help='only generates the `fio` file and does not execute the benchmark')
-@click.option('--no-ramdisk',
-              is_flag=True,
-              help='does not use a ramdisk- uses default disk target instead')
 @click.option('--loops',
               default=5,
               help='how often bm is executed')
@@ -64,9 +65,9 @@ def cli(
         storage_level,
         measurement_type,
         out,
+        target_disk,
         resource_dir,
         no_execute,
-        no_ramdisk,
         loops,
         size):
     """
@@ -91,7 +92,7 @@ def cli(
             integrity,
             storage_level,
             measurement_type,
-            not no_ramdisk)
+            target_disk)
  
     log.info(f"EXECUTING BENCHMARK: <{name}> W/ FOLLOWING PARAMS:")
     log.info(f"P3:      Storage IO Software Stack:  {stack.value}")
@@ -105,10 +106,10 @@ def cli(
 
     utils.cleanup()
 
-    setup.generate_job(bm_config, name, job_file, loops, size)
 
-    if not no_ramdisk:
-        setup.setup_ramdisk(bm_config, resource_dir)
+    setup.setup_disk(bm_config, resource_dir)
+
+    setup.generate_job(bm_config, name, job_file, loops, size)
 
     if not no_execute:
         executor.run_job(job_file, result_file)
