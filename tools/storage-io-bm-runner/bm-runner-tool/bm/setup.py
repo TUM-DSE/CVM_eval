@@ -177,60 +177,49 @@ def create_crypto_disk_hdr(hdr_path):
 
 
 # from https://blog.cloudflare.com/speeding-up-linux-disk-encryption/
-def setup_ramdisk(bm_config, resource_dir):
+def setup_disk(bm_config, resource_dir):
     # check if ramdisk exists, if not, create it
 
-    if not os.path.exists(bm_config.target_disk):
-        log.warn(f"No RAMDisk found at {bm_config.target_disk}; " \
-                "creating 4G RAMDisk. Requires `sudo`.")
-        # TODO annotate / replace literals
-        # changing target_disk path requires changing rd_nr
-        subprocess.run(['sudo', 'modprobe', 'brd', 'rd_nr=1', 'rd_size=4194304']).check_returncode()
-
     if bm_config.encryption_switch:
-        # enrypted map already exists: skip setup
-        if (not os.path.exists(bm_config.encrypted_target_disk) and not bm_config.integrity_switch) \
-            or (not os.path.exists(bm_config.integrity_target_disk) and bm_config.integrity_switch):
-            log.warn(f"Attempting to encrypt {bm_config.target_disk}; " \
-                    "requires `sudo` and user interaction.")
+        log.warn(f"Attempting to encrypt {bm_config.target_disk}; " \
+                "requires `sudo` and user interaction.")
 
-            cryptsetup_cmd = ['sudo', 'cryptsetup', 'luksFormat',
-                  bm_config.target_disk, '--perf-no_read_workqueue',
-                  '--perf-no_write_workqueue']
-            # if integrity on top of encryption
-            # from https://gist.github.com/MawKKe/caa2bbf7edcc072129d73b61ae7815fb
-            selected_hdr = None
-            selected_name = None
-            if bm_config.integrity_switch:
-                cryptsetup_cmd.append('--integrity')
-                cryptsetup_cmd.append('hmac-sha256')
-                selected_hdr = os.path.join(resource_dir, ENCRYPTED_INTEGRITY_RAM_MAP_NAME)
-                selected_name = ENCRYPTED_INTEGRITY_RAM_MAP_NAME
-            else:
-                selected_hdr = os.path.join(resource_dir, ENCRYPT_HDR_NAME)
-                selected_name = ENCRYPTED_RAM_MAP_NAME
+        cryptsetup_cmd = ['sudo', 'cryptsetup', 'luksFormat',
+              bm_config.target_disk, '--perf-no_read_workqueue',
+              '--perf-no_write_workqueue']
+        # if integrity on top of encryption
+        # from https://gist.github.com/MawKKe/caa2bbf7edcc072129d73b61ae7815fb
+        selected_hdr = None
+        selected_name = None
+        if bm_config.integrity_switch:
+            cryptsetup_cmd.append('--integrity')
+            cryptsetup_cmd.append('hmac-sha256')
+            selected_hdr = os.path.join(resource_dir, ENCRYPTED_INTEGRITY_RAM_MAP_NAME)
+            selected_name = ENCRYPTED_INTEGRITY_RAM_MAP_NAME
+        else:
+            selected_hdr = os.path.join(resource_dir, ENCRYPT_HDR_NAME)
+            selected_name = ENCRYPTED_RAM_MAP_NAME
 
-            cryptsetup_cmd.append('--header')
-            cryptsetup_cmd.append(selected_hdr)
-            create_crypto_disk_hdr(selected_hdr)
+        cryptsetup_cmd.append('--header')
+        cryptsetup_cmd.append(selected_hdr)
+        create_crypto_disk_hdr(selected_hdr)
 
-            # disable read / writequeue
-            # https://blog.cloudflare.com/speeding-up-linux-disk-encryption/
-            subprocess.run(cryptsetup_cmd).check_returncode()
-            
-            # unlock ramdisk
-            subprocess.run(['sudo', 'cryptsetup', 'open',
-                '--header', selected_hdr, bm_config.target_disk, selected_name]).check_returncode()
+        # disable read / writequeue
+        # https://blog.cloudflare.com/speeding-up-linux-disk-encryption/
+        subprocess.run(cryptsetup_cmd).check_returncode()
+        
+        # unlock ramdisk
+        subprocess.run(['sudo', 'cryptsetup', 'open',
+            '--header', selected_hdr, bm_config.target_disk, selected_name]).check_returncode()
     # only integrity
     elif bm_config.integrity_switch:
         # from https://gist.github.com/MawKKe/caa2bbf7edcc072129d73b61ae7815fb
         # integrity map already exists
-        if not os.path.exists(bm_config.integrity_target_disk):
-            log.warn(f"Attempting to integrity protect {bm_config.target_disk}; " \
-                    "requires `sudo` and user interaction.")
-            subprocess.run(['sudo', 'integritysetup', 'format', '--integrity',
-                'sha256', bm_config.target_disk]).check_returncode()
-            subprocess.run(['sudo', 'integritysetup', 'open', '--integrity',
+        log.warn(f"Attempting to integrity protect {bm_config.target_disk}; " \
+                "requires `sudo` and user interaction.")
+        subprocess.run(['sudo', 'integritysetup', 'format', '--integrity',
+            'sha256', bm_config.target_disk]).check_returncode()
+        subprocess.run(['sudo', 'integritysetup', 'open', '--integrity',
                 'sha256', bm_config.target_disk, INTEGRITY_RAM_MAP_NAME]).check_returncode()
 
 

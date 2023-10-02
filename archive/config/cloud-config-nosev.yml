@@ -1,6 +1,0 @@
-#cloud-config
-password: nosev
-hostname: nosev
-chpasswd: { expire: False }
-ssh_pwauth: True
-final_message: "Cloud init is done!"

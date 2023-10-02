@@ -3,8 +3,7 @@ import os
 
 # taken from `fio.sh`
 # nvme on ryan
-DEFAULT_DISK_TARGET = '/nvme/a'
-RAMDISK_PATH = '/dev/ram0'
+DEFAULT_DISK_TARGET = '/mnt/a'
 ENCRYPTED_RAM_MAP_NAME = 'encrypted-ram'
 ENCRYPTED_RAM_MAP_PATH = os.path.join('/dev', 'mapper', ENCRYPTED_RAM_MAP_NAME)
 INTEGRITY_RAM_MAP_NAME = 'integrity-ram'
@@ -43,21 +42,18 @@ class BenchmarkConfig():
                  integrity_switch: bool,
                  storage_level: StorageLevelParam,
                  measurement_type: MeasurementTypeParam,
-                 use_ramdisk: bool,
-                 target_disk=RAMDISK_PATH,
-                 encrypted_target_disk=ENCRYPTED_RAM_MAP_PATH,
-                 integrity_target_disk=INTEGRITY_RAM_MAP_PATH,
-                 encrypted_integrity_target_disk=ENCRYPTED_INTEGRITY_RAM_MAP_PATH):
+                 target_disk: str):
         self.sw_stack = sw_stack
         self.encryption_switch = encryption_switch
         self.integrity_switch = integrity_switch
         self.storage_level = storage_level
         self.measurement_type = measurement_type
-        self.encrypted_target_disk = ENCRYPTED_RAM_MAP_PATH
-        self.integrity_target_disk = integrity_target_disk
-        self.encrypted_integrity_target_disk = encrypted_integrity_target_disk
 
-        if use_ramdisk:
-            self.target_disk = RAMDISK_PATH
-        else:
+        if not target_disk:
             self.target_disk = DEFAULT_DISK_TARGET
+        else:
+            self.target_disk = target_disk
+
+        self.encrypted_target_disk = ENCRYPTED_RAM_MAP_PATH
+        self.integrity_target_disk = INTEGRITY_RAM_MAP_PATH
+        self.encrypted_integrity_target_disk = ENCRYPTED_INTEGRITY_RAM_MAP_PATH
