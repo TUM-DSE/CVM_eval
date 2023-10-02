@@ -41,20 +41,20 @@ stdenv.mkDerivation rec {
     numactl
     openssl
     ncurses
-    # dpdk
     pkg-config
     zlib
     libpcap
     libnl
     libelf
     jansson
-    # meson
+    # meson # including meson breaks the build
     ps
     (python310Full.withPackages (p: with p ; [ setuptools ]))
   ];
 
   patches =
   [
+    # building python breaks the install
     ./0001-no-python-in-makefile.patch
   ];
 
@@ -83,6 +83,18 @@ stdenv.mkDerivation rec {
     maintainers = with maintainers; [ orivej ];
   };
 
+  # include setup.sh for spdk setup (e.g. hugepage allocation)
+  # include nvme_manage for SSD preconditioning
+  # as in: https://ci.spdk.io/download/events/2017-summit/08_-_Day_2_-_Kariuki_Verma_and_Sudarikov_-_SPDK_Performance_Testing_and_Tuning_rev5_0.pdf
+  postInstall =
+  ''
+    cp ./build/examples/nvme_manage $out/bin/.
+    cp ./scripts/setup.sh $out/bin/spdk-setup.sh
+    # setup dependencies
+    mkdir -p $out/scripts
+    cp ./scripts/common.sh $out/scripts/common.sh
+    cp ./scripts/spdk-gpt.py $out/scripts/spdk-gpt.py
+  '';
   # dontInstall = true;
   # dontFixup = true;
   # mesonFlags = [ "--install-dir=$out" ];

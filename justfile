@@ -1,3 +1,6 @@
+# SSD set up and preconditioning as in:
+# https://ci.spdk.io/download/events/2017-summit/08_-_Day_2_-_Kariuki_Verma_and_Sudarikov_-_SPDK_Performance_Testing_and_Tuning_rev5_0.pdf
+
 # resource locations
 ## dirs
 proot     := justfile_directory()
@@ -89,6 +92,14 @@ vm-build:
     # qemu-img resize {{img_native}} +2g
     # qemu-img resize {{img_amd_sev_snp}} +2g
 
+## SSD setup
+precondition-ssd: init-spdk
+    echo foo
+
+init-spdk:
+    # hugepages required to run any spdk applications
+    # regardless of whether we need hugepages
+    sudo spdk-setup.sh
 
 
 clean:
