@@ -69,7 +69,7 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  configureFlags = with pkgs; [ "--with-dpdk=${dpdk'}" "--disable-tests" "--disable-unit-tests" "--pydir=$out" ];
+  configureFlags = with pkgs; [ "--with-dpdk=${dpdk'}" "--disable-tests" "--disable-unit-tests" "--pydir=$out" "--enable-debug" ];
 
   env.NIX_CFLAGS_COMPILE = "-mssse3"; # Necessary to compile.
   # otherwise does not find strncpy when compiling
