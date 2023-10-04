@@ -1,7 +1,7 @@
 { pkgs }:
 
 with pkgs;
-qemu_kvm.overrideAttrs
+qemu_full.overrideAttrs
 (
   new: old:
   {

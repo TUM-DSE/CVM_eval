@@ -20,11 +20,18 @@ img_native_dir         := join(vm_build, "img-native")
 img_amd_sev_snp_dir    := join(vm_build, "img-sev")
 img_native             := join(img_native_dir, qcow2)
 img_amd_sev_snp        := join(img_amd_sev_snp_dir, qcow2)
+ovmf_ro                := join(vm_build, "OVMF-ro")
+ovmf_ro_fd             := join(vm_build, "OVMF-ro-fd")
+ovmf                   := join(vm_build, "OVMF")
+uefi_bios_ro           := join(ovmf_ro_fd, "FV", "OVMF.fd")
+uefi_bios              := join(ovmf, "FV", "OVMF.fd")
+
 
 # nix identifiers
 ## recipes
 this_dir             := "."
 nix_img              := join(this_dir, "#guest-image")
+nix_ovmf_amd_sev_snp := join(this_dir, "#ovmf-amd-sev-snp")
 
 
 
@@ -43,7 +50,7 @@ benchmark-native-virtio-blk: numa-warning start-native-vm-virtio-blk
         sleep 10 ; \
     done
 
-start-native-vm-virtio-blk:
+start-native-vm-virtio-blk nvme="/dev/nvme1n1":
     # sudo for disk access
     # device: /dev/nvme2n1 ( Samsung SSD 970 EVO Plus 1TB )
     # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
@@ -62,24 +69,27 @@ start-native-vm-virtio-blk:
         -device virtio-blk-pci,drive=q2 \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
         -device virtio-net-pci,netdev=net0 \
-        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename=/dev/nvme1n1 \
-        -device virtio-blk,drive=q1 &> ./logs/mylog.log &
+        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
+        -device virtio-blk,drive=q1 &> ./logs/native.log &
 
 
-start-sev-vm-virtio-blk:
-    sudo qemu-system-x86_64 \
+start-sev-vm-virtio-blk nvme="/dev/nvme1n1":
+    sudo taskset -c 4-8 qemu-system-x86_64 \
         -cpu host \
         -smp 4 \
         -m 16G \
         -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
-        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1 \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA \
         -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
-        -accel kvm \
+        -enable-kvm \
         -nographic \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
         -device virtio-blk-pci,drive=q2 \
-        -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-        -device virtio-net-pci,netdev=net0
+        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
+        -device virtio-blk,drive=q1 \
+        -pflash {{uefi_bios}}
 
 
 vm-build:
@@ -92,6 +102,9 @@ vm-build:
     # resize
     # qemu-img resize {{img_native}} +2g
     # qemu-img resize {{img_amd_sev_snp}} +2g
+    # ovmf
+    nix build -L -o {{ovmf_ro}} {{nix_ovmf_amd_sev_snp}}
+    install -D -m644 {{uefi_bios_ro}} {{uefi_bios}}
 
 ## SSD setup
 init-spdk: 

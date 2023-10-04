@@ -4,6 +4,7 @@
   inputs =
   {
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-23.05";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -11,6 +12,7 @@
   {
     self
     , nixpkgs-unstable
+    , nixpkgs-stable
     , flake-utils
   }:
   (
@@ -19,6 +21,7 @@
       system:
       let
         pkgs = nixpkgs-unstable.legacyPackages.${system};
+        stablepkgs = nixpkgs-stable.legacyPackages.${system};
         make-disk-image = import (pkgs.path + "/nixos/lib/make-disk-image.nix");
         selfpkgs = self.packages.x86_64-linux;
       in
@@ -28,7 +31,7 @@
           # SSD preconditioning
           spdk = pkgs.callPackage ./nix/spdk.nix { inherit pkgs; };
 
-          qemu-amd-sev-snp = pkgs.callPackage ./nix/qemu-amd-sev-snp.nix { inherit pkgs; };
+          qemu-amd-sev-snp = let pkgs = stablepkgs; in pkgs.callPackage ./nix/qemu-amd-sev-snp.nix { inherit pkgs; };
           # only need AMD kernel fork on host, not in guest
           # linux-amd-sev-snp = pkgs.callPackage ./nix/linux-amd-sev-snp.nix { inherit pkgs; };
           ovmf-amd-sev-snp = pkgs.callPackage ./nix/ovmf-amd-sev-snp.nix { inherit pkgs; };
