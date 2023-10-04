@@ -89,6 +89,7 @@ stdenv.mkDerivation rec {
   postInstall =
   ''
     cp ./build/examples/nvme_manage $out/bin/.
+    cp ./build/examples/perf $out/bin/.
     cp ./scripts/setup.sh $out/bin/spdk-setup.sh
     # setup dependencies
     mkdir -p $out/scripts

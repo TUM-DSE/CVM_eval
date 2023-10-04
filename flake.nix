@@ -50,9 +50,8 @@
               
             ];
           };
-          postVM = "echo foobar";
         };
-        
+
         devShells.default = pkgs.mkShell
         {
           name = "benchmark-devshell";
