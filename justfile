@@ -1,3 +1,6 @@
+# SSD set up and preconditioning as in:
+# https://ci.spdk.io/download/events/2017-summit/08_-_Day_2_-_Kariuki_Verma_and_Sudarikov_-_SPDK_Performance_Testing_and_Tuning_rev5_0.pdf
+
 # resource locations
 ## dirs
 proot     := justfile_directory()
@@ -32,7 +35,7 @@ default:
 help:
     just --list
 
-benchmark-native-virtio-blk: start-native-vm-virtio-blk
+benchmark-native-virtio-blk: numa-warning start-native-vm-virtio-blk
     # waiting for 10 jobs * 120 secs
     sleep $((10 * 120))
     while ! scp -P 2222 -q -i ./nix/ssh_key root@localhost:/mnt/bm-result.log ./log/bm-result.log &>/dev/null ; do \
@@ -89,7 +92,42 @@ vm-build:
     # qemu-img resize {{img_native}} +2g
     # qemu-img resize {{img_amd_sev_snp}} +2g
 
+## SSD setup
+init-spdk: 
+    sudo HUGEMEM=32768 spdk-setup.sh
 
+precondition-ssd-standard:
+    echo "NOTE: preconditioning only required when a. inconsistent results b. SSD is new / not yet reached steady state"
+    # NOTE: when to perform:
+    # 1. new SSD -> reach steady state
+    # 2. inconsistent results
+    # source: https://www.youtube.com/watch?v=tkGE3pq5eIU&list=PLj-81kG3zG5ZIE-4CvqsvlFEHoOoWRIHZ&index=9
+    # hugepages required to run any spdk applications
+    # regardless of whether we need hugepages
+    # sudo spdk-setup.sh
+    # Vislor SSD already formatted;
+    # to format own SSD, use `nvme_manage` ; follow steps in:
+    # https://ci.spdk.io/download/events/2017-summit/08_-_Day_2_-_Kariuki_Verma_and_Sudarikov_-_SPDK_Performance_Testing_and_Tuning_rev5_0.pdf
+    #
+    # ensure LBA has been written to by filling up span of drive 2 times w/
+    # sequential writes (1.6TB -> 1600000000000B ; 1.6TB*2 -> 3200000000000
+    # if fails: you may need to init hugepages via `just init-spdk`
+    sudo perf -q 32 -s 32768 -o 3200000000000 -t 1200 -w write -c 0x1 -r 'trtype:PCIe traddr:0000:64:00.00'
+
+
+precondition-ssd-randwrite:
+    # if 4KB rand writes ( which we do ):
+    # in talk: 90 min writes ; they needed 10min / 800 GB -> 90min / 7200GB (factor 9)
+    # our case: 9*1.6TB -> 14.4TB -> 14400000000000B (per doesn't use time anymore; only size
+    # if fails: you may need to init hugepages via `just init-spdk`
+    sudo perf -q 32 -s 4096 -w randwrite -o 14400000000000 -t 5400 -c 0x1 -r 'trtype:PCIe traddr:0000:64:00.00'
+
+
+numa-warning:
+    echo "Please ensure your NUMA config is correct; else, inconsistent results"
+    echo "Displaying lspci bus addr + NUMA nodes; please check manually"
+    lspci | grep -i Non
+    lscpu | grep NUMA
 
 clean:
     rm -rf {{vm_build}}

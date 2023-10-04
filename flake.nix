@@ -25,6 +25,9 @@
       rec {
         packages =
         {
+          # SSD preconditioning
+          spdk = pkgs.callPackage ./nix/spdk.nix { inherit pkgs; };
+
           qemu-amd-sev-snp = pkgs.callPackage ./nix/qemu-amd-sev-snp.nix { inherit pkgs; };
           # only need AMD kernel fork on host, not in guest
           # linux-amd-sev-snp = pkgs.callPackage ./nix/linux-amd-sev-snp.nix { inherit pkgs; };
@@ -47,9 +50,8 @@
               
             ];
           };
-          postVM = "echo foobar";
         };
-        
+
         devShells.default = pkgs.mkShell
         {
           name = "benchmark-devshell";
@@ -57,11 +59,13 @@
           [
             just
             fzf
+            # spdk # for nvme_mange -> SSD precondition
           ] ++ 
           (
             with self.packages.${system};
             [
               qemu-amd-sev-snp # patched amd-sev-snp qemu
+              spdk # nvme SSD formatting
             ]
           );
         };
