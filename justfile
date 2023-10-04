@@ -48,8 +48,9 @@ start-native-vm-virtio-blk:
     # device: /dev/nvme2n1 ( Samsung SSD 970 EVO Plus 1TB )
     # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
     # vislor: NVMe SSD PM173X: 64:00.0
-    # vislor: NUMA node0: CPU(s): 0-31,64-96
-    # --> 4-8 on same node das NVMe SSD
+    # vislor: NUMA node0: CPU(s): 0-31
+    # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
+    # --> 4-8 on same node as NVMe SSD
     sudo taskset -c 4-8 qemu-system-x86_64 \
         -cpu host \
         -smp 4 \
@@ -61,7 +62,7 @@ start-native-vm-virtio-blk:
         -device virtio-blk-pci,drive=q2 \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
         -device virtio-net-pci,netdev=net0 \
-        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename=/dev/nvme2n1 \
+        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename=/dev/nvme1n1 \
         -device virtio-blk,drive=q1 &> ./logs/mylog.log &
 
 
@@ -126,6 +127,7 @@ precondition-ssd-randwrite:
 numa-warning:
     echo "Please ensure your NUMA config is correct; else, inconsistent results"
     echo "Displaying lspci bus addr + NUMA nodes; please check manually"
+    # or look manually via e.g. cat /sys/class/nvme/nvme1/device/numa_node
     lspci | grep -i Non
     lscpu | grep NUMA
 
