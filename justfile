@@ -24,6 +24,10 @@ ovmf_ro                := join(vm_build, "OVMF-ro")
 ovmf_ro_fd             := join(vm_build, "OVMF-ro-fd")
 ovmf                   := join(vm_build, "OVMF")
 uefi_bios_ro           := join(ovmf_ro_fd, "FV", "OVMF.fd")
+uefi_bios_code_ro      := join(ovmf_ro_fd, "FV", "OVMF_CODE.fd")
+uefi_bios_vars_ro      := join(ovmf_ro_fd, "FV", "OVMF_VARS.fd")
+uefi_bios_code         := join(ovmf, "FV", "OVMF_CODE.fd")
+uefi_bios_vars         := join(ovmf, "FV", "OVMF_VARS.fd")
 uefi_bios              := join(ovmf, "FV", "OVMF.fd")
 
 
@@ -65,17 +69,19 @@ start-native-vm-virtio-blk nvme="/dev/nvme1n1":
         -machine q35 \
         -enable-kvm \
         -nographic \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
-        -device virtio-blk-pci,drive=q2 \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
         -device virtio-net-pci,netdev=net0 \
         -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
-        -device virtio-blk,drive=q1 &> ./logs/native.log &
+        -device virtio-blk,drive=q1 \
+        -drive if=pflash,format=raw,unit=0,file={{uefi_bios_code}},readonly=on \
+        -drive if=pflash,format=raw,unit=1,file={{uefi_bios_vars}} \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
+        -device virtio-blk-pci,drive=q2
 
 
 start-sev-vm-virtio-blk nvme="/dev/nvme1n1":
     sudo taskset -c 4-8 qemu-system-x86_64 \
-        -cpu host \
+        -cpu EPYC-v4,host-phys-bits=true \
         -smp 4 \
         -m 16G \
         -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
@@ -89,7 +95,8 @@ start-sev-vm-virtio-blk nvme="/dev/nvme1n1":
         -device virtio-net-pci,netdev=net0 \
         -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
         -device virtio-blk,drive=q1 \
-        -pflash {{uefi_bios}}
+        -drive if=pflash,format=raw,unit=0,file={{uefi_bios_code}},readonly=on \
+        -drive if=pflash,format=raw,unit=1,file={{uefi_bios_vars}}
 
 
 vm-build:
@@ -105,6 +112,8 @@ vm-build:
     # ovmf
     nix build -L -o {{ovmf_ro}} {{nix_ovmf_amd_sev_snp}}
     install -D -m644 {{uefi_bios_ro}} {{uefi_bios}}
+    install -D -m644 {{uefi_bios_vars_ro}} {{uefi_bios_vars}}
+    install -D -m644 {{uefi_bios_code_ro}} {{uefi_bios_code}}
 
 ## SSD setup
 init-spdk: 

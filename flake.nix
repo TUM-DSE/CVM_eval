@@ -41,16 +41,17 @@
             inherit (pkgs) lib;
             inherit pkgs;
             format = "qcow2";
-            partitionTableType = "hybrid";
+            partitionTableType = "efi";
+            installBootLoader = true;
             diskSize = 4096;
             OVMF = selfpkgs.ovmf-amd-sev-snp.fd;
+            touchEFIVars = true;
             contents =
             [
               {
                 source = ./bm/blk-bm.fio;
                 target = "/mnt/blk-bm.fio";
               }
-              
             ];
           };
         };
