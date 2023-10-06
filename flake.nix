@@ -30,6 +30,7 @@
         {
           # SSD preconditioning
           spdk = pkgs.callPackage ./nix/spdk.nix { inherit pkgs; };
+          spdkPython = pkgs.callPackage ./nix/spdk-python.nix { inherit pkgs; };
 
           qemu-amd-sev-snp = let pkgs = stablepkgs; in pkgs.callPackage ./nix/qemu-amd-sev-snp.nix { inherit pkgs; };
           # only need AMD kernel fork on host, not in guest
@@ -70,6 +71,7 @@
             [
               qemu-amd-sev-snp # patched amd-sev-snp qemu
               spdk # nvme SSD formatting
+              spdkPython
             ]
           );
         };

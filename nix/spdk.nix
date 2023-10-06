@@ -55,6 +55,7 @@ stdenv.mkDerivation rec {
   patches =
   [
     # building python breaks the install
+    # instead, build via buildPythonPackage in nix/spdk-python.nix
     ./0001-no-python-in-makefile.patch
   ];
 
@@ -69,7 +70,7 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  configureFlags = with pkgs; [ "--with-dpdk=${dpdk'}" "--disable-tests" "--disable-unit-tests" "--pydir=$out" "--enable-debug" ];
+  configureFlags = with pkgs; [ "--with-dpdk=${dpdk'}" "--disable-tests" "--disable-unit-tests" "--enable-debug" "--pydir=${python310Full.sitePackages}"];
 
   env.NIX_CFLAGS_COMPILE = "-mssse3"; # Necessary to compile.
   # otherwise does not find strncpy when compiling
@@ -95,8 +96,7 @@ stdenv.mkDerivation rec {
     mkdir -p $out/scripts
     cp ./scripts/common.sh $out/scripts/common.sh
     cp ./scripts/spdk-gpt.py $out/scripts/spdk-gpt.py
+    # for vhost config
+    cp ./scripts/rpc.py $out/bin/.
   '';
-  # dontInstall = true;
-  # dontFixup = true;
-  # mesonFlags = [ "--install-dir=$out" ];
 }
