@@ -49,21 +49,22 @@ default:
 help:
     just --list
 
-benchmark-native-virtio-blk: numa-warning start-native-vm-virtio-blk
+poll-benchmark port="2222" filename="native-result.log": numa-warning
     # waiting for 10 jobs * 120 secs
-    sleep $((10 * 120))
-    while ! scp -P 2222 -q -i ./nix/ssh_key root@localhost:/mnt/bm-result.log ./log/bm-result.log &>/dev/null ; do \
+    # sleep $((10 * 120))
+    while ! scp -P {{port}} -q -i ./nix/ssh_key root@localhost:/mnt/bm-result.log ./logs/{{filename}} &>/dev/null ; do \
         echo "polling for completed log..." ; \
         sleep 10 ; \
     done
 
-start-native-vm-virtio-blk nvme="/dev/nvme1n1":
+
+start-native-vm-virtio-blk nvme="/dev/nvme0n1":
     # sudo for disk access
     # device: /dev/nvme2n1 ( Samsung SSD 970 EVO Plus 1TB )
     # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
     # vislor: NVMe SSD PM173X: 64:00.0
     # vislor: NUMA node0: CPU(s): 0-31
-    # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
+    # cat nvme0n1 /sys/class/nvme/nvme1/device/numa_node : 0
     # --> 4-8 on same node as NVMe SSD
     sudo taskset -c 4-8 qemu-system-x86_64 \
         -cpu host \
@@ -74,15 +75,67 @@ start-native-vm-virtio-blk nvme="/dev/nvme1n1":
         -nographic \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
         -device virtio-net-pci,netdev=net0 \
-        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
-        -device virtio-blk,drive=q1 \
         -drive if=pflash,format=raw,unit=0,file={{native_uefi_bios_code}},readonly=on \
         -drive if=pflash,format=raw,unit=1,file={{native_uefi_bios_vars}} \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
-        -device virtio-blk-pci,drive=q2
+        -device virtio-blk-pci,drive=q2 \
+        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
+        -device virtio-blk,drive=q1
 
 
-start-sev-vm-virtio-blk nvme="/dev/nvme1n1":
+start-native-vm-io_uring nvme="/dev/nvme0n1":
+    # sudo for disk access
+    # device: /dev/nvme2n1 ( Samsung SSD 970 EVO Plus 1TB )
+    # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
+    # vislor: NVMe SSD PM173X: 64:00.0
+    # vislor: NUMA node0: CPU(s): 0-31
+    # cat nvme0n1 /sys/class/nvme/nvme1/device/numa_node : 0
+    # --> 4-8 on same node as NVMe SSD
+    sudo taskset -c 4-8 qemu-system-x86_64 \
+        -cpu host \
+        -smp 4 \
+        -m 16G \
+        -machine q35 \
+        -enable-kvm \
+        -nographic \
+        -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -drive if=pflash,format=raw,unit=0,file={{native_uefi_bios_code}},readonly=on \
+        -drive if=pflash,format=raw,unit=1,file={{native_uefi_bios_vars}} \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
+        -device virtio-blk-pci,drive=q2 \
+        -drive aio=io_uring,format=raw,file.driver=host_device,cache=none,file.filename={{nvme}}
+
+
+
+start-native-vm-spdk:
+    # sudo for disk access
+    # device: /dev/nvme2n1 ( Samsung SSD 970 EVO Plus 1TB )
+    # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
+    # vislor: NVMe SSD PM173X: 64:00.0
+    # vislor: NUMA node0: CPU(s): 0-31
+    # cat nvme0n1 /sys/class/nvme/nvme1/device/numa_node : 0
+    # --> 4-8 on same node as NVMe SSD
+    sudo taskset -c 4-8 qemu-system-x86_64 \
+        -cpu host \
+        -smp 4 \
+        -m 16G \
+        -machine q35 \
+        -enable-kvm \
+        -nographic \
+        -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -drive if=pflash,format=raw,unit=0,file={{native_uefi_bios_code}},readonly=on \
+        -drive if=pflash,format=raw,unit=1,file={{native_uefi_bios_vars}} \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
+        -device virtio-blk-pci,drive=q2,bootindex=0 \
+        -object memory-backend-file,id=mem,size=16G,mem-path=/dev/hugepages,share=on \
+        -numa node,memdev=mem \
+        -chardev socket,id=char1,path=/var/tmp/vhost.1 \
+        -device vhost-user-blk-pci,id=blk0,chardev=char1
+
+
+start-sev-vm-virtio-blk nvme="/dev/nvme0n1":
     sudo taskset -c 4-8 qemu-system-x86_64 \
         -cpu EPYC-v4,host-phys-bits=true \
         -smp 4 \
@@ -96,10 +149,52 @@ start-sev-vm-virtio-blk nvme="/dev/nvme1n1":
         -device virtio-blk-pci,drive=q2 \
         -netdev user,id=net0,hostfwd=tcp::2223-:22 \
         -device virtio-net-pci,netdev=net0 \
-        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
-        -device virtio-blk,drive=q1 \
         -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
-        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}}
+        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}} \
+        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
+        -device virtio-blk,drive=q1
+
+
+start-sev-vm-io_uring nvme="/dev/nvme0n1":
+    sudo taskset -c 4-8 qemu-system-x86_64 \
+        -cpu EPYC-v4,host-phys-bits=true \
+        -smp 4 \
+        -m 16G \
+        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA \
+        -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
+        -enable-kvm \
+        -nographic \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
+        -device virtio-blk-pci,drive=q2,bootindex=0 \
+        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
+        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}} \
+        -drive aio=io_uring,format=raw,file.driver=host_device,cache=none,file.filename={{nvme}}
+
+
+start-sev-vm-spdk:
+    {{ error("doesn't work out-of-the-box") }}
+    sudo taskset -c 4-8 qemu-system-x86_64 \
+        -cpu EPYC-v4,host-phys-bits=true \
+        -smp 4 \
+        -m 16G \
+        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA \
+        -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
+        -enable-kvm \
+        -nographic \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
+        -device virtio-blk-pci,drive=q2,bootindex=0 \
+        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
+        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}} \
+        -object memory-backend-file,id=mem,size=16G,mem-path=/dev/hugepages,share=on \
+        -numa node,memdev=mem \
+        -chardev socket,id=char1,path=/var/tmp/vhost.1 \
+        -device vhost-user-blk-pci,id=blk0,chardev=char1
 
 
 vm-build:
@@ -157,5 +252,14 @@ numa-warning:
     lspci | grep -i Non
     lscpu | grep NUMA
 
+
+spdk-setup:
+    sudo su
+    vhost -S /var/tmp -m0x3 2>&1 | tee logs/vhost.log &
+    rpc.py bdev_nvme_attach_controller -b NVMe1 -t PCIe -a 64:00.0
+    rpc.py vhost_create_blk_controller --cpumask 0x1 vhost.1 NVMe1n1
+
+
 clean:
     rm -rf {{vm_build}}
+

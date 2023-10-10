@@ -20,7 +20,8 @@ let
     }
   );
 in
-stdenv.mkDerivation rec {
+stdenv.mkDerivation rec
+{
   pname = "spdk";
   version = "23.09";
 
@@ -33,7 +34,8 @@ stdenv.mkDerivation rec {
     fetchSubmodules = true;
   };
 
-  buildInputs = with pkgs; [
+  buildInputs = with pkgs;
+  [
     cunit
     libaio
     libbsd
@@ -49,6 +51,10 @@ stdenv.mkDerivation rec {
     jansson
     # meson # including meson breaks the build
     ps
+  ];
+
+  nativeBuildInputs = with pkgs;
+  [
     (python310Full.withPackages (p: with p ; [ setuptools ]))
   ];
 
@@ -59,8 +65,9 @@ stdenv.mkDerivation rec {
     ./0001-no-python-in-makefile.patch
   ];
 
-  postPatch = ''
-    patchShebangs .
+  postPatch =
+  ''
+    patchShebangs . # $(ls | tr -d "python|scripts" | xargs)
 
     # glibc-2.36 adds arc4random, so we don't need the custom implementation
     # here anymore. Fixed upstream in https://github.com/spdk/spdk/commit/43a3984c6c8fde7201d6c8dfe1b680cb88237269,
@@ -70,7 +77,12 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  configureFlags = with pkgs; [ "--with-dpdk=${dpdk'}" "--disable-tests" "--disable-unit-tests" "--enable-debug" "--pydir=${python310Full.sitePackages}"];
+  configureFlags = with pkgs;
+  [
+    "--with-dpdk=${dpdk'}"
+    "--disable-tests"
+    "--disable-unit-tests"
+  ];
 
   env.NIX_CFLAGS_COMPILE = "-mssse3"; # Necessary to compile.
   # otherwise does not find strncpy when compiling
@@ -96,7 +108,6 @@ stdenv.mkDerivation rec {
     mkdir -p $out/scripts
     cp ./scripts/common.sh $out/scripts/common.sh
     cp ./scripts/spdk-gpt.py $out/scripts/spdk-gpt.py
-    # for vhost config
     cp ./scripts/rpc.py $out/bin/.
   '';
 }
