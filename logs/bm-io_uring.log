@@ -1,0 +1,81 @@
+alat randread: (g=0): rw=randread, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=io_uring, iodepth=1
+alat randwrite: (g=1): rw=randwrite, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=io_uring, iodepth=1
+alat read: (g=2): rw=read, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=io_uring, iodepth=1
+alat write: (g=3): rw=write, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=io_uring, iodepth=1
+bw read: (g=4): rw=write, bs=(R) 128KiB-128KiB, (W) 128KiB-128KiB, (T) 128KiB-128KiB, ioengine=io_uring, iodepth=128
+bw write: (g=5): rw=write, bs=(R) 128KiB-128KiB, (W) 128KiB-128KiB, (T) 128KiB-128KiB, ioengine=io_uring, iodepth=128
+iops rwmixread: (g=6): rw=randrw, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=io_uring, iodepth=32
+...
+iops rwmixwrite: (g=7): rw=randrw, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=io_uring, iodepth=32
+...
+iops randread: (g=8): rw=randread, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=io_uring, iodepth=32
+...
+iops randwrite: (g=9): rw=randwrite, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=io_uring, iodepth=32
+...
+fio-3.35
+Starting 22 threads
+alat randread: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+alat randwrite: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+alat read: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+alat write: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+bw read: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+bw write: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops rwmixread: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops rwmixread: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops rwmixread: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops rwmixread: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops rwmixwrite: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops rwmixwrite: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops rwmixwrite: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops rwmixwrite: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops randread: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops randread: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops randread: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops randread: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops randwrite: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops randwrite: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops randwrite: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+iops randwrite: you need to specify size=
+fio: pid=0, err=22/file:filesetup.c:1144, func=total_file_size, error=Invalid argument
+
+
+Run status group 0 (all jobs):
+
+Run status group 1 (all jobs):
+
+Run status group 2 (all jobs):
+
+Run status group 3 (all jobs):
+
+Run status group 4 (all jobs):
+
+Run status group 5 (all jobs):
+
+Run status group 6 (all jobs):
+
+Run status group 7 (all jobs):
+
+Run status group 8 (all jobs):
+
+Run status group 9 (all jobs):

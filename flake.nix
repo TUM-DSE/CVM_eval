@@ -53,6 +53,10 @@
                 source = ./bm/blk-bm.fio;
                 target = "/mnt/blk-bm.fio";
               }
+              {
+                source = ./bm/io_uring-bm.fio;
+                target = "/mnt/io_uring-bm.fio";
+              }
             ];
           };
         };
@@ -65,6 +69,7 @@
             just
             fzf
             # spdk # for nvme_mange -> SSD precondition
+            fio
           ] ++ 
           (
             with self.packages.${system};

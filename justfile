@@ -1,3 +1,4 @@
+# TODO: transform to nix
 # SSD set up and preconditioning as in:
 # https://ci.spdk.io/download/events/2017-summit/08_-_Day_2_-_Kariuki_Verma_and_Sudarikov_-_SPDK_Performance_Testing_and_Tuning_rev5_0.pdf
 
@@ -49,10 +50,11 @@ default:
 help:
     just --list
 
-poll-benchmark port="2222" filename="native-result.log": numa-warning
+poll-benchmark port="2222" filename="native-result.log" sleep="1200": numa-warning
+    echo "polling {{port}} ; saving to {{filename}} ; waiting {{sleep}} before polling"
     # waiting for 10 jobs * 120 secs
-    # sleep $((10 * 120))
-    while ! scp -P {{port}} -q -i ./nix/ssh_key root@localhost:/mnt/bm-result.log ./logs/{{filename}} &>/dev/null ; do \
+    sleep {{sleep}}
+    while ! scp -P {{port}} -q  -o StrictHostKeyChecking=no -i ./nix/ssh_key root@localhost:/mnt/bm-result.log ./logs/{{filename}} &>/dev/null ; do \
         echo "polling for completed log..." ; \
         sleep 10 ; \
     done

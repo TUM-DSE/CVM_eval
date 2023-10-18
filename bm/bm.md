@@ -155,3 +155,11 @@ path=/dev/hugepages,share=on,prealloc=yes,host-nodes=0,policy=bind
 
 ## BIOS config
 - [spdk bm guide](https://ci.spdk.io/download/events/2017-summit/08_-_Day_2_-_Kariuki_Verma_and_Sudarikov_-_SPDK_Performance_Testing_and_Tuning_rev5_0.pdf)
+
+# Check if polling works
+
+https://www.spinics.net/lists/fio/msg08594.html
+Check with
+vmstat 1 and look at the interrupt rate. If it's about your IOPS
+rate, then you're doing IRQ based completions. If it's closer to 0,
+you're doing polled.

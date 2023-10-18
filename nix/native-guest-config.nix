@@ -47,6 +47,9 @@ in
   boot.kernelPackages = lib.mkForce linuxPackages;
 
   # execute upon start up
+  # TODO: parameterize w/ io_uring
+  # TODO: change for polling ; creates log file right away, not only after completion
+  # issue for polling
   systemd.services.fio-runner =
   {
     description = "execute fio benchmark";
