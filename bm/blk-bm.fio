@@ -48,7 +48,7 @@ numjobs=1
 [bw read]
 stonewall
 blocksize=128k
-rw=write
+rw=read
 iodepth=128
 numjobs=1
 
