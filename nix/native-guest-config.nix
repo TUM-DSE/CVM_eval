@@ -60,4 +60,7 @@ in
     '';
     wantedBy = [ "multi-user.target" ]; # starts after login
   };
+
+  # for bounce buffer test
+  boot.kernelParams = [ "swiotlb=force" ];
 }
