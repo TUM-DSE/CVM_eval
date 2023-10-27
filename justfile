@@ -62,7 +62,7 @@ poll-benchmark port="2222" filename="native-result.log" sleep="1200": numa-warni
 
 start-native-vm-virtio-blk nvme="/dev/nvme2n1":
     # sudo for disk access
-    # device: /dev/nvme2n1 ( Samsung SSD 970 EVO Plus 1TB )
+    # device: /dev/nvme2n1 ( Samsung SSD PM173X )
     # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
     # vislor: NVMe SSD PM173X: 64:00.0
     # vislor: NUMA node0: CPU(s): 0-31
@@ -87,7 +87,7 @@ start-native-vm-virtio-blk nvme="/dev/nvme2n1":
 
 start-native-vm-io_uring nvme="/dev/nvme2n1":
     # sudo for disk access
-    # device: /dev/nvme2n1 ( Samsung SSD 970 EVO Plus 1TB )
+    # device: /dev/nvme2n1 ( Samsung SSD PM173X )
     # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
     # vislor: NVMe SSD PM173X: 64:00.0
     # vislor: NUMA node0: CPU(s): 0-31
@@ -112,7 +112,7 @@ start-native-vm-io_uring nvme="/dev/nvme2n1":
 
 start-native-vm-spdk:
     # sudo for disk access
-    # device: /dev/nvme2n1 ( Samsung SSD 970 EVO Plus 1TB )
+    # device: /dev/nvme2n1 ( Samsung SSD PM173X )
     # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
     # vislor: NVMe SSD PM173X: 64:00.0
     # vislor: NUMA node0: CPU(s): 0-31

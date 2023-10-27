@@ -62,5 +62,5 @@ in
   };
 
   # for bounce buffer test
-  boot.kernelParams = [ "swiotlb=force" ];
+  # boot.kernelParams = [ "swiotlb=force" ];
 }
