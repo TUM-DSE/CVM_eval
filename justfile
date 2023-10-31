@@ -198,23 +198,30 @@ start-sev-vm-spdk:
         -chardev socket,id=char1,path=/var/tmp/vhost.1 \
         -device vhost-user-blk-pci,id=blk0,chardev=char1
 
+## VM BUILD
 
-vm-build:
+img-build:
     mkdir -p {{vm_build}}
     # vm images
     nix build -L -o {{img_native_dir_ro}} {{nix_img}}
     nix build -L -o {{img_amd_sev_snp_dir_ro}} {{nix_img}}
     install -D -m644 {{img_native_ro}} {{img_native}}
     install -D -m644 {{img_amd_sev_snp_ro}} {{img_amd_sev_snp}}
-    # resize
-    # qemu-img resize {{img_native}} +2g
-    # qemu-img resize {{img_amd_sev_snp}} +2g
-    # ovmf
+
+ovmf-build:
+    mkdir -p {{vm_build}}
     nix build -L -o {{ovmf_ro}} {{nix_ovmf_amd_sev_snp}}
     install -D -m644 {{uefi_bios_vars_ro}} {{native_uefi_bios_vars}}
     install -D -m644 {{uefi_bios_code_ro}} {{native_uefi_bios_code}}
     install -D -m644 {{uefi_bios_vars_ro}} {{sev_uefi_bios_vars}}
     install -D -m644 {{uefi_bios_code_ro}} {{sev_uefi_bios_code}}
+
+
+vm-build: img-build ovmf-build
+    # resize
+    # qemu-img resize {{img_native}} +2g
+    # qemu-img resize {{img_amd_sev_snp}} +2g
+    # ovmf
 
 ## SSD setup
 init-spdk: 

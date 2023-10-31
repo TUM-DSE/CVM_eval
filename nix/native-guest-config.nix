@@ -1,4 +1,6 @@
-{ pkgs
+args@
+{
+  pkgs
 , lib
 }:
 let
@@ -7,7 +9,9 @@ in
 {
   imports =
   [
-    ({ config, ...}: {})
+    # ({ config, ...}: {})
+    ./modules/encrypt.nix
+    ( args@{config, pkgs, ...}: import ./modules/fio-runner.nix ( args // { encrypted-run = true; } ) )
   ];
 
   services.sshd.enable = true;
@@ -46,20 +50,6 @@ in
   # set kernel
   boot.kernelPackages = lib.mkForce linuxPackages;
 
-  # execute upon start up
-  # TODO: parameterize w/ io_uring
-  # TODO: change for polling ; creates log file right away, not only after completion
-  # issue for polling
-  systemd.services.fio-runner =
-  {
-    description = "execute fio benchmark";
-    script =
-    ''
-      /run/current-system/sw/bin/fio /mnt/blk-bm.fio \
-        --output=/mnt/bm-result.log
-    '';
-    wantedBy = [ "multi-user.target" ]; # starts after login
-  };
 
   # for bounce buffer test
   # boot.kernelParams = [ "swiotlb=force" ];
