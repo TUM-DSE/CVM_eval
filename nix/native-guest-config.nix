@@ -1,4 +1,3 @@
-args@
 {
   pkgs
 , lib
@@ -11,7 +10,7 @@ in
   [
     # ({ config, ...}: {})
     ./modules/encrypt.nix
-    ( args@{config, pkgs, ...}: import ./modules/fio-runner.nix ( args // { encrypted-run = true; } ) )
+    ./modules/fio-runner.nix
   ];
 
   services.sshd.enable = true;
@@ -50,7 +49,11 @@ in
   # set kernel
   boot.kernelPackages = lib.mkForce linuxPackages;
 
+  programs.fio-runner =
+  {
+    enable = true;
+    encrypted-run = true;
+    bounce-buffer = false;
+  };
 
-  # for bounce buffer test
-  # boot.kernelParams = [ "swiotlb=force" ];
 }
