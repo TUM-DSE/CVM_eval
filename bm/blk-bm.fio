@@ -1,5 +1,4 @@
 [global]
-filename=/dev/vdb # mapped to /dev/nvme0n1 ( Samsung SSD PM173X )
 direct=1 # non-buffered IO
 # SPDK BM guidelines
 thread=1

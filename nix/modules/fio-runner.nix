@@ -48,7 +48,8 @@
       script =
       ''
         /run/current-system/sw/bin/fio /mnt/blk-bm.fio \
-          --output=/mnt/bm-result.log ${if config.programs.fio-runner.encrypted-run then "--filename=/dev/mapper/crypt-target" else ""}
+          --output=/mnt/bm-result${if config.programs.fio-runner.encrypted-run then "-enc" else ""}${if config.programs.fio-runner.bounce-buffer then "-bb" else ""}.log \
+          --filename=${if config.programs.fio-runner.encrypted-run then "/dev/mapper/crypt-target" else "/dev/vdb"}
       '';
       wantedBy = [ "multi-user.target" ]; # starts after login
     };

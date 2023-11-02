@@ -53,7 +53,7 @@ in
   {
     enable = true;
     encrypted-run = true;
-    bounce-buffer = false;
+    bounce-buffer = true;
   };
 
 }
