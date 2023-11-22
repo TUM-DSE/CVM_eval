@@ -9,7 +9,7 @@ in
   imports =
   [
     # ({ config, ...}: {})
-    ./modules/encrypt.nix
+    # ./modules/encrypt.nix
     ./modules/fio-runner.nix
   ];
 
@@ -52,8 +52,8 @@ in
   programs.fio-runner =
   {
     enable = true;
-    encrypted-run = true;
-    bounce-buffer = true;
+    encrypted-run = false;
+    bounce-buffer = false;
   };
 
 }
