@@ -1,7 +1,15 @@
+## Usage
+```
+bpftrace <script>
+```
 
 ## Scripts
-- `bpftrace ./intel_kvm_vmexit_count.bt`
+- `./intel_kvm_vmexit_count.bt`
     - Count VMEXIT on Intel machine
+- `./intel_kvm_vmexit_latency.bt`
+    - Measure VMEXIT handling time on the host
+- `./intel_tdx_count.bt`
+    - Count TDX-related evets
 
 
 ## One-liners

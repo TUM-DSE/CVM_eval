@@ -1,0 +1,7 @@
+#!/usr/bin/env bpftrace
+
+// count tdx-related events
+
+f:*tdx*, t:*tdx* {
+    @[probe] += 1;
+}
