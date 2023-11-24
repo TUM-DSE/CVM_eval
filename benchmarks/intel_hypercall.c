@@ -5,39 +5,39 @@
 
 #include "tsc.h"
 
-static inline void cpuid(uint64_t rax, uint64_t rcx){
-    uint64_t rbx, rdx;
-    asm volatile( "cpuid\n\t"
-        : "=a"(rax), "=b"(rbx), "=c"(rcx), "=d"(rdx)
-        : "a"(rax), "c"(rcx)
-        : );
+static inline void vmcall(uint64_t rax) {
+   __asm__(
+       "mov %0, %%rax\n\t"
+       "vmcall"
+       :
+       : "r"(rax)
+       : "rax"
+   );
 }
 
 #define N 10000
 uint64_t cycles[N];
 int main(int argc, char* argv[]) {
 
-    if (argc < 3) {
-        printf("Usage: %s <rax> <rcx>\n", argv[0]);
+    if (argc < 2) {
+        printf("Usage: %s <rax> \n", argv[0]);
         return 0;
     }
 
     uint64_t rax = atoi(argv[1]);
-    uint64_t rcx = atoi(argv[2]);
     
     struct timespec start, end;
     int i;
 
     // warmup
-    for (i = 0; i < N; i++) {
-        cpuid(rax, rcx);
-        cycles[i] = 0;
+    for (i = 0; i < 10; i++) {
+        vmcall(rax);
     }
 
     // measure cycles
     for (i = 0; i < N; i++) {
         uint64_t start = __tsc_start();
-        cpuid(rax, rcx);
+        vmcall(rax);
         uint64_t end = __tsc_end();
         cycles[i] = end - start;
     }
@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
     // measure total time
     clock_gettime(CLOCK_BOOTTIME, &start);
     for (i = 0; i < N; i++) {
-        cpuid(rax, rcx);
+        vmcall(rax);
     }
     clock_gettime(CLOCK_BOOTTIME, &end);
 
