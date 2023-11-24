@@ -1,0 +1,3 @@
+- `cpuid.c`
+   - Measure CPUID latency
+   - `gcc -o cpuid cpuid.c`
