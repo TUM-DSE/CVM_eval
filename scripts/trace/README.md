@@ -1,6 +1,6 @@
 
 ## Scripts
-- `./intel_kvm_vmexit_count.bt`
+- `bpftrace ./intel_kvm_vmexit_count.bt`
     - Count VMEXIT on Intel machine
 
 
