@@ -1,0 +1,2 @@
+- `./check_linux_cpu_vunls.sh`
+    - Check if a CPU has microarchitectural vulnerabilities on Linux
