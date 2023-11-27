@@ -3,13 +3,13 @@
 , lib
 }:
 let
-  linuxPackages = pkgs.linuxPackages_6_4;
+  linuxPackages = pkgs.linuxPackages_6_6;
 in
 {
   imports =
   [
     # ({ config, ...}: {})
-    # ./modules/encrypt.nix
+    ./modules/encrypt.nix
     ./modules/fio-runner.nix
   ];
 
@@ -44,6 +44,7 @@ in
   [
     git
     fio
+    cryptsetup
   ];
 
   # set kernel
@@ -51,9 +52,9 @@ in
 
   programs.fio-runner =
   {
-    enable = true;
-    encrypted-run = false;
-    bounce-buffer = false;
+    enable = false;
+    encrypted-run = true;
+    bounce-buffer = true;
   };
 
 }

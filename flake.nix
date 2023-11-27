@@ -71,6 +71,7 @@
             # spdk # for nvme_mange -> SSD precondition
             fio
             cryptsetup
+            bpftrace
           ] ++ 
           (
             with self.packages.${system};

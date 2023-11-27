@@ -60,13 +60,13 @@ poll-benchmark port="2222" filename="native-result.log" sleep="1200": numa-warni
     done
 
 
-start-native-vm-virtio-blk nvme="/dev/nvme2n1":
+start-native-vm-virtio-blk nvme="/dev/nvme1n1":
     # sudo for disk access
-    # device: /dev/nvme2n1 ( Samsung SSD PM173X )
+    # device: /dev/nvme1n1 ( Samsung SSD PM173X )
     # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
     # vislor: NVMe SSD PM173X: 64:00.0
     # vislor: NUMA node0: CPU(s): 0-31
-    # cat nvme2n1 /sys/class/nvme/nvme1/device/numa_node : 0
+    # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
     # --> 4-8 on same node as NVMe SSD
     sudo taskset -c 4-8 qemu-system-x86_64 \
         -cpu host \
@@ -85,13 +85,38 @@ start-native-vm-virtio-blk nvme="/dev/nvme2n1":
         -device virtio-blk,drive=q1
 
 
-start-native-vm-io_uring nvme="/dev/nvme2n1":
+start-native-vm-virtio-blk-poll nvme="/dev/nvme1n1":
     # sudo for disk access
-    # device: /dev/nvme2n1 ( Samsung SSD PM173X )
+    # device: /dev/nvme1n1 ( Samsung SSD PM173X )
     # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
     # vislor: NVMe SSD PM173X: 64:00.0
     # vislor: NUMA node0: CPU(s): 0-31
-    # cat nvme2n1 /sys/class/nvme/nvme1/device/numa_node : 0
+    # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
+    # --> 4-8 on same node as NVMe SSD
+    sudo taskset -c 4-8 qemu-system-x86_64 \
+        -cpu host \
+        -smp 4 \
+        -m 16G \
+        -machine q35 \
+        -enable-kvm \
+        -nographic \
+        -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -drive if=pflash,format=raw,unit=0,file={{native_uefi_bios_code}},readonly=on \
+        -drive if=pflash,format=raw,unit=1,file={{native_uefi_bios_vars}} \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
+        -device virtio-blk-pci,drive=q2 \
+        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
+        -device virtio-blk,drive=q1
+
+
+start-native-vm-io_uring nvme="/dev/nvme1n1":
+    # sudo for disk access
+    # device: /dev/nvme1n1 ( Samsung SSD PM173X )
+    # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
+    # vislor: NVMe SSD PM173X: 64:00.0
+    # vislor: NUMA node0: CPU(s): 0-31
+    # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
     # --> 4-8 on same node as NVMe SSD
     sudo taskset -c 4-8 qemu-system-x86_64 \
         -cpu host \
@@ -112,11 +137,11 @@ start-native-vm-io_uring nvme="/dev/nvme2n1":
 
 start-native-vm-spdk:
     # sudo for disk access
-    # device: /dev/nvme2n1 ( Samsung SSD PM173X )
+    # device: /dev/nvme1n1 ( Samsung SSD PM173X )
     # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
     # vislor: NVMe SSD PM173X: 64:00.0
     # vislor: NUMA node0: CPU(s): 0-31
-    # cat nvme2n1 /sys/class/nvme/nvme1/device/numa_node : 0
+    # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
     # --> 4-8 on same node as NVMe SSD
     sudo taskset -c 4-8 qemu-system-x86_64 \
         -cpu host \
@@ -137,7 +162,7 @@ start-native-vm-spdk:
         -device vhost-user-blk-pci,id=blk0,chardev=char1
 
 
-start-sev-vm-virtio-blk nvme="/dev/nvme2n1":
+start-sev-vm-virtio-blk nvme="/dev/nvme1n1":
     sudo taskset -c 4-8 qemu-system-x86_64 \
         -cpu EPYC-v4,host-phys-bits=true \
         -smp 4 \
@@ -157,7 +182,7 @@ start-sev-vm-virtio-blk nvme="/dev/nvme2n1":
         -device virtio-blk,drive=q1
 
 
-start-sev-vm-io_uring nvme="/dev/nvme2n1":
+start-sev-vm-io_uring nvme="/dev/nvme1n1":
     sudo taskset -c 4-8 qemu-system-x86_64 \
         -cpu EPYC-v4,host-phys-bits=true \
         -smp 4 \
