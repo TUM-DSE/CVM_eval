@@ -3,13 +3,13 @@
 , lib
 }:
 let
-  linuxPackages = pkgs.linuxPackages_6_6;
+  linuxPackages = pkgs.linuxPackages_6_5;
 in
 {
   imports =
   [
     # ({ config, ...}: {})
-    ./modules/encrypt.nix
+    # ./modules/encrypt.nix
     ./modules/fio-runner.nix
   ];
 
@@ -45,6 +45,8 @@ in
     git
     fio
     cryptsetup
+    trace-cmd
+    bpftrace
   ];
 
   # set kernel

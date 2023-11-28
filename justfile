@@ -135,7 +135,7 @@ start-native-vm-io_uring nvme="/dev/nvme1n1":
 
 
 
-start-native-vm-spdk:
+start-native-vm-spdk-vhost-user-blk:
     # sudo for disk access
     # device: /dev/nvme1n1 ( Samsung SSD PM173X )
     # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
@@ -160,6 +160,32 @@ start-native-vm-spdk:
         -numa node,memdev=mem \
         -chardev socket,id=char1,path=/var/tmp/vhost.1 \
         -device vhost-user-blk-pci,id=blk0,chardev=char1
+
+start-native-vm-spdk-vfio-user-nvme:
+    # sudo for disk access
+    # device: /dev/nvme1n1 ( Samsung SSD PM173X )
+    # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
+    # vislor: NVMe SSD PM173X: 64:00.0
+    # vislor: NUMA node0: CPU(s): 0-31
+    # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
+    # --> 4-8 on same node as NVMe SSD
+    sudo taskset -c 4-8 qemu-system-x86_64 \
+        -cpu host \
+        -smp 4 \
+        -m 16G \
+        -machine q35 \
+        -enable-kvm \
+        -nographic \
+        -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -drive if=pflash,format=raw,unit=0,file={{native_uefi_bios_code}},readonly=on \
+        -drive if=pflash,format=raw,unit=1,file={{native_uefi_bios_vars}} \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
+        -device virtio-blk-pci,drive=q2,bootindex=0 \
+        -object memory-backend-file,id=mem,size=4G,mem-path=/dev/hugepages,share=on,prealloc=yes \
+        -numa node,memdev=mem \
+        -device vfio-user-pci,socket=/var/run/cntrl
+
 
 
 start-sev-vm-virtio-blk nvme="/dev/nvme1n1":
@@ -244,7 +270,7 @@ ovmf-build:
 
 vm-build: img-build ovmf-build
     # resize
-    # qemu-img resize {{img_native}} +2g
+    qemu-img resize {{img_native}} +2g
     # qemu-img resize {{img_amd_sev_snp}} +2g
     # ovmf
 

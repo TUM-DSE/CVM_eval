@@ -8,5 +8,6 @@
   {
     device = "/dev/vdb";
     tryEmptyPassphrase = true;
+    keyFileSize = 256;
   };
 }

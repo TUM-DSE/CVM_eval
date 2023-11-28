@@ -33,8 +33,6 @@
           spdkPython = pkgs.callPackage ./nix/spdk-python.nix { inherit pkgs; };
 
           qemu-amd-sev-snp = let pkgs = stablepkgs; in pkgs.callPackage ./nix/qemu-amd-sev-snp.nix { inherit pkgs; };
-          # only need AMD kernel fork on host, not in guest
-          # linux-amd-sev-snp = pkgs.callPackage ./nix/linux-amd-sev-snp.nix { inherit pkgs; };
           ovmf-amd-sev-snp = pkgs.callPackage ./nix/ovmf-amd-sev-snp.nix { inherit pkgs; };
           guest-image = make-disk-image
           {
