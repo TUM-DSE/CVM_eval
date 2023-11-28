@@ -19,5 +19,6 @@ spdk.overrideAttrs
       cp ./scripts/spdk-gpt.py $out/scripts/spdk-gpt.py
       cp ./scripts/rpc.py $out/bin/.
     '';
+
   }
 )

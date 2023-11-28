@@ -18,6 +18,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-mic92": {
+      "locked": {
+        "lastModified": 1701167560,
+        "narHash": "sha256-4hTqpXD/OXoLe++CBonLAPMbvuUoa7fftyT+Eoo5IwA=",
+        "owner": "mic92",
+        "repo": "nixpkgs",
+        "rev": "14e5465261c47a62254b1c21a47af552d5d524ee",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mic92",
+        "ref": "spdk",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nixpkgs-stable": {
       "locked": {
         "lastModified": 1700989516,
@@ -53,6 +69,7 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
+        "nixpkgs-mic92": "nixpkgs-mic92",
         "nixpkgs-stable": "nixpkgs-stable",
         "nixpkgs-unstable": "nixpkgs-unstable"
       }

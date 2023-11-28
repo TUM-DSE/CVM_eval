@@ -5,6 +5,7 @@
   {
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-23.05";
+    nixpkgs-mic92.url = "github:mic92/nixpkgs/spdk";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -13,6 +14,7 @@
     self
     , nixpkgs-unstable
     , nixpkgs-stable
+    , nixpkgs-mic92
     , flake-utils
   }:
   (
@@ -22,6 +24,7 @@
       let
         pkgs = nixpkgs-unstable.legacyPackages.${system};
         stablepkgs = nixpkgs-stable.legacyPackages.${system};
+        mic92pkgs = nixpkgs-mic92.legacyPackages.${system};
         make-disk-image = import (pkgs.path + "/nixos/lib/make-disk-image.nix");
         selfpkgs = self.packages.x86_64-linux;
       in
@@ -29,8 +32,7 @@
         packages =
         {
           # SSD preconditioning
-          spdk = pkgs.callPackage ./nix/spdk.nix { inherit pkgs; };
-          spdkPython = pkgs.callPackage ./nix/spdk-python.nix { inherit pkgs; };
+          spdk = let pkgs = mic92pkgs; in pkgs.callPackage ./nix/spdk.nix { inherit pkgs; };
 
           qemu-amd-sev-snp = let pkgs = stablepkgs; in pkgs.callPackage ./nix/qemu-amd-sev-snp.nix { inherit pkgs; };
           ovmf-amd-sev-snp = pkgs.callPackage ./nix/ovmf-amd-sev-snp.nix { inherit pkgs; };
@@ -51,10 +53,6 @@
                 source = ./bm/blk-bm.fio;
                 target = "/mnt/blk-bm.fio";
               }
-              {
-                source = ./bm/io_uring-bm.fio;
-                target = "/mnt/io_uring-bm.fio";
-              }
             ];
           };
         };
@@ -64,8 +62,10 @@
           name = "benchmark-devshell";
           buildInputs = with pkgs;
           [
+            python3
             just
             fzf
+            # add again once upstreamed
             # spdk # for nvme_mange -> SSD precondition
             fio
             cryptsetup
@@ -76,7 +76,6 @@
             [
               qemu-amd-sev-snp # patched amd-sev-snp qemu
               spdk # nvme SSD formatting
-              spdkPython
             ]
           );
         };
