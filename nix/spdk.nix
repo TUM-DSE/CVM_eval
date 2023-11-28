@@ -1,4 +1,7 @@
-{ pkgs }:
+{ 
+  pkgs
+  , spdk-libvfio-user
+}:
 
 with pkgs;
 spdk.overrideAttrs
@@ -19,6 +22,34 @@ spdk.overrideAttrs
       cp ./scripts/spdk-gpt.py $out/scripts/spdk-gpt.py
       cp ./scripts/rpc.py $out/bin/.
     '';
+    
+    postBuild =
+    ''
+      cp -r ${spdk-libvfio-user.outPath}/lib ./build
+      cp -r ${spdk-libvfio-user.outPath}/include ./build
+    '';
 
+    buildInputs = old.buildInputs ++
+    [
+      json_c
+      cmocka
+      meson
+      ninja
+    ];
+
+    configureFlags = old.configureFlags ++
+    [
+      "--with-vfio-user"
+      # "--enable-debug"
+    ];
+
+    dontUseMesonCheck = "true";
+    dontUseMesonConfigure = "true";
+    dontUseMesonInstall = "true";
+
+    dontUseNinjaBuild = "true";
+    dontUseNinjaCheck = "true";
+    dontUseNinjaInstall = "true";
   }
+
 )
