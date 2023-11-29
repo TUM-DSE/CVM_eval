@@ -172,7 +172,7 @@ start-native-vm-spdk-vfio-user-nvme:
     sudo taskset -c 4-8 qemu-system-x86_64 \
         -cpu host \
         -smp 4 \
-        -m 16G \
+        -m 1G \
         -machine q35 \
         -enable-kvm \
         -nographic \
@@ -182,7 +182,7 @@ start-native-vm-spdk-vfio-user-nvme:
         -drive if=pflash,format=raw,unit=1,file={{native_uefi_bios_vars}} \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
         -device virtio-blk-pci,drive=q2,bootindex=0 \
-        -object memory-backend-file,id=mem,size=4G,mem-path=/dev/hugepages,share=on,prealloc=yes \
+        -object memory-backend-file,id=mem,size=1G,mem-path=/dev/hugepages,share=on,prealloc=yes \
         -numa node,memdev=mem \
         -device vfio-user-pci,socket=/var/run/cntrl
 
@@ -315,9 +315,14 @@ numa-warning:
 
 spdk-setup:
     sudo su
-    vhost -S /var/tmp -m0x3 2>&1 | tee logs/vhost.log &
-    rpc.py bdev_nvme_attach_controller -b NVMe1 -t PCIe -a 64:00.0
-    rpc.py vhost_create_blk_controller --cpumask 0x1 vhost.1 NVMe1n1
+    nix develop
+    nvmf_tgt -m 0x3 -s 1024 | tee logs/nvmf.log &
+    rm -f /var/run/{cntrl,bar0}
+    nvmf_create_transport -t VFIOUSER
+    rpc.py bdev_malloc_create 512 512 -b Malloc0
+    rpc.py nvmf_create_subsystem nqn.2019-07.io.spdk:cnode0 -a -s SPDK0
+    rpc.py nvmf_subsystem_add_ns nqn.2019-07.io.spdk:cnode0 Malloc0
+    rpc.py nvmf_subsystem_add_listener nqn.2019-07.io.spdk:cnode0 -t VFIOUSER -a /var/run
 
 
 clean:
