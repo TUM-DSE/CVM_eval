@@ -198,6 +198,24 @@ start-sev-vm-spdk:
         -chardev socket,id=char1,path=/var/tmp/vhost.1 \
         -device vhost-user-blk-pci,id=blk0,chardev=char1
 
+
+start-sev-vm:
+    sudo taskset -c 4-8 qemu-system-x86_64 \
+        -cpu EPYC-v4,host-phys-bits=true \
+        -smp 4 \
+        -m 16G \
+        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA \
+        -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
+        -enable-kvm \
+        -nographic \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
+        -device virtio-blk-pci,drive=q2,bootindex=0 \
+        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
+        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}}
+
 ## VM BUILD
 
 img-build:
