@@ -332,11 +332,12 @@ numa-warning:
 
 
 spdk-setup:
-    sudo su
-    nix develop
+    sudo nix develop
+    # bind ssd to vfio driver
+    spdk-setup.sh
     nvmf_tgt -m 0x3 -s 1024 | tee logs/nvmf.log &
     rm -f /var/run/{cntrl,bar0}
-    nvmf_create_transport -t VFIOUSER
+    rpc.py nvmf_create_transport -t VFIOUSER
     rpc.py bdev_malloc_create 512 512 -b Malloc0
     rpc.py nvmf_create_subsystem nqn.2019-07.io.spdk:cnode0 -a -s SPDK0
     rpc.py nvmf_subsystem_add_ns nqn.2019-07.io.spdk:cnode0 Malloc0

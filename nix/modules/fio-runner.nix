@@ -40,20 +40,18 @@
   # TODO: change for polling ; creates log file right away, not only after completion
   # issue for polling
 
-  config = lib.mkIf config.programs.fio-runner.enable
+  config.systemd.services.fio-runner = lib.mkIf config.programs.fio-runner.enable
   {
-    systemd.services.fio-runner =
-    {
-      description = "execute fio benchmark";
-      script =
-      ''
-        /run/current-system/sw/bin/fio /mnt/blk-bm.fio \
-          --output=/mnt/bm-result${if config.programs.fio-runner.encrypted-run then "-enc" else ""}${if config.programs.fio-runner.bounce-buffer then "-bb" else ""}.log \
-          --filename=${if config.programs.fio-runner.encrypted-run then "/dev/mapper/crypt-target" else "/dev/vdb"}
-      '';
-      wantedBy = [ "multi-user.target" ]; # starts after login
-    };
-    # for bounce buffer test
-    boot.kernelParams = lib.mkIf config.programs.fio-runner.bounce-buffer [ "swiotlb=force" ];
+    description = "execute fio benchmark";
+    script =
+    ''
+      /run/current-system/sw/bin/fio /mnt/blk-bm.fio \
+        --output=/mnt/bm-result${if config.programs.fio-runner.encrypted-run then "-enc" else ""}${if config.programs.fio-runner.bounce-buffer then "-bb" else ""}.log \
+        --filename=${if config.programs.fio-runner.encrypted-run then "/dev/mapper/crypt-target" else "/dev/vdb"}
+    '';
+    wantedBy = [ "multi-user.target" ]; # starts after login
   };
+  # for bounce buffer test
+
+  config.boot.kernelParams = lib.mkIf config.programs.fio-runner.bounce-buffer [ "swiotlb=force" ];
 }

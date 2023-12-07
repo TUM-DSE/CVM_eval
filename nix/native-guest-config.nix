@@ -47,6 +47,7 @@ in
     cryptsetup
     trace-cmd
     bpftrace
+    blktrace
   ];
 
   # set kernel
