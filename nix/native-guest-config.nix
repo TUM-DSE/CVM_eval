@@ -3,7 +3,8 @@
 , lib
 }:
 let
-  linuxPackages = pkgs.linuxPackages_6_5;
+  linux = pkgs.callPackage ./deps/cvm_io_linux.nix {};
+  linuxPackages = pkgs.recurseIntoAttrs (pkgs.linuxPackagesFor linux);
 in
 {
   imports =
