@@ -13,7 +13,7 @@ ramp_time=60 # from Intel SPDK BM guidelines
 # ramp_time=20 # PerChar CHEOPS '23
 
 
-# bs, rw, iodepth, numjobs from spool
+# bs, rw, iodepth, numjobs from Spool ATC ‘20
 [alat randread]
 stonewall
 blocksize=4k
