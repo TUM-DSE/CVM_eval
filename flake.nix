@@ -33,8 +33,7 @@
         packages =
         {
           # SSD preconditioning
-          spdk-libvfio-user = let pkgs = mic92pkgs; in pkgs.callPackage ./nix/spdk-libvfio-user.nix { inherit pkgs; };
-          spdk = let pkgs = mic92pkgs; spdk-libvfio-user = selfpkgs.spdk-libvfio-user; in pkgs.callPackage ./nix/spdk.nix { inherit pkgs; inherit spdk-libvfio-user; };
+          spdk = let pkgs = mic92pkgs; in pkgs.callPackage ./nix/spdk.nix { inherit pkgs; };
 
           qemu-amd-sev-snp = let pkgs = stablepkgs; in pkgs.callPackage ./nix/qemu-amd-sev-snp.nix { inherit pkgs; };
           ovmf-amd-sev-snp = pkgs.callPackage ./nix/ovmf-amd-sev-snp.nix { inherit pkgs; };
@@ -77,7 +76,6 @@
             with self.packages.${system};
             [
               qemu-amd-sev-snp # patched amd-sev-snp qemu
-              spdk-libvfio-user
               spdk # nvme SSD formatting
             ]
           );
