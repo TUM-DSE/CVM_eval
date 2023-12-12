@@ -22,7 +22,7 @@ let
   {
     url = linux_gitlab_lrz;
     ref = "cvm-io-dev";
-    rev = "52d0274fe133fc1c6786176db7650fe7650634a8";
+    rev = "28771c8c4b84cb2d5dc28018666d19b60f34d9f0";
     version = "6.7";
     modDirVersion = "6.7.0-rc4";
   };

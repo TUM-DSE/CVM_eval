@@ -78,6 +78,7 @@
             cryptsetup
             bpftrace
             linux.dev
+            gdb
           ] ++ 
           (
             with self.packages.${system};

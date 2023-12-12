@@ -63,10 +63,13 @@ in
   programs.bash.enableCompletion = false;
   programs.command-not-found.enable = false;
 
-  environment.systemPackages = [
-    pkgs.busybox
-    pkgs.devmem2
-    pkgs.sysbench
-    pkgs.cloud-hypervisor
+  environment.systemPackages = with pkgs;
+  [
+    busybox
+    devmem2
+    sysbench
+    cloud-hypervisor
+    bpftrace
+    tmux
   ];
 }

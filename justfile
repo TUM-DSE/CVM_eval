@@ -367,22 +367,38 @@ nixos-image: image
 
 configure-linux:
     #!/usr/bin/env bash
-    set -xeuo pipefail
-    if [[ ! -f {{linux_dir}}/.config ]]; then
-      cd {{ linux_dir }}
-      {{ kernel_shell }} "make defconfig -j$(nproc)"
-      {{ kernel_shell }} "scripts/config \
-        --enable GDB_SCRIPTS"
-    fi
+    cd {{ linux_dir }} && \
+    {{ kernel_shell }} "make defconfig -j$(nproc)" && \
+    {{ kernel_shell }} "scripts/config \
+      --enable GDB_SCRIPTS \
+      --enable CVM_IO \
+      --enable DEBUG_INFO \
+      --enable BPF \
+      --enable BPF_SYSCALL \
+      --enable BPF_JIT \
+      --enable HAVE_EBPF_JIT \
+      --enable BPF_EVENTS \
+      --enable FTRACE_SYSCALLS \
+      --enable FUNCTION_TRACER \
+      --enable HAVE_DYNAMIC_FTRACE \
+      --enable DYNAMIC_FTRACE \
+      --enable HAVE_KPROBES \
+      --enable KPROBES \
+      --enable KPROBE_EVENTS \
+      --enable ARCH_SUPPORTS_UPROBES \
+      --enable UPROBES \
+      --enable UPROBE_EVENTS \
+      --enable DEBUG_FS" # --enable KGDB \
+
 
 build-linux: configure-linux
     cd {{ linux_dir }} && {{ kernel_shell }} 'make -j$(nproc)'
 
-qemu-debug EXTRA_CMDLINE="nokalsr": build-linux # nixos-image
-    qemu-system-x86_64 \
+qemu-debug EXTRA_CMDLINE="nokaslr swiotlb=force" nvme="/dev/nvme1n1": build-linux # nixos-image
+    sudo qemu-system-x86_64 \
       -kernel {{ linux_dir }}/arch/x86/boot/bzImage \
       -drive format=raw,file={{ linux_dir }}/nixos.ext4,id=mydrive,if=virtio \
-      -append "root=/dev/vda console=hvc0 {{ EXTRA_CMDLINE }}" \
+      -append "root=/dev/vdb console=hvc0 {{ EXTRA_CMDLINE }}" \
       -net nic,netdev=user.0,model=virtio \
       -netdev user,id=user.0,hostfwd=tcp:127.0.0.1:{{ qemu_ssh_port }}-:22 \
       -m 512M \
@@ -393,6 +409,17 @@ qemu-debug EXTRA_CMDLINE="nokalsr": build-linux # nixos-image
       -device virtio-serial \
       -chardev stdio,mux=on,id=char0,signal=off \
       -mon chardev=char0,mode=readline \
-      -device virtconsole,chardev=char0,id=vmsh,nr=0
+      -device virtconsole,chardev=char0,id=vmsh,nr=0 \
+      -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
+      -device virtio-blk,drive=q1 \
+      -s -S
 
+attach-debug-qemu:
+    # https://www.kernel.org/doc/html/latest/dev-tools/gdb-kernel-debugging.html
+    # https://www.starlab.io/blog/using-gdb-to-debug-the-linux-kernel
+    cd {{ linux_dir }} && {{ kernel_shell }} 'make scripts_gdb'
+    cd {{ linux_dir }} && {{ kernel_shell }} 'gdb ./vmlinux -tui' # target remote :1234
+
+ssh-into-qemu:
+    ssh -p {{ qemu_ssh_port }} root@localhost
 
