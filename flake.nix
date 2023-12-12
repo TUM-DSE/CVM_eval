@@ -22,6 +22,7 @@
     (
       system:
       let
+        nixpkgs-direct = nixpkgs-unstable;
         pkgs = nixpkgs-unstable.legacyPackages.${system};
         stablepkgs = nixpkgs-stable.legacyPackages.${system};
         mic92pkgs = nixpkgs-mic92.legacyPackages.${system};
@@ -56,6 +57,11 @@
               }
             ];
           };
+
+          # debug kernel
+          # see justfile/nixos-image
+          nixos-image = pkgs.callPackage ./nix/nixos-image.nix { };
+          lib.nixpkgsRev = nixpkgs-direct.shortRev;
         };
 
         devShells.default = pkgs.mkShell
@@ -71,6 +77,7 @@
             fio
             cryptsetup
             bpftrace
+            linux.dev
           ] ++ 
           (
             with self.packages.${system};
@@ -80,6 +87,7 @@
             ]
           );
         };
+
       }
     )
   ) //

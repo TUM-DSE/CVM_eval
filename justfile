@@ -343,3 +343,56 @@ spdk-setup:
 clean:
     rm -rf {{vm_build}}
 
+
+
+## DEBUG UTILS
+kernel_shell := "nix-shell '<nixpkgs>' -A linux.dev --run"
+linux_dir := proot + "/src/linux"
+nix_results := justfile_directory() + "/.git/nix-results/" + rev
+rev := `nix eval --raw .#lib.nixpkgsRev`
+qemu_ssh_port := "2222"
+
+# Build a disk image
+image NAME="nixos" PATH="/nixos.img":
+    #!/usr/bin/env bash
+    set -eux -o pipefail
+    if [[ nix/{{ NAME }}-image.nix -nt {{ linux_dir }}/{{ NAME }}.ext4 ]] \
+       || [[ flake.lock -nt {{ linux_dir }}/{{ NAME }}.ext4 ]]; then
+       nix build --out-link {{ nix_results }}/{{ NAME }}-image/ --builders '' .#{{ NAME }}-image
+       install -D -m600 "{{ nix_results }}/{{ NAME }}-image{{ PATH }}" {{ linux_dir }}/{{ NAME }}.ext4
+    fi
+
+# Build kernel-less disk image for NixOS
+nixos-image: image
+
+configure-linux:
+    #!/usr/bin/env bash
+    set -xeuo pipefail
+    if [[ ! -f {{linux_dir}}/.config ]]; then
+      cd {{ linux_dir }}
+      {{ kernel_shell }} "make defconfig -j$(nproc)"
+      {{ kernel_shell }} "scripts/config \
+        --enable GDB_SCRIPTS"
+    fi
+
+build-linux: configure-linux
+    cd {{ linux_dir }} && {{ kernel_shell }} 'make -j$(nproc)'
+
+qemu-debug EXTRA_CMDLINE="nokalsr": build-linux # nixos-image
+    qemu-system-x86_64 \
+      -kernel {{ linux_dir }}/arch/x86/boot/bzImage \
+      -drive format=raw,file={{ linux_dir }}/nixos.ext4,id=mydrive,if=virtio \
+      -append "root=/dev/vda console=hvc0 {{ EXTRA_CMDLINE }}" \
+      -net nic,netdev=user.0,model=virtio \
+      -netdev user,id=user.0,hostfwd=tcp:127.0.0.1:{{ qemu_ssh_port }}-:22 \
+      -m 512M \
+      -cpu host \
+      -virtfs local,path={{ justfile_directory() }}/..,security_model=none,mount_tag=home \
+      -virtfs local,path={{ linux_dir }},security_model=none,mount_tag=linux \
+      -nographic -serial null -enable-kvm \
+      -device virtio-serial \
+      -chardev stdio,mux=on,id=char0,signal=off \
+      -mon chardev=char0,mode=readline \
+      -device virtconsole,chardev=char0,id=vmsh,nr=0
+
+
