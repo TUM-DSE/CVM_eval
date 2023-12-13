@@ -71,5 +71,6 @@ in
     cloud-hypervisor
     bpftrace
     tmux
+    fio
   ];
 }

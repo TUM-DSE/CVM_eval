@@ -392,9 +392,9 @@ configure-linux:
 
 
 build-linux: configure-linux
-    cd {{ linux_dir }} && {{ kernel_shell }} 'make -j$(nproc)'
+    cd {{ linux_dir }} && yes "" | {{ kernel_shell }} 'make -j$(nproc)'
 
-qemu-debug EXTRA_CMDLINE="nokaslr swiotlb=force" nvme="/dev/nvme1n1": build-linux # nixos-image
+qemu-debug EXTRA_CMDLINE="virtio_blk.cvm_io_driver_name=virtio4" nvme="/dev/nvme1n1": build-linux # nixos-image
     sudo qemu-system-x86_64 \
       -kernel {{ linux_dir }}/arch/x86/boot/bzImage \
       -drive format=raw,file={{ linux_dir }}/nixos.ext4,id=mydrive,if=virtio \
@@ -412,7 +412,7 @@ qemu-debug EXTRA_CMDLINE="nokaslr swiotlb=force" nvme="/dev/nvme1n1": build-linu
       -device virtconsole,chardev=char0,id=vmsh,nr=0 \
       -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
       -device virtio-blk,drive=q1 \
-      -s -S
+      -s
 
 attach-debug-qemu:
     # https://www.kernel.org/doc/html/latest/dev-tools/gdb-kernel-debugging.html
