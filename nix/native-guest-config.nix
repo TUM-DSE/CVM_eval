@@ -49,16 +49,20 @@ in
     trace-cmd
     bpftrace
     blktrace
+    vim
   ];
 
   # set kernel
   boot.kernelPackages = lib.mkForce linuxPackages;
 
+
+  boot.kernelParams = [ "virtio_blk.cvm_io_driver_name=virtio2" ];
+
   programs.fio-runner =
   {
     enable = false;
     encrypted-run = true;
-    bounce-buffer = true;
+    bounce-buffer = false;
   };
 
 }

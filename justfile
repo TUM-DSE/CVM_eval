@@ -60,7 +60,7 @@ poll-benchmark port="2222" filename="native-result.log" sleep="1200": numa-warni
     done
 
 
-start-native-vm-virtio-blk nvme="/dev/nvme1n1":
+start-native-vm-virtio-blk EXTRA_CMDLINE="virtio_blk.cvm_io_driver_name=virtio2" nvme="/dev/nvme1n1":
     # sudo for disk access
     # device: /dev/nvme1n1 ( Samsung SSD PM173X )
     # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE

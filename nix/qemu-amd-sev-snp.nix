@@ -5,13 +5,11 @@ qemu_full.overrideAttrs
 (
   new: old:
   {
-    src = fetchFromGitHub
+    src = builtins.fetchGit
     {
-      owner = "AMDESE";
-      repo = "qemu";
-      rev = "94bec6ae7a81872ca0df2655dac18b2dea8c3090";
-      sha256 = "inX1Di5vP4c14E7nuQG8KigAZ2WyGQdud7+K83R4rrg=";
-      fetchSubmodules = true;
+      url = "git@gitlab.lrz.de:robert/linux.git";
+      ref = "snp-latest";
+      rev = "16109896d9a5f96de695ff7ebc8bbe9719c9901d";
     };
   }
 )
