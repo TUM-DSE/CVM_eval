@@ -388,7 +388,9 @@ configure-linux:
       --enable ARCH_SUPPORTS_UPROBES \
       --enable UPROBES \
       --enable UPROBE_EVENTS \
-      --enable DEBUG_FS" # --enable KGDB \
+      --enable DEBUG_FS \
+      --enable DEBUG \
+      --enable DEBUG_DRIVER" # --enable KGDB
 
 
 build-linux: configure-linux
@@ -398,7 +400,7 @@ qemu-debug EXTRA_CMDLINE="virtio_blk.cvm_io_driver_name=virtio4" nvme="/dev/nvme
     sudo qemu-system-x86_64 \
       -kernel {{ linux_dir }}/arch/x86/boot/bzImage \
       -drive format=raw,file={{ linux_dir }}/nixos.ext4,id=mydrive,if=virtio \
-      -append "root=/dev/vdb console=hvc0 {{ EXTRA_CMDLINE }}" \
+      -append "root=/dev/vdb console=hvc0 nokaslr {{ EXTRA_CMDLINE }}" \
       -net nic,netdev=user.0,model=virtio \
       -netdev user,id=user.0,hostfwd=tcp:127.0.0.1:{{ qemu_ssh_port }}-:22 \
       -m 512M \
@@ -413,6 +415,7 @@ qemu-debug EXTRA_CMDLINE="virtio_blk.cvm_io_driver_name=virtio4" nvme="/dev/nvme
       -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
       -device virtio-blk,drive=q1 \
       -s
+
 
 attach-debug-qemu:
     # https://www.kernel.org/doc/html/latest/dev-tools/gdb-kernel-debugging.html

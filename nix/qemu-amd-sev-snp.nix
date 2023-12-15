@@ -9,7 +9,7 @@ qemu_full.overrideAttrs
     {
       url = "git@gitlab.lrz.de:robert/qemu.git";
       ref = "snp-latest";
-      rev = "16109896d9a5f96de695ff7ebc8bbe9719c9901d";
+      rev = "fe4c9e8e7e7ddac4b19c4366c1f105ffc4a78482";
       submodules = true;
     };
     configureFlags = old.configureFlags ++
