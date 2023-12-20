@@ -34,7 +34,7 @@ in
     font = "Lat2-Terminus16";
     keyMap = "us";
   };
-  system.stateVersion = "23.05";
+  system.stateVersion = "23.11";
 
   nix.extraOptions =
   ''
@@ -50,6 +50,7 @@ in
     bpftrace
     blktrace
     vim
+    tmux
   ];
 
   # set kernel
