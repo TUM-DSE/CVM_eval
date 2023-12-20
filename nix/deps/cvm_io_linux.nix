@@ -1,4 +1,9 @@
-{ lib, buildLinux, ... }@args:
+{
+  pkgs
+  , lib
+  , buildLinux
+  , ...
+}@args:
 let
   buildKernel = { url, ref ? "master", rev, version, modDirVersion, extraPatches ? [ ] }:
     buildLinux
@@ -14,6 +19,12 @@ let
         extraMeta.branch = version;
         ignoreConfigErrors = true;
         kernelPatches = [ ] ++ extraPatches;
+
+        postBuild =
+        ''
+          cat $buildRoot/.config
+          exit 1
+        '';
       } // (args.argsOverride or { }));
 
   linux_gitlab_lrz = "git@gitlab.lrz.de:robert/linux.git";

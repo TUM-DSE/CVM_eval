@@ -7,6 +7,9 @@
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-23.05";
     nixpkgs-mic92.url = "github:mic92/nixpkgs/spdk";
     flake-utils.url = "github:numtide/flake-utils";
+    # debug build inputs
+    kernelSrc.url = "path:/home/robert/repos/github.com/TUM_DSE/CVM_eval/src/linux";
+    kernelSrc.flake = false;
   };
 
   outputs = 
@@ -16,6 +19,7 @@
     , nixpkgs-stable
     , nixpkgs-mic92
     , flake-utils
+    , kernelSrc
   }:
   (
     flake-utils.lib.eachSystem ["x86_64-linux"]
@@ -46,7 +50,7 @@
             format = "qcow2";
             partitionTableType = "efi";
             installBootLoader = true;
-            diskSize = 4096;
+            diskSize = 8192;
             OVMF = selfpkgs.ovmf-amd-sev-snp.fd;
             touchEFIVars = true;
             contents =
@@ -62,6 +66,7 @@
           # see justfile/nixos-image
           nixos-image = pkgs.callPackage ./nix/nixos-image.nix { };
           lib.nixpkgsRev = nixpkgs-direct.shortRev;
+          # build config from prebuilt kernel
         };
 
         devShells.default = pkgs.mkShell
@@ -107,6 +112,7 @@
             {
               inherit pkgs;
               inherit (nixpkgs-unstable) lib;
+              inherit kernelSrc;
             }
           )
           ./nix/nixos-generators-qcow.nix

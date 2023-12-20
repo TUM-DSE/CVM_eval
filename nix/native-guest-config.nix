@@ -1,10 +1,29 @@
 {
   pkgs
-, lib
+  , lib
+  , kernelSrc
+  , ...
 }:
+let
+  src = kernelSrc;
+  buildRoot = kernelSrc;
+in
+let
+  kernelVersion =
+    let s = lib.removeSuffix "\n"
+            (builtins.readFile "${buildRoot}/include/config/kernel.release");
+    in builtins.trace "kernelVersion: ${s}" s;
+  version = lib.concatStringsSep "."
+  [
+    (lib.versions.majorMinor kernelVersion)
+    (lib.versions.patch kernelVersion)
+  ];
+in
 let
   linux = pkgs.callPackage ./deps/cvm_io_linux.nix {};
   linuxPackages = pkgs.recurseIntoAttrs (pkgs.linuxPackagesFor linux);
+  prebuiltKernel = pkgs.callPackage ./deps/kernel_install.nix { inherit src buildRoot version kernelVersion; };
+  prebuiltLinuxPackages = pkgs.linuxPackagesFor prebuiltKernel;
 in
 {
   imports =
@@ -54,7 +73,9 @@ in
   ];
 
   # set kernel
-  boot.kernelPackages = lib.mkForce linuxPackages;
+  boot.kernelPackages = lib.mkForce prebuiltLinuxPackages;
+  # if non-prebuilt ; TODO: make option
+  # boot.kernelPackages = lib.mkForce linuxPackages;
 
 
   boot.kernelParams = [ "virtio_blk.cvm_io_driver_name=virtio2" ];
