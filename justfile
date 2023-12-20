@@ -41,6 +41,8 @@ this_dir             := "."
 nix_img              := join(this_dir, "#guest-image")
 nix_ovmf_amd_sev_snp := join(this_dir, "#ovmf-amd-sev-snp")
 
+# commands
+update_nix_kernel_src := "nix flake lock --update-input kernelSrc"
 
 
 default:
@@ -269,7 +271,9 @@ start-sev-vm:
 
 ## VM BUILD
 
-img-build:
+img-build: build-linux
+    # TODO: differentiate between prebuilt and nixbuilt
+    {{update_nix_kernel_src}}
     mkdir -p {{vm_build}}
     # vm images
     nix build -L -o {{img_native_dir_ro}} {{nix_img}}
@@ -351,6 +355,7 @@ linux_dir := proot + "/src/linux"
 nix_results := justfile_directory() + "/.git/nix-results/" + rev
 rev := `nix eval --raw .#lib.nixpkgsRev`
 qemu_ssh_port := "2222"
+qemu_sev_ssh_port := "2223"
 
 # Build a disk image
 image NAME="nixos" PATH="/nixos.img":
@@ -365,35 +370,7 @@ image NAME="nixos" PATH="/nixos.img":
 # Build kernel-less disk image for NixOS
 nixos-image: image
 
-configure-linux:
-    #!/usr/bin/env bash
-    cd {{ linux_dir }} && \
-    {{ kernel_shell }} "make defconfig -j$(nproc)" && \
-    {{ kernel_shell }} "scripts/config \
-      --enable GDB_SCRIPTS \
-      --enable CVM_IO \
-      --enable DEBUG_INFO \
-      --enable BPF \
-      --enable BPF_SYSCALL \
-      --enable BPF_JIT \
-      --enable HAVE_EBPF_JIT \
-      --enable BPF_EVENTS \
-      --enable FTRACE_SYSCALLS \
-      --enable FUNCTION_TRACER \
-      --enable HAVE_DYNAMIC_FTRACE \
-      --enable DYNAMIC_FTRACE \
-      --enable HAVE_KPROBES \
-      --enable KPROBES \
-      --enable KPROBE_EVENTS \
-      --enable ARCH_SUPPORTS_UPROBES \
-      --enable UPROBES \
-      --enable UPROBE_EVENTS \
-      --enable DEBUG_FS \
-      --enable DEBUG \
-      --enable DEBUG_DRIVER" # --enable KGDB
-
-
-build-linux: configure-linux
+build-linux:
     cd {{ linux_dir }} && yes "" | {{ kernel_shell }} 'make -j$(nproc)'
 
 qemu-debug EXTRA_CMDLINE="virtio_blk.cvm_io_driver_name=virtio4" nvme="/dev/nvme1n1": build-linux # nixos-image
@@ -423,6 +400,8 @@ attach-debug-qemu:
     cd {{ linux_dir }} && {{ kernel_shell }} 'make scripts_gdb'
     cd {{ linux_dir }} && {{ kernel_shell }} 'gdb ./vmlinux -tui' # target remote :1234
 
-ssh-into-qemu:
-    ssh -p {{ qemu_ssh_port }} root@localhost
+ssh-into-qemu-native:
+    ssh -i nix/ssh_key -o "StrictHostKeyChecking no" -p {{ qemu_ssh_port }} root@localhost
 
+ssh-into-qemu-sev:
+    ssh -i nix/ssh_key -o "StrictHostKeyChecking no" -p {{ qemu_sev_ssh_port }} root@localhost

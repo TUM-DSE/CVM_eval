@@ -1,19 +1,58 @@
-# Important Benchmarking Info
+# CVM IO
 
-## HW / Vislor specific
-### SSD
+## Important Build Info
+
+Please configure `direnv` for your shell, or use `nix develop` before running commands.
+
+### Native (non-SEV) Kernel Developement Flow (non-nix)
+
+```bash
+# to only compile
+just build-linux
+# to compile and start VM
+just qemu-debug
+# to attach to running VM via ssh
+just ssh-into-qemu-native
+# to run certain storage IO configuration
+just vm-build # see SEV developement
+just start-native-vm-virtio-blk # other configs available
+```
+
+### SEV Kernel Developement Flow (uses precompiled Kernel)
+
+```bash
+# compile same as in native
+just build-linux
+# to build vm image and OVMF and compile kernel
+just vm-build
+# to only build VM image and compile kernel
+just img-build
+# to run SEV VM with current built VM image
+just start-sev-vm
+# different storage IO configuraitons exist in justfile; to view:
+just --list
+just start-native-vm-virtio-blk
+# attach to running SEV VM via ssh
+just ssh-into-qemu-sev
+```
+
+
+## Important Benchmarking Info
+
+### HW / Vislor specific
+#### SSD
 - model: Samsung NVMe SSD PM173X
 - size: 1.5TB
 - PCI (vislor): 0000:64:00.00
 - Format: Data Size: 4KB ; Metadata Size: 0
 
-### NUMA
+#### NUMA
 - vislor: NVMe SSD PM173X: 64:00.0
 - vislor: NUMA node0: CPU(s): 0-31,64-96
 - --> CPUs 4-8 on same node das NVMe SSD
 
-### PCIe
-#### Link Capability:
+#### PCIe
+##### Link Capability:
 
 ```bash
 $ sudo lspci | grep Non-Volatile | head -n 1 | cut -f 1 -d ' ' | xargs -n 1 sudo lspci -vvv -s | grep LnkCap
@@ -22,7 +61,7 @@ $ sudo lspci | grep Non-Volatile | head -n 1 | cut -f 1 -d ' ' | xargs -n 1 sudo
 ```
 - 16GT/s
 
-#### Link Status:
+##### Link Status:
 also 16 GT/s by 8 x width
 
 ```bash
@@ -31,7 +70,7 @@ $ sudo lspci | grep Non-Volatile | head -n 1 | cut -f 1 -d ' ' | xargs -n 1 sudo
 		LnkSta2: Current De-emphasis Level: -6dB, EqualizationComplete+ EqualizationPhase1+
 ```
 
-### BIOS
+#### BIOS
 - version: 1.5.8
 - mem freq: max perf
 - cpu power mngmt: max perf -> disable P States ; enables power max performance
