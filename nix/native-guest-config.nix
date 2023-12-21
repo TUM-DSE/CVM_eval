@@ -20,8 +20,8 @@ let
   ];
 in
 let
-  linux = pkgs.callPackage ./deps/cvm_io_linux.nix {};
-  linuxPackages = pkgs.recurseIntoAttrs (pkgs.linuxPackagesFor linux);
+  # linux = pkgs.callPackage ./deps/cvm_io_linux.nix {};
+  # linuxPackages = pkgs.recurseIntoAttrs (pkgs.linuxPackagesFor linux);
   prebuiltKernel = pkgs.callPackage ./deps/kernel_install.nix { inherit src buildRoot version kernelVersion; };
   prebuiltLinuxPackages = pkgs.linuxPackagesFor prebuiltKernel;
 in
