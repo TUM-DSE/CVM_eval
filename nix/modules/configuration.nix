@@ -18,6 +18,11 @@ in
   # slows things down
   systemd.services.systemd-networkd-wait-online.enable = false;
 
+  # override defaults from nixpkgs/modules/virtualization/container-config.nix
+  # to enable cryptsetup
+  services.udev.enable = lib.mkForce true;
+  services.lvm.enable = lib.mkForce true;
+
   boot.loader.grub.enable = false;
   boot.initrd.enable = false;
   boot.isContainer = true;
@@ -72,5 +77,7 @@ in
     bpftrace
     tmux
     fio
+    cryptsetup
+    lvm2
   ];
 }
