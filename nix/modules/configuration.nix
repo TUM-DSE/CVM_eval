@@ -3,6 +3,13 @@
 let
   keys = map (key: "${builtins.getEnv "HOME"}/.ssh/${key}")
     [ "id_rsa.pub" "id_ecdsa.pub" "id_ed25519.pub" ];
+  test-dmcrypt = pkgs.writeScriptBin "test-dmcrypt"
+  ''
+    #!/usr/bin/env bash
+    set -u
+    yes "" | ${pkgs.cryptsetup}/bin/cryptsetup luksOpen /dev/vda target
+    ${pkgs.coreutils}/bin/dd if=/dev/zero of=/dev/mapper/target bs=4M status=progress
+    '';
 in
 {
   imports = [
@@ -70,6 +77,7 @@ in
 
   environment.systemPackages = with pkgs;
   [
+    coreutils
     busybox
     devmem2
     sysbench
@@ -79,5 +87,6 @@ in
     fio
     cryptsetup
     lvm2
+    test-dmcrypt
   ];
 }
