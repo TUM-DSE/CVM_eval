@@ -21,8 +21,8 @@
     "kernelSrc": {
       "flake": false,
       "locked": {
-        "lastModified": 1703234554,
-        "narHash": "sha256-UugjY7DK4AxaY1mQ2YP+GzWg8PRBvBtFx2HmNMF5Flo=",
+        "lastModified": 1703943239,
+        "narHash": "sha256-04vpVua5AQJDiwEpvfJ0YIMfoOg2UkjWqwZ+qUubH/A=",
         "path": "/home/robert/repos/github.com/TUM_DSE/CVM_eval/src/linux",
         "type": "path"
       },

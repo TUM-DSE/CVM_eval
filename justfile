@@ -370,6 +370,35 @@ image NAME="nixos" PATH="/nixos.img":
 # Build kernel-less disk image for NixOS
 nixos-image: image
 
+configure-linux:
+    #!/usr/bin/env bash
+    cd {{ linux_dir }} && \
+    {{ kernel_shell }} "make defconfig -j$(nproc)" && \
+    {{ kernel_shell }} "scripts/config \
+      --enable GDB_SCRIPTS \
+      --enable CVM_IO \
+      --enable DEBUG_INFO \
+      --enable BPF \
+      --enable BPF_SYSCALL \
+      --enable BPF_JIT \
+      --enable HAVE_EBPF_JIT \
+      --enable BPF_EVENTS \
+      --enable FTRACE_SYSCALLS \
+      --enable FUNCTION_TRACER \
+      --enable HAVE_DYNAMIC_FTRACE \
+      --enable DYNAMIC_FTRACE \
+      --enable HAVE_KPROBES \
+      --enable KPROBES \
+      --enable KPROBE_EVENTS \
+      --enable ARCH_SUPPORTS_UPROBES \
+      --enable UPROBES \
+      --enable UPROBE_EVENTS \
+      --enable DEBUG_FS \
+      --enable DEBUG \
+      --enable DEBUG_DRIVER \
+      --enable DM_CRYPT \
+      --enable CRYPTO_XTS" # --enable KGDB
+
 build-linux:
     cd {{ linux_dir }} && yes "" | {{ kernel_shell }} 'make -j$(nproc)'
 
@@ -380,7 +409,8 @@ qemu-debug EXTRA_CMDLINE="virtio_blk.cvm_io_driver_name=virtio4" nvme="/dev/nvme
       -append "root=/dev/vdb console=hvc0 nokaslr {{ EXTRA_CMDLINE }}" \
       -net nic,netdev=user.0,model=virtio \
       -netdev user,id=user.0,hostfwd=tcp:127.0.0.1:{{ qemu_ssh_port }}-:22 \
-      -m 512M \
+      -smp 4 \
+      -m 16G \
       -cpu host \
       -virtfs local,path={{ justfile_directory() }}/..,security_model=none,mount_tag=home \
       -virtfs local,path={{ linux_dir }},security_model=none,mount_tag=linux \
@@ -390,8 +420,8 @@ qemu-debug EXTRA_CMDLINE="virtio_blk.cvm_io_driver_name=virtio4" nvme="/dev/nvme
       -mon chardev=char0,mode=readline \
       -device virtconsole,chardev=char0,id=vmsh,nr=0 \
       -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
-      -device virtio-blk,drive=q1 \
-      -s
+      -device virtio-blk,drive=q1
+    # -s
 
 
 attach-debug-qemu:

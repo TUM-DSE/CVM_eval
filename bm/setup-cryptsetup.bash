@@ -4,7 +4,7 @@
 # sudo cryptsetup -v -q luksFormat --type luks2 \
 #  --cipher aes-gcm-random --integrity aead --key-size 256 /dev/vdb # removed: --encrypt ( in-place )
 # exec inside guest:
-# cryptsetup open /dev/vdb crypt-target
+# cryptsetup open /dev/vdb crypt-target no_read_workqueue no_write_workqueue
 #
 # integrity
 # sudo cryptsetup -v -q luksFormat --type luks2 \              

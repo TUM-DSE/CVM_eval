@@ -8,7 +8,7 @@ let
     #!/usr/bin/env bash
     set -u
     yes "" | ${pkgs.cryptsetup}/bin/cryptsetup luksOpen /dev/vda target
-    ${pkgs.coreutils}/bin/dd if=/dev/zero of=/dev/mapper/target bs=4M status=progress
+    echo "hello" > /dev/mapper/target
     '';
 in
 {
