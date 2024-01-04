@@ -352,6 +352,7 @@ clean:
 ## DEBUG UTILS
 kernel_shell := "nix-shell '<nixpkgs>' -A linux.dev --run"
 linux_dir := proot + "/src/linux"
+nixconfig := linux_dir + "/nixconfig"
 nix_results := justfile_directory() + "/.git/nix-results/" + rev
 rev := `nix eval --raw .#lib.nixpkgsRev`
 qemu_ssh_port := "2222"
@@ -370,7 +371,12 @@ image NAME="nixos" PATH="/nixos.img":
 # Build kernel-less disk image for NixOS
 nixos-image: image
 
-configure-linux:
+# execute this command to config kernel for sev img-build
+nix-configure-linux:
+    cp {{ nixconfig }} {{ linux_dir }}/.config
+
+# execute this command to config kernel for native qemu-debug
+native-debug-configure-linux:
     #!/usr/bin/env bash
     cd {{ linux_dir }} && \
     {{ kernel_shell }} "make defconfig -j$(nproc)" && \
