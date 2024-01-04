@@ -1,4 +1,4 @@
-# TODO: transform to nix
+# TODO: transform to python
 # SSD set up and preconditioning as in:
 # https://ci.spdk.io/download/events/2017-summit/08_-_Day_2_-_Kariuki_Verma_and_Sudarikov_-_SPDK_Performance_Testing_and_Tuning_rev5_0.pdf
 
@@ -70,7 +70,7 @@ start-native-vm-virtio-blk EXTRA_CMDLINE="virtio_blk.cvm_io_driver_name=virtio2"
     # vislor: NUMA node0: CPU(s): 0-31
     # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
     # --> 4-8 on same node as NVMe SSD
-    sudo taskset -c 4-8 qemu-system-x86_64 \
+    sudo taskset -c 4-7 qemu-system-x86_64 \
         -cpu host \
         -smp 4 \
         -m 16G \
@@ -95,7 +95,10 @@ start-native-vm-virtio-blk-poll nvme="/dev/nvme1n1":
     # vislor: NUMA node0: CPU(s): 0-31
     # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
     # --> 4-8 on same node as NVMe SSD
-    sudo taskset -c 4-8 qemu-system-x86_64 \
+    # TODO: do we need to use iothread? `iothread=iothread0`
+    # see https://www.linux-kvm.org/images/a/a7/02x04-MultithreadedDevices.pdf
+    # for iothread -> probably not relevant when using SPDK
+    sudo taskset -c 4-7 qemu-system-x86_64 \
         -cpu host \
         -smp 4 \
         -m 16G \
@@ -120,7 +123,7 @@ start-native-vm-io_uring nvme="/dev/nvme1n1":
     # vislor: NUMA node0: CPU(s): 0-31
     # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
     # --> 4-8 on same node as NVMe SSD
-    sudo taskset -c 4-8 qemu-system-x86_64 \
+    sudo taskset -c 4-7 qemu-system-x86_64 \
         -cpu host \
         -smp 4 \
         -m 16G \
@@ -145,7 +148,7 @@ start-native-vm-spdk-vhost-user-blk:
     # vislor: NUMA node0: CPU(s): 0-31
     # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
     # --> 4-8 on same node as NVMe SSD
-    sudo taskset -c 4-8 qemu-system-x86_64 \
+    sudo taskset -c 4-7 qemu-system-x86_64 \
         -cpu host \
         -smp 4 \
         -m 16G \
@@ -171,7 +174,7 @@ start-native-vm-spdk-vfio-user-nvme:
     # vislor: NUMA node0: CPU(s): 0-31
     # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
     # --> 4-8 on same node as NVMe SSD
-    sudo taskset -c 4-8 qemu-system-x86_64 \
+    sudo taskset -c 4-7 qemu-system-x86_64 \
         -cpu host \
         -smp 4 \
         -m 16G \
@@ -211,7 +214,7 @@ start-sev-vm-virtio-blk nvme="/dev/nvme1n1":
 
 
 start-sev-vm-io_uring nvme="/dev/nvme1n1":
-    sudo taskset -c 4-8 qemu-system-x86_64 \
+    sudo taskset -c 4-7 qemu-system-x86_64 \
         -cpu EPYC-v4,host-phys-bits=true \
         -smp 4 \
         -m 16G \
@@ -231,7 +234,7 @@ start-sev-vm-io_uring nvme="/dev/nvme1n1":
 
 start-sev-vm-spdk:
     {{ error("doesn't work out-of-the-box") }}
-    sudo taskset -c 4-8 qemu-system-x86_64 \
+    sudo taskset -c 4-7 qemu-system-x86_64 \
         -cpu EPYC-v4,host-phys-bits=true \
         -smp 4 \
         -m 16G \
@@ -253,7 +256,7 @@ start-sev-vm-spdk:
 
 
 start-sev-vm:
-    sudo taskset -c 4-8 qemu-system-x86_64 \
+    sudo taskset -c 4-7 qemu-system-x86_64 \
         -cpu EPYC-v4,host-phys-bits=true \
         -smp 4 \
         -m 16G \

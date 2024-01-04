@@ -1,5 +1,5 @@
 [global]
-filename=/path/to/disk
+filename=/dev/mapper/target
 direct=1 # non-buffered IO
 # SPDK BM guidelines
 thread=1

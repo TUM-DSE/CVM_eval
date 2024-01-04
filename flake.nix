@@ -75,6 +75,7 @@
           buildInputs = with pkgs;
           [
             python3
+            python3.pkgs.invoke
             just
             fzf
             # add again once upstreamed
