@@ -3,13 +3,12 @@ import os
 from typing import Any
 
 import kernel
+import utils
 
 from invoke import Collection, task
 
 # constants
 QEMU_BIN = "qemu-system-x86_64"
-DEFAULT_NATIVE_SSH_FORWARD_PORT = 2222
-DEFAULT_SEV_SSH_FORWARD_PORT = 2223
 
 ## default paths
 REPO_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -52,7 +51,7 @@ def build_debug_qemu_cmd(
         kernel_path: str = kernel.KERNEL_PATH,
         extra_kernel_cmdline: str = "",
         ) -> str:
-    base_cmd = build_base_qemu_cmd(c, DEFAULT_NATIVE_SSH_FORWARD_PORT)
+    base_cmd = build_base_qemu_cmd(c, utils.DEFAULT_NATIVE_SSH_FORWARD_PORT)
     # NOTE: root may have to be changed if extra disk is mounted (to /dev/vdb)
     return f"{base_cmd} " \
         f"-kernel '{kernel_path}' " \
@@ -92,4 +91,4 @@ def run_debug_virtio_blk_poll_qemu(c: Any, ignore_warning: bool = False) -> None
     c.sudo(qemu_cmd, pty=True)
 
 
-namespace = Collection(kernel, run_debug_virtio_blk_poll_qemu)
+namespace = Collection(kernel, utils, run_debug_virtio_blk_poll_qemu)
