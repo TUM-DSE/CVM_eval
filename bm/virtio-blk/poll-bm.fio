@@ -1,13 +1,23 @@
 [global]
-ioengine=io_uring
 rw=randread
-hipri
-iodepth=64
-bs=512
 direct=1
 numjobs=4
 filename=/dev/vda
 group_reporting
 size=2G
 
-[poll benchmark]
+[poll benchmark sample]
+bs=512
+ioengine=io_uring
+iodepth=64
+hipri
+
+
+[poll benchmark commit hipri]
+ioengine=pvsync2
+bs=4k
+hipri
+
+[nopoll benchmark commit]
+ioengine=pvsync2
+bs=4k

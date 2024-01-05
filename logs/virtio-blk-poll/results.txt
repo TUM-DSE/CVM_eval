@@ -1,0 +1,15 @@
+# w/ poll queues = 4
+
+-- numjobs=1 : IOPS = 99.4K,  avg latency = 2356.4usec,  vm_exits = 4384787
+
+
+# w/ poll queues = 2
+
+-- numjobs=1 : IOPS = 98K,  avg latency = 2396.78usec,  vm_exits = 4656416
+
+
+# w/o poll
+
+-- numjobs=1 : IOPS = 96.1K,  avg latency = 244.41usec,  vm_exits = 4814550
+--> minor improvement
+

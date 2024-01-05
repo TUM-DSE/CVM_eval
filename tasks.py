@@ -80,13 +80,27 @@ def build_debug_poll_qemu_cmd(
 
 # tasks
 
-@task(help={'ignore_warning': "Ignore warning about using NVMe device"})
-def run_debug_virtio_blk_poll_qemu(c: Any, ignore_warning: bool = False) -> None:
+@task(help={
+    'ignore_warning': "Ignore warning about using NVMe device",
+    'num_queues': "Number of virtio-blk queues",
+    'num_poll_queues': "Number of virtio-blk poll queues",
+    })
+def run_debug_virtio_blk_poll_qemu(
+        c: Any,
+        ignore_warning: bool = False,
+        num_queues: int = 4,
+        num_poll_queues: int = 2
+        ) -> None:
     """
     Run native debug QEMU with virtio-blk-pci and poll mode enabled.
     Uses kernel from {kernel.KERNEL_PATH}.
     """
-    qemu_cmd = build_debug_poll_qemu_cmd(c, ignore_warning=ignore_warning)
+    qemu_cmd = build_debug_poll_qemu_cmd(
+            c,
+            ignore_warning,
+            num_queues,
+            num_poll_queues
+            )
     print(qemu_cmd)
     c.sudo(qemu_cmd, pty=True)
 

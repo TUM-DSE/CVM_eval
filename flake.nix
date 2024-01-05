@@ -93,6 +93,7 @@
               bpftrace
               linux.dev
               gdb
+              trace-cmd
             ] ++ 
             (
               with self.packages.${system};
