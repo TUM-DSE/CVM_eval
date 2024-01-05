@@ -56,7 +56,8 @@ def build_debug_qemu_cmd(
     # NOTE: root may have to be changed if extra disk is mounted (to /dev/vdb)
     return f"{base_cmd} " \
         f"-kernel '{kernel_path}' " \
-        f"-append 'console=hvc0 root=/dev/vda nokaslr loglevel=7 {extra_kernel_cmdline}' " \
+        f"-drive format=raw,file={kernel.KERNEL_SRC_DIR}/nixos.ext4,id=mydrive,if=virtio " \
+        f"-append 'console=hvc0 root=/dev/vdb nokaslr loglevel=7 {extra_kernel_cmdline}' " \
         f"-virtfs local,path={REPO_DIR},security_model=none,mount_tag=home"
         
 
