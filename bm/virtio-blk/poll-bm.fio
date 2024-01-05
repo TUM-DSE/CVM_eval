@@ -1,0 +1,13 @@
+[global]
+ioengine=io_uring
+rw=randread
+hipri
+iodepth=64
+bs=512
+direct=1
+numjobs=4
+filename=/dev/vda
+group_reporting
+size=2G
+
+[poll benchmark]
