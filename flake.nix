@@ -66,7 +66,7 @@
           };
 
           # debug kernel
-          # see justfile/nixos-image
+          # inv uilts.py:nixos-image
           nixos-image = pkgs.callPackage ./nix/nixos-image.nix { };
           lib.nixpkgsRev = nixpkgs-direct.shortRev;
           # build config from prebuilt kernel
@@ -76,7 +76,11 @@
           default = pkgs.mkShell
           {
             name = "benchmark-devshell";
-            buildInputs = with pkgs;
+            buildInputs =
+            let
+              count-vm-exits = pkgs.callPackage ./nix/bin/count_vm_exits.nix { inherit pkgs; };
+            in
+            with pkgs;
             [
               python3
               python3.pkgs.invoke
@@ -95,6 +99,11 @@
               [
                 qemu-amd-sev-snp # patched amd-sev-snp qemu
                 spdk # nvme SSD formatting
+              ]
+            ) ++
+            (
+              [
+                count-vm-exits
               ]
             );
           };
