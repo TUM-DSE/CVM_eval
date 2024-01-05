@@ -5,6 +5,7 @@
   {
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-23.05";
+    nixpkgs-2311.url = "github:NixOS/nixpkgs/nixos-23.11";
     nixpkgs-mic92.url = "github:mic92/nixpkgs/spdk";
     flake-utils.url = "github:numtide/flake-utils";
     # debug build inputs
@@ -17,6 +18,7 @@
     self
     , nixpkgs-unstable
     , nixpkgs-stable
+    , nixpkgs-2311
     , nixpkgs-mic92
     , flake-utils
     , kernelSrc
@@ -29,6 +31,7 @@
         nixpkgs-direct = nixpkgs-unstable;
         pkgs = nixpkgs-unstable.legacyPackages.${system};
         stablepkgs = nixpkgs-stable.legacyPackages.${system};
+        pkgs-2311 = nixpkgs-2311.legacyPackages.${system};
         mic92pkgs = nixpkgs-mic92.legacyPackages.${system};
         make-disk-image = import (pkgs.path + "/nixos/lib/make-disk-image.nix");
         selfpkgs = self.packages.x86_64-linux;
@@ -69,30 +72,33 @@
           # build config from prebuilt kernel
         };
 
-        devShells.default = pkgs.mkShell
-        {
-          name = "benchmark-devshell";
-          buildInputs = with pkgs;
-          [
-            python3
-            python3.pkgs.invoke
-            just
-            fzf
-            # add again once upstreamed
-            # spdk # for nvme_mange -> SSD precondition
-            fio
-            cryptsetup
-            bpftrace
-            linux.dev
-            gdb
-          ] ++ 
-          (
-            with self.packages.${system};
+        devShells = {
+          default = pkgs.mkShell
+          {
+            name = "benchmark-devshell";
+            buildInputs = with pkgs;
             [
-              qemu-amd-sev-snp # patched amd-sev-snp qemu
-              spdk # nvme SSD formatting
-            ]
-          );
+              python3
+              python3.pkgs.invoke
+              just
+              fzf
+              # add again once upstreamed
+              # spdk # for nvme_mange -> SSD precondition
+              fio
+              cryptsetup
+              bpftrace
+              linux.dev
+              gdb
+            ] ++ 
+            (
+              with self.packages.${system};
+              [
+                qemu-amd-sev-snp # patched amd-sev-snp qemu
+                spdk # nvme SSD formatting
+              ]
+            );
+          };
+          linux = pkgs-2311.linux.dev;
         };
 
       }

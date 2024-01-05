@@ -2,7 +2,9 @@
 import os
 from typing import Any
 
-from invoke import task
+import kernel
+
+from invoke import Collection, task
 
 # constants
 QEMU_BIN = "qemu-system-x86_64"
@@ -11,7 +13,6 @@ DEFAULT_SEV_SSH_FORWARD_PORT = 2223
 
 ## default paths
 REPO_DIR = os.path.dirname(os.path.realpath(__file__))
-KERNEL_PATH = os.path.join(REPO_DIR, "src", "linux", "arch", "x86", "boot", "bzImage")
 EVAL_NVME_PATH = "/dev/nvme1n1"
 
 # helpers
@@ -48,7 +49,7 @@ def build_base_qemu_cmd(
 
 def build_debug_qemu_cmd(
         c: Any,
-        kernel_path: str = KERNEL_PATH,
+        kernel_path: str = kernel.KERNEL_PATH,
         extra_kernel_cmdline: str = "",
         ) -> str:
     base_cmd = build_base_qemu_cmd(c, DEFAULT_NATIVE_SSH_FORWARD_PORT)
@@ -83,9 +84,11 @@ def build_debug_poll_qemu_cmd(
 def run_debug_virtio_blk_poll_qemu(c: Any, ignore_warning: bool = False) -> None:
     """
     Run native debug QEMU with virtio-blk-pci and poll mode enabled.
-    Uses kernel from {KERNEL_PATH}.
+    Uses kernel from {kernel.KERNEL_PATH}.
     """
     qemu_cmd = build_debug_poll_qemu_cmd(c, ignore_warning=ignore_warning)
     print(qemu_cmd)
     c.sudo(qemu_cmd)
 
+
+namespace = Collection(kernel, run_debug_virtio_blk_poll_qemu)

@@ -31,6 +31,22 @@
         "type": "path"
       }
     },
+    "nixpkgs-2311": {
+      "locked": {
+        "lastModified": 1704295289,
+        "narHash": "sha256-9WZDRfpMqCYL6g/HNWVvXF0hxdaAgwgIGeLYiOhmes8=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "b0b2c5445c64191fd8d0b31f2b1a34e45a64547d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-23.11",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nixpkgs-mic92": {
       "locked": {
         "lastModified": 1701167560,
@@ -83,6 +99,7 @@
       "inputs": {
         "flake-utils": "flake-utils",
         "kernelSrc": "kernelSrc",
+        "nixpkgs-2311": "nixpkgs-2311",
         "nixpkgs-mic92": "nixpkgs-mic92",
         "nixpkgs-stable": "nixpkgs-stable",
         "nixpkgs-unstable": "nixpkgs-unstable"

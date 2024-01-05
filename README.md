@@ -1,5 +1,12 @@
 # CVM IO
 
+**NOTE:**
+We are moving `just` commands to `inv` commands.
+If you find a `just` command to be missing, assume a corresponding `inv` command exists.
+Execute `inv --list` to view avaiable `inv` commands.
+
+When adding new commands, please add them in the python scripts- not the just file.
+
 ## Important Build Info
 
 Please configure `direnv` for your shell, or use `nix develop` before running commands.

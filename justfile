@@ -378,40 +378,8 @@ nixos-image: image
 nix-configure-linux:
     cp {{ nixconfig }} {{ linux_dir }}/.config
 
-# execute this command to config kernel for native qemu-debug
-native-debug-configure-linux:
-    #!/usr/bin/env bash
-    cd {{ linux_dir }} && \
-    {{ kernel_shell }} "make defconfig -j$(nproc)" && \
-    {{ kernel_shell }} "scripts/config \
-      --enable GDB_SCRIPTS \
-      --enable CVM_IO \
-      --enable DEBUG_INFO \
-      --enable BPF \
-      --enable BPF_SYSCALL \
-      --enable BPF_JIT \
-      --enable HAVE_EBPF_JIT \
-      --enable BPF_EVENTS \
-      --enable FTRACE_SYSCALLS \
-      --enable FUNCTION_TRACER \
-      --enable HAVE_DYNAMIC_FTRACE \
-      --enable DYNAMIC_FTRACE \
-      --enable HAVE_KPROBES \
-      --enable KPROBES \
-      --enable KPROBE_EVENTS \
-      --enable ARCH_SUPPORTS_UPROBES \
-      --enable UPROBES \
-      --enable UPROBE_EVENTS \
-      --enable DEBUG_FS \
-      --enable DEBUG \
-      --enable DEBUG_DRIVER \
-      --enable DM_CRYPT \
-      --enable CRYPTO_XTS" # --enable KGDB
 
-build-linux:
-    cd {{ linux_dir }} && yes "" | {{ kernel_shell }} 'make -j$(nproc)'
-
-qemu-debug EXTRA_CMDLINE="virtio_blk.cvm_io_driver_name=virtio4" nvme="/dev/nvme1n1": build-linux # nixos-image
+qemu-debug EXTRA_CMDLINE="virtio_blk.cvm_io_driver_name=virtio4" nvme="/dev/nvme1n1": # nixos-image
     sudo qemu-system-x86_64 \
       -kernel {{ linux_dir }}/arch/x86/boot/bzImage \
       -drive format=raw,file={{ linux_dir }}/nixos.ext4,id=mydrive,if=virtio \
