@@ -89,7 +89,7 @@ def run_debug_virtio_blk_poll_qemu(c: Any, ignore_warning: bool = False) -> None
     """
     qemu_cmd = build_debug_poll_qemu_cmd(c, ignore_warning=ignore_warning)
     print(qemu_cmd)
-    c.sudo(qemu_cmd)
+    c.sudo(qemu_cmd, pty=True)
 
 
 namespace = Collection(kernel, run_debug_virtio_blk_poll_qemu)

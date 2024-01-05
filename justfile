@@ -274,7 +274,7 @@ start-sev-vm:
 
 ## VM BUILD
 
-img-build: build-linux
+img-build:
     # TODO: differentiate between prebuilt and nixbuilt
     {{update_nix_kernel_src}}
     mkdir -p {{vm_build}}
