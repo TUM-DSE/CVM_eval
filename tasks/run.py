@@ -5,7 +5,7 @@ from typing import Any
 import kernel
 import utils
 
-from invoke import Collection, task
+from invoke import task
 
 # constants
 QEMU_BIN = "qemu-system-x86_64"
@@ -103,6 +103,3 @@ def run_debug_virtio_blk_poll_qemu(
             )
     print(qemu_cmd)
     c.sudo(qemu_cmd, pty=True)
-
-
-namespace = Collection(kernel, utils, run_debug_virtio_blk_poll_qemu)
