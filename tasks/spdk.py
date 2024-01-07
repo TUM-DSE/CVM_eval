@@ -93,7 +93,7 @@ def setup_vhost_target(c, huge_mem=4096, cpu_mask="0x3"):
     info_print("starting vhost target- leave running, binding to this TTY")
     print_and_sudo(c, f"{VHOST_BIN} -S {VHOST_SOCK} -m {cpu_mask}")
     # wait until /var/tmp/spdk.sock exists in python
-    timeout = 10
+    timeout: int = 10
     while not os.path.exists(SPDK_SOCK):
         time.sleep(1)
         timeout -= 1
@@ -106,12 +106,8 @@ def setup_vhost_target(c, huge_mem=4096, cpu_mask="0x3"):
 
 # helpful links:
 # - https://github.com/finallyjustice/sample/blob/a4eac8976aa3af0ccc762f91c94caacb577af74d/spdk/vhost-user.txt#L61
-@task(help={
-    "num_queues": "Number of virtqueues to create",
-    "size_queue": "Queue depth of virtqueues",
-    "ssd_pci_address": "PCI address of NVMe SSD - else, try autodetect via nvme driver (may fail if ssd already bound)"
-    })
-def setup_vhost_blk_backend(c, huge_mem=4096, num_queues=2, size_queue=512, ssd_pci_address = None):
+@task()
+def setup_vhost_blk_backend(c: Any) -> None:
     """
     Setup virtio-blk spdk backend for vhost target
     """

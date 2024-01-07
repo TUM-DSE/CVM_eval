@@ -4,7 +4,10 @@ from typing import Any
 
 import kernel
 import utils
-from common import warn_nvm_use
+
+from spdk import VHOST_CONTROLLER_NAME
+
+from common import warn_nvm_use, print_and_sudo, err_print
 
 from invoke import task
 
@@ -20,8 +23,8 @@ EVAL_NVME_PATH = "/dev/nvme1n1"
 def build_base_qemu_cmd(
         c: Any,
         ssh_forward_port: int,
-        num_cpus: int = 4,
         num_mem_gb:int = 16,
+        num_cpus: int = 4
         ) -> str:
     return f"{QEMU_BIN} " \
         "-cpu EPYC-v4,host-phys-bits=true " \
@@ -47,8 +50,15 @@ def build_debug_qemu_cmd(
         c: Any,
         kernel_path: str = kernel.KERNEL_PATH,
         extra_kernel_cmdline: str = "",
+        num_mem_gb: int = 16,
+        num_cpus: int = 4
         ) -> str:
-    base_cmd = build_base_qemu_cmd(c, utils.DEFAULT_NATIVE_SSH_FORWARD_PORT)
+    base_cmd = build_base_qemu_cmd(
+            c,
+            utils.DEFAULT_NATIVE_SSH_FORWARD_PORT,
+            num_mem_gb=num_mem_gb,
+            num_cpus=num_cpus
+            )
     # NOTE: root may have to be changed if extra disk is mounted (to /dev/vdb)
     return f"{base_cmd} " \
         f"-kernel '{kernel_path}' " \
@@ -68,11 +78,31 @@ def build_debug_poll_qemu_cmd(
     if not ignore_warning:
         warn_nvm_use(nvme_path)
 
-    base_cmd = build_debug_qemu_cmd(c, extra_kernel_cmdline=f"virtio_blk.num_poll_queues={num_poll_queues}")
+    base_cmd = build_debug_qemu_cmd(c, extra_kernel_cmdline=f"virtio_blk.poll_queues={num_poll_queues}")
     return f"{base_cmd} " \
         "-object iothread,id=iothread0 " \
         f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},cache.direct=on " \
         f"-device virtio-blk,drive=q1,iothread=iothread0,num-queues={num_queues}"
+
+def build_debug_vhost_blk_poll_qemu_cmd(
+        c: Any,
+        num_queues: int = 4,
+        num_poll_queues: int = 2,
+        num_mem_gb: int = 16,
+        num_cpus: int = 4,
+        ) -> str:
+    base_cmd = build_debug_qemu_cmd(
+            c,
+            extra_kernel_cmdline=f"virtio_blk.poll_queues={num_poll_queues}",
+            num_mem_gb=num_mem_gb,
+            num_cpus=num_cpus
+            )
+    return f"{base_cmd} " \
+        f"-object memory-backend-file,id=mem,size={num_mem_gb}G,mem-path=/dev/hugepages,share=on " \
+        "-numa node,memdev=mem " \
+        f"-chardev socket,id=char1,path=/var/tmp/{VHOST_CONTROLLER_NAME} " \
+        f"-device vhost-user-blk-pci,id=blk0,chardev=char1,num-queues={num_queues}"
+
 
 
 # tasks
@@ -92,11 +122,40 @@ def run_debug_virtio_blk_poll_qemu(
     Run native debug QEMU with virtio-blk-pci and poll mode enabled.
     Uses kernel from {kernel.KERNEL_PATH}.
     """
-    qemu_cmd = build_debug_poll_qemu_cmd(
+    qemu_cmd: str = build_debug_poll_qemu_cmd(
             c,
             ignore_warning,
             num_queues,
             num_poll_queues
             )
-    print(qemu_cmd)
-    c.sudo(qemu_cmd, pty=True)
+    print_and_sudo(c, qemu_cmd, pty=True)
+
+
+@task(help={
+    'num_queues': "Number of virtio-blk queues",
+    'num_poll_queues': "Number of virtio-blk poll queues",
+    'num_mem_gb': "Number of GBs of memory",
+    'num_cpus': "Number of CPUs",
+    })
+def run_debug_vhost_blk_poll_qemu(
+        c: Any,
+        num_queues: int = 4,
+        num_poll_queues: int = 2,
+        num_mem_gb: int = 16,
+        num_cpus: int = 4
+        ) -> None:
+    """
+    Run native debug QEMU with vhost-blk-pci and poll mode enabled.
+    """
+    if not os.path.exists(os.path.join(os.sep, "var", "tmp", VHOST_CONTROLLER_NAME)):
+        err_print(f"vhost target not running. run setup_vhost_target first")
+        exit(1)
+    qemu_cmd: str = build_debug_vhost_blk_poll_qemu_cmd(
+            c,
+            num_queues,
+            num_poll_queues,
+            num_mem_gb,
+            num_cpus
+            )
+    print_and_sudo(c, qemu_cmd, pty=True)
+

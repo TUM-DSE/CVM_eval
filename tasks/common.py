@@ -8,7 +8,7 @@ from invoke.runners import Result, Promise
 init(autoreset=True)
 
 # constants
-REPO_DIR = os.path.dirname(os.path.realpath(__file__))
+REPO_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 KERNEL_SRC_DIR = os.path.join(REPO_DIR, "src", "linux")
 KERNEL_PATH = os.path.join(KERNEL_SRC_DIR, "arch", "x86", "boot", "bzImage")
 
