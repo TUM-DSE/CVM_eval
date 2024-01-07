@@ -1,11 +1,35 @@
 #!/usr/bin/env python3
 import os
+from typing import Any
 
+from colorama import init, Back, Fore, Style
+from invoke.runners import Result
+
+init(autoreset=True)
+
+# constants
 REPO_DIR = os.path.dirname(os.path.realpath(__file__))
+KERNEL_SRC_DIR = os.path.join(REPO_DIR, "src", "linux")
+KERNEL_PATH = os.path.join(KERNEL_SRC_DIR, "arch", "x86", "boot", "bzImage")
 
-def print_and_run(c, cmd):
-    print(cmd)
-    c.run(cmd)
+# helpers
+def cmd_print(msg: str) -> None:
+    print(Style.BRIGHT + Back.YELLOW + Fore.BLUE + msg)
+
+def warn_print(msg: str) -> None:
+    print(Style.BRIGHT + Back.YELLOW + Fore.RED + f"WARNING: {msg}")
+
+def print_and_run(c: Any, cmd: str, **kwargs: Any) -> Result:
+    cmd_print(cmd)
+    return c.run(cmd, **kwargs)
+
+def print_and_sudo(c: Any, cmd: str, **kwargs: Any) -> Result:
+    cmd_print(cmd)
+    return c.sudo(cmd, **kwargs)
+
+def warn_nvm_use(nvme_id: str) -> None:
+    warn_print(f"using nvme device {nvme_id}")
+    input("Press Enter to continue...")
 
 
 # private

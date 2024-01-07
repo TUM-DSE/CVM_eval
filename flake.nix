@@ -79,11 +79,16 @@
             buildInputs =
             let
               count-vm-exits = pkgs.callPackage ./nix/bin/count_vm_exits.nix { inherit pkgs; };
+              inv-completion = pkgs.writeScriptBin "inv-completion"
+              ''
+                inv --print-completion-script zsh
+              '';
             in
             with pkgs;
             [
               python3
               python3.pkgs.invoke
+              python3.pkgs.colorama
               just
               fzf
               # add again once upstreamed
@@ -94,6 +99,7 @@
               linux.dev
               gdb
               trace-cmd
+              jq
             ] ++ 
             (
               with self.packages.${system};
@@ -105,6 +111,7 @@
             (
               [
                 count-vm-exits
+                inv-completion
               ]
             );
           };

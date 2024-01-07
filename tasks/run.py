@@ -4,6 +4,7 @@ from typing import Any
 
 import kernel
 import utils
+from common import warn_nvm_use
 
 from invoke import task
 
@@ -14,10 +15,6 @@ QEMU_BIN = "qemu-system-x86_64"
 REPO_DIR = os.path.dirname(os.path.realpath(__file__))
 EVAL_NVME_PATH = "/dev/nvme1n1"
 
-# helpers
-def warn_nvm_use(nvme_path: str) -> None:
-    print(f"WARNING: using nvme device {nvme_path}")
-    input("Press Enter to continue...")
 
 # invariant to any qemu execution
 def build_base_qemu_cmd(
