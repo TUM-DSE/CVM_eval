@@ -15,7 +15,7 @@ VHOST_SOCK = "/var/tmp"
 SPDK_SOCK = "/var/tmp/spdk.sock"
 
 VHOST_CONTROLLER_NAME = "vhost.1"
-# VIRTIO_BLK_CONTROLLER_NAME = "VirtioBlk1"
+VIRTIO_BLK_CONTROLLER_NAME = "VirtioBlk1"
 NVME_CONTROLLER_NAME = "Nvme1"
 
 # helpers
@@ -49,7 +49,6 @@ def _clean_spdk_setup(c):
 
 def _bind_ssd_and_alloc_hugepages(c, huge_mem=4096):
     # get nvme pci address via nvme driver before binding
-    _select_ssd_pci_addr(c)
     print_and_sudo(c, f"HUGEMEM={huge_mem} {SETUP_BIN}")
 
 
@@ -66,12 +65,11 @@ def setup_vhost_blk_ssd(c: Any, cpu_mask="0x1"):
     # see https://spdk.io/doc/bdev.html#bdev_config_virtio_blk
     pci_addr = _select_ssd_pci_addr(c)
 
-    # print_and_sudo(c, f"{RPC_BIN} bdev_virtio_attach_controller --dev-type=blk --trtype pci --traddr {pci_addr} {VIRTIO_BLK_CONTROLLER_NAME}")
-
-    # NOTE: this is the NVMe setup; it does not yet work
-    # maybe we need to create a bdev for the nvme first?
-    nvme_dev_name = print_and_sudo(c, f"{RPC_BIN} bdev_nvme_attach_controller --name {NVME_CONTROLLER_NAME} --trtype PCIe --traddr {pci_addr}").stdout.strip()
-    print_and_sudo(c, f"{RPC_BIN} vhost_create_blk_controller --cpumask {cpu_mask} {VHOST_CONTROLLER_NAME} {nvme_dev_name}")
+    # NOTE: this is the NVMe setup; it does not seem to work w/ poll_queues
+    dev_name: str = print_and_sudo(c, f"{RPC_BIN} bdev_nvme_attach_controller --name {NVME_CONTROLLER_NAME} --trtype PCIe --traddr {pci_addr}").stdout.strip()
+    # can't connect this setup to nvme ssd
+    # dev_name: str = print_and_sudo(c, f"{RPC_BIN} bdev_virtio_attach_controller --dev-type=blk --trtype pci --traddr {pci_addr} {VIRTIO_BLK_CONTROLLER_NAME}").stdout.strip()
+    print_and_sudo(c, f"{RPC_BIN} vhost_create_blk_controller --cpumask {cpu_mask} {VHOST_CONTROLLER_NAME} {dev_name}")
 
 
 @task
@@ -111,9 +109,6 @@ def setup_vhost_blk_backend(c: Any) -> None:
     """
     Setup virtio-blk spdk backend for vhost target
     """
-    if not os.path.exists(os.path.join(os.sep, "var", "tmp", VHOST_CONTROLLER_NAME)):
-        err_print(f"vhost target not running. run setup_vhost_target first")
-        exit(1)
     setup_vhost_blk_ssd(c)
     # print_and_run(c, f""{RPC_BIN} bdev_virtio_attach_controller -b Nvme0 -u 0")
 
