@@ -20,7 +20,7 @@ def cmd_print(msg: str) -> None:
     print(Style.BRIGHT + Back.CYAN + Fore.MAGENTA + msg)
 
 def info_print(msg: str) -> None:
-    print(Style.BRIGHT + Back.CYAN + Fore.BLUE + msg)
+    print(Style.BRIGHT + Back.CYAN + Fore.BLUE + f"INFO: {msg}")
 
 def warn_print(msg: str) -> None:
     print(Style.BRIGHT + Back.CYAN + Fore.LIGHTRED_EX + f"WARNING: {msg}")

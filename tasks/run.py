@@ -252,7 +252,9 @@ def run_sev_virtio_blk_qemu(
     'num_mem_gb': "Number of GBs of memory",
     'num_cpus': "Number of CPUs",
     'rebuild_image': "Rebuild nixos image (also recompiles kernel- takes a while)",
-    'dm_benchmark': "Runs fio on dm devices on top of SSD"
+    'dm_benchmark': "Runs fio on dm devices on top of SSD",
+    'stop_qemu_before_benchmark': "Stops QEMU before running benchmark",
+    'fio_benchmark': "Which fio benchmark to run. Options: all, alat, bw, iops"
     })
 def benchmark_sev_virtio_blk_qemu(
         c: Any,
@@ -261,6 +263,7 @@ def benchmark_sev_virtio_blk_qemu(
         rebuild_image: bool = False,
         dm_benchmark: bool = False,
         stop_qemu_before_benchmark: bool = False,
+        fio_benchmark: str = "all"
         ) -> None:
     """
     Benchmark SEV QEMU with virtio-blk-pci.
@@ -276,23 +279,27 @@ def benchmark_sev_virtio_blk_qemu(
             num_cpus=num_cpus,
             rebuild_image=rebuild_image
             )
+    # pin cpus to cmd
+    qemu_cmd: str = f"taskset -c 4-{4+num_cpus-1} {qemu_cmd}"
     print_and_sudo(c, qemu_cmd, disown=True)
     timeout = 10
     # wait until qemu is ready
     info_print("Waiting for QEMU to start")
-    while print_and_run(c, no_check=True, cmd=f"nc -z localhost {DEFAULT_SSH_FORWARD_PORT}", warn=True).failed:
+    while ssh_vm(c, cmd="exit").failed:
         info_print(f"QEMU not ready yet. {timeout} seconds left")
         time.sleep(1)
         if timeout == 0:
             err_print("QEMU did not start")
             exit(1)
         timeout -= 1
+
     if dm_benchmark:
         fio_filename: str = CRYPTSETUP_TARGET_PATH
         cryptsetup_open_ssd_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, vm_ssd_path=VM_BENCHMARK_SSD_PATH)
+
     else:
         fio_filename: str = VM_BENCHMARK_SSD_PATH
 
-    exec_fio_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, fio_filename=fio_filename)
+    exec_fio_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, fio_filename=fio_filename, fio_benchmark=fio_benchmark)
 
 

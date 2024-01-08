@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import os
+import time
 from typing import Any, Dict
 
-from common import print_and_run, REPO_DIR, print_and_sudo
+from invoke.runners import Result
+
+from common import err_print, print_and_run, REPO_DIR, print_and_sudo
 
 from invoke import task
 
@@ -13,23 +16,34 @@ SSH_KEY = os.path.join(REPO_DIR, "nix", "ssh_key")
 
 # VM internal paths
 VM_BENCHMARK_SSD_PATH = "/dev/vdb"
-CRYPTSETUP_TARGET_PATH = "/dev/mapper/target"
+CRYPTSETUP_TARGET_NAME = "target"
+CRYPTSETUP_TARGET_PATH = f"/dev/mapper/{CRYPTSETUP_TARGET_NAME}"
 
 FIO_VM_JOB_PATH = "/mnt/blk-bm.fio"
+FIO_VM_OUTPUT_PATH = "/mnt/blk-bm.log"
+FIO_HOST_VM_OUTPUT_DIR = os.path.join(REPO_DIR, "inv-fio-logs")
+os.makedirs(FIO_HOST_VM_OUTPUT_DIR, exist_ok=True)
+FIO_POSSIBLE_BENCHMARKS = [
+        "alat",
+        "bw",
+        "iops",
+        "all"
+        ]
 
 # helpers
 # asynchronous only applies if cmd passed
-def ssh_vm(c: Any, ssh_port: int, asynchronous: bool = False, cmd: str = "") -> None:
+def ssh_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, asynchronous: bool = False, cmd: str = "") -> Result:
     ssh_cmd: str = f"ssh -i {SSH_KEY} -o 'StrictHostKeyChecking no' -p {ssh_port} root@localhost"
     # difficulty with multiple commands
     if cmd:
+        ssh_cmd += " -t"
         cmd_log_name: str = cmd.split()[0]
         # see https://stackoverflow.com/a/29172
         if asynchronous:
-            ssh_cmd += f" 'nohup {cmd} > /mnt/{cmd_log_name}.log 2> /mnt/{cmd_log_name}.err < /dev/null &'"
+            ssh_cmd += f" 'tmux new-session -d -s {cmd_log_name}_session \"{cmd}\"'"
         else:
             ssh_cmd += f" '{cmd}'"
-    print_and_run(c, ssh_cmd, pty=True)
+    return print_and_run(c, ssh_cmd, pty=True, warn=True)
 
 # tasks
 @task(help={"ssh_port": "port to connect ssh to"})
@@ -44,21 +58,73 @@ def cryptsetup_open_ssd_in_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, 
     """
     SSH into the VM and cryptsetup open the SSD.
     """
-    ssh_vm(c, ssh_port=ssh_port, cmd=f"yes '' | cryptsetup open {vm_ssd_path} {CRYPTSETUP_TARGET_PATH} no_read_workqueue no_write_workqueue")
+    ssh_vm(c, ssh_port=ssh_port, cmd=f"yes \"\" | cryptsetup open {vm_ssd_path} {CRYPTSETUP_TARGET_NAME} no_read_workqueue no_write_workqueue")
 
 # ssh into VM and exec fio
 @task(help={"ssh_port": "port to connect ssh to",
             "fio_job_path": "path to fio job file in VM",
-            "fio_filename": "filename to which fio writes to"
+            "fio_filename": "filename to which fio writes to",
+            "fio_output_path": "path to fio output file",
+            "fio_benchmark": f"benchmark to run, one of {FIO_POSSIBLE_BENCHMARKS}"
             })
-def exec_fio_in_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, fio_job_path=FIO_VM_JOB_PATH, fio_filename: str = "") -> None:
+def exec_fio_in_vm(
+        c: Any,
+        ssh_port: int = DEFAULT_SSH_FORWARD_PORT,
+        fio_job_path=FIO_VM_JOB_PATH,
+        fio_filename: str = VM_BENCHMARK_SSD_PATH,
+        fio_output_path: str = FIO_VM_OUTPUT_PATH,
+        fio_benchmark: str = "all"
+        ) -> None:
     """
     SSH into the VM and execute fio.
     """
     fio_cmd: str = f"fio {fio_job_path}"
-    if fio_filename:
-        fio_cmd += f" --filename={fio_filename}"
+    fio_cmd += f" --filename={fio_filename}"
+    fio_cmd += f" --output={fio_output_path}"
+
+    if fio_benchmark not in FIO_POSSIBLE_BENCHMARKS:
+        err_print(f"benchmark {fio_benchmark} not in {FIO_POSSIBLE_BENCHMARKS}")
+        exit(1)
+
+    if fio_benchmark == "alat":
+        for bench_id in ["reandread", "randwrite", "read", "write"]:
+            fio_cmd += f" --section=alat\\ {bench_id}"
+    elif fio_benchmark == "bw":
+        for bench_id in ["read", "write"]:
+            fio_cmd += f" --section=bw\\ {bench_id}"
+    elif fio_benchmark == "iops":
+        for bench_id in ["randread", "randwrite", "rwmixread", "rwmixwrite"]:
+            fio_cmd += f" --section=iops\\ {bench_id}"
+
     ssh_vm(c, ssh_port=ssh_port, asynchronous=True, cmd=fio_cmd)
+
+@task
+def await_vm_fio(
+        c: Any,
+        ssh_port: int = DEFAULT_SSH_FORWARD_PORT,
+        fio_vm_output_path: str = FIO_VM_OUTPUT_PATH,
+        fio_host_output_path: str = ""
+        ) -> None:
+    """
+    Wait until fio in VM is done.
+    Thereafter, copy the fio output file from VM to host.
+    """
+    # assert fio is running
+    if ssh_vm(c, ssh_port=ssh_port, cmd="pgrep fio").failed:
+        err_print("fio is not running in VM")
+        exit(1)
+
+    while ssh_vm(c, ssh_port=ssh_port, cmd="pgrep fio").ok:
+        time.sleep(10)
+    
+    if not fio_host_output_path:
+        # write current date time into string
+        fio_host_output_path = os.path.join(FIO_HOST_VM_OUTPUT_DIR, f"fio-{time.strftime('%Y-%m-%d-%H-%M-%S')}.log")
+
+    # copy fio output file from VM to host
+    if print_and_run(c, f"scp -i {SSH_KEY} -o 'StrictHostKeyChecking no' -P {ssh_port} root@localhost:{fio_vm_output_path} {fio_host_output_path}", pty=True, warn=True).failed:
+        err_print("scp failed to copy fio output file from VM to host")
+        exit(1)
 
 
 # clean up
