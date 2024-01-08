@@ -12,6 +12,9 @@ REPO_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 KERNEL_SRC_DIR = os.path.join(REPO_DIR, "src", "linux")
 KERNEL_PATH = os.path.join(KERNEL_SRC_DIR, "arch", "x86", "boot", "bzImage")
 
+BUILD_DIR = os.path.join(REPO_DIR, "build")
+VM_BUILD_DIR = os.path.join(BUILD_DIR, "vm")
+
 # helpers
 def cmd_print(msg: str) -> None:
     print(Style.BRIGHT + Back.CYAN + Fore.MAGENTA + msg)
@@ -36,12 +39,16 @@ def check_fail(r: Any) -> Result:
         exit(1)
     return r
 
-def print_and_run(c: Any, cmd: str, **kwargs: Any) -> Result:
+def print_and_run(c: Any, cmd: str, no_check:bool = False, **kwargs: Any) -> Result:
     cmd_print(cmd)
+    if no_check:
+        return c.run(cmd, **kwargs)
     return check_fail(c.run(cmd, **kwargs))
     
-def print_and_sudo(c: Any, cmd: str, **kwargs: Any) -> Result:
+def print_and_sudo(c: Any, cmd: str, no_check:bool = False, **kwargs: Any) -> Result:
     cmd_print(cmd)
+    if no_check:
+        return c.sudo(cmd, **kwargs)
     return check_fail(c.sudo(cmd, **kwargs))
 
 def warn_nvm_use(nvme_id: str) -> None:

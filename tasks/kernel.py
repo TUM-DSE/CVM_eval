@@ -3,7 +3,7 @@ import os
 from typing import Any
 
 import common
-from common import print_and_run, REPO_DIR, KERNEL_SRC_DIR, KERNEL_PATH
+from common import print_and_run, REPO_DIR, KERNEL_SRC_DIR, KERNEL_PATH, print_and_run
 
 from invoke import task
 
@@ -16,8 +16,7 @@ def run_in_kernel_devshell(c: Any, cmd: str) -> None:
     Runs a command in the kernel development shell.
     """
     devshell_cmd = f"nix develop {REPO_DIR}#linux --command bash -c '{cmd}'"
-    print(devshell_cmd)
-    c.run(devshell_cmd)
+    print_and_run(c, devshell_cmd)
 
 # tasks
 
@@ -59,6 +58,14 @@ def configure_debug_kernel(c: Any) -> None:
               --enable CRYPTO_XTS")
 
 @task
+def configure_sev_kernel(c: Any) -> None:
+    """
+    Configure the kernel for SEV execution.
+    Required for bechmark build.
+    """
+    print_and_run(c, f"cp {KERNEL_SRC_DIR}/nixconfig {KERNEL_SRC_DIR}/.config")
+
+@task
 def build_kernel(c: Any) -> None:
     """
     Builds the kernel with the current set configuration.
@@ -66,4 +73,10 @@ def build_kernel(c: Any) -> None:
     with c.cd(KERNEL_SRC_DIR):
         run_in_kernel_devshell(c, f"yes '' | make -j{NUM_CPUS}")
 
-
+@task
+def clean_kernel(c: Any) -> None:
+    """
+    Cleans the kernel build artefacts.
+    """
+    with c.cd(KERNEL_SRC_DIR):
+        run_in_kernel_devshell(c, "make mrproper")

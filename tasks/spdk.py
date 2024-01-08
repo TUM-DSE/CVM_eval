@@ -47,7 +47,7 @@ def _clean_spdk_setup(c):
     time.sleep(2)
     print_and_sudo(c, f"{SETUP_BIN} reset")
 
-def _bind_ssd_and_alloc_hugepages(c, huge_mem=4096):
+def _bind_ssd_and_alloc_hugepages(c, huge_mem=8192):
     # get nvme pci address via nvme driver before binding
     print_and_sudo(c, f"HUGEMEM={huge_mem} {SETUP_BIN}")
 
@@ -80,10 +80,10 @@ def clean_spdk_setup(c):
     _clean_spdk_setup(c)
 
 @task(help={
-    "huge_mem": "Amount of hugepages to allocate",
+    "huge_mem": "Amount of hugepage mem to allocate (in MB)",
     "cpu_mask": "CPU mask to use for vhost target"
     })
-def setup_vhost_target(c, huge_mem=4096, cpu_mask="0x3"):
+def setup_vhost_target(c, huge_mem=8192, cpu_mask="0x3"):
     """
     Setup vhost target
     """
@@ -114,4 +114,6 @@ def setup_vhost_blk_backend(c: Any) -> None:
 
 @task
 def test_spdk(c) -> None:
-    setup_vhost_blk_virtio_malloc(c)
+    if print_and_run(c, no_check=True, cmd=f"nc -z localhost 2222", hide=True).failed:
+        exit(1)
+        
