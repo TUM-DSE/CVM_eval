@@ -32,7 +32,7 @@ FIO_POSSIBLE_BENCHMARKS = [
 
 # helpers
 # asynchronous only applies if cmd passed
-def ssh_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, asynchronous: bool = False, cmd: str = "") -> Result:
+def ssh_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, asynchronous: bool = False, cmd: str = "", warn: bool = True) -> Result:
     ssh_cmd: str = f"ssh -i {SSH_KEY} -o 'StrictHostKeyChecking no' -p {ssh_port} root@localhost"
     # difficulty with multiple commands
     if cmd:
@@ -40,10 +40,12 @@ def ssh_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, asynchronous: bool 
         cmd_log_name: str = cmd.split()[0]
         # see https://stackoverflow.com/a/29172
         if asynchronous:
-            ssh_cmd += f" 'tmux new-session -d -s {cmd_log_name}_session \"{cmd}\"'"
+            # id based on date time
+            cmd_log_name += f"-{time.strftime('%Y-%m-%d-%H-%M-%S')}"
+            ssh_cmd += f" 'tmux new-session -d -s {cmd_log_name}-session \"{cmd}\"'"
         else:
             ssh_cmd += f" '{cmd}'"
-    return print_and_run(c, ssh_cmd, pty=True, warn=True)
+    return print_and_run(c, ssh_cmd, pty=True, warn=warn)
 
 # tasks
 @task(help={"ssh_port": "port to connect ssh to"})
@@ -58,7 +60,7 @@ def cryptsetup_open_ssd_in_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, 
     """
     SSH into the VM and cryptsetup open the SSD.
     """
-    ssh_vm(c, ssh_port=ssh_port, cmd=f"yes \"\" | cryptsetup open {vm_ssd_path} {CRYPTSETUP_TARGET_NAME} no_read_workqueue no_write_workqueue")
+    ssh_vm(c, ssh_port=ssh_port, cmd=f"yes \"\" | cryptsetup open {vm_ssd_path} {CRYPTSETUP_TARGET_NAME} no_read_workqueue no_write_workqueue", warn=False)
 
 # ssh into VM and exec fio
 @task(help={"ssh_port": "port to connect ssh to",

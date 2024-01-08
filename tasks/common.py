@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import time
 from typing import Any
 
 from colorama import init, Back, Fore, Style
@@ -41,12 +42,14 @@ def check_fail(r: Any) -> Result:
 
 def print_and_run(c: Any, cmd: str, no_check:bool = False, **kwargs: Any) -> Result:
     cmd_print(cmd)
+    time.sleep(1)
     if no_check:
         return c.run(cmd, **kwargs)
     return check_fail(c.run(cmd, **kwargs))
     
 def print_and_sudo(c: Any, cmd: str, no_check:bool = False, **kwargs: Any) -> Result:
     cmd_print(cmd)
+    time.sleep(1)
     if no_check:
         return c.sudo(cmd, **kwargs)
     return check_fail(c.sudo(cmd, **kwargs))
