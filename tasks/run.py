@@ -254,7 +254,7 @@ def run_sev_virtio_blk_qemu(
     'rebuild_image': "Rebuild nixos image (also recompiles kernel- takes a while)",
     'dm_benchmark': "Runs fio on dm devices on top of SSD",
     'stop_qemu_before_benchmark': "Stops QEMU before running benchmark",
-    'fio_benchmark': "Which fio benchmark to run. Options: all, alat, bw, iops"
+    'fio_benchmark': "Which fio benchmark to run. Options: all, alat, bw, iops, <custom>"
     })
 def benchmark_sev_virtio_blk_qemu(
         c: Any,

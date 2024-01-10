@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from invoke.runners import Result
 
-from common import err_print, print_and_run, REPO_DIR, print_and_sudo
+from common import err_print, print_and_run, REPO_DIR, print_and_sudo, warn_print
 
 from invoke import task
 
@@ -85,8 +85,9 @@ def exec_fio_in_vm(
     fio_cmd += f" --output={fio_output_path}"
 
     if fio_benchmark not in FIO_POSSIBLE_BENCHMARKS:
-        err_print(f"benchmark {fio_benchmark} not in {FIO_POSSIBLE_BENCHMARKS}")
-        exit(1)
+        warn_print(f"custom benchmark {fio_benchmark} not in {FIO_POSSIBLE_BENCHMARKS}")
+        warn_print("using custom benchmark 'as is' in `--section`")
+        
 
     if fio_benchmark == "alat":
         for bench_id in ["reandread", "randwrite", "read", "write"]:
@@ -97,6 +98,9 @@ def exec_fio_in_vm(
     elif fio_benchmark == "iops":
         for bench_id in ["randread", "randwrite", "rwmixread", "rwmixwrite"]:
             fio_cmd += f" --section=iops\\ {bench_id}"
+    else:
+        breaked_fio_benchmark = fio_benchmark.replace(' ', '\\ ')
+        fio_cmd += f" --section={breaked_fio_benchmark}"
 
     ssh_vm(c, ssh_port=ssh_port, asynchronous=True, cmd=fio_cmd)
 
