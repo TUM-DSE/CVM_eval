@@ -89,7 +89,9 @@ def exec_fio_in_vm(
         warn_print("using custom benchmark 'as is' in `--section`")
         
 
-    if fio_benchmark == "alat":
+    if fio_benchmark == "all":
+        pass
+    elif fio_benchmark == "alat":
         for bench_id in ["reandread", "randwrite", "read", "write"]:
             fio_cmd += f" --section=alat\\ {bench_id}"
     elif fio_benchmark == "bw":

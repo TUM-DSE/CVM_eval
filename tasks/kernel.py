@@ -57,13 +57,17 @@ def configure_debug_kernel(c: Any) -> None:
               --enable DM_CRYPT \
               --enable CRYPTO_XTS")
 
-@task
-def configure_sev_kernel(c: Any) -> None:
+@task(help={'no_cvm_io': 'Disable CVM_IO in kernel config'})
+def configure_sev_kernel(c: Any, no_cvm_io: bool = False) -> None:
     """
     Configure the kernel for SEV execution.
     Required for bechmark build.
     """
     print_and_run(c, f"cp {KERNEL_SRC_DIR}/nixconfig {KERNEL_SRC_DIR}/.config")
+    if no_cvm_io:
+        with c.cd(KERNEL_SRC_DIR):
+            run_in_kernel_devshell(c, "scripts/config " \
+                    "--disable CVM_IO")
 
 @task
 def build_kernel(c: Any) -> None:

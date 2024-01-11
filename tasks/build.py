@@ -39,12 +39,17 @@ def build_nixos_debug_image(c: Any) -> None:
     print_and_run(c, f"install -D -m600 '{NIX_RESULTS_DIR}/nixos-image/nixos.img' {KERNEL_SRC_DIR}/nixos.ext4")
 
 
-@task(pre=[make_build_dirs, configure_sev_kernel, build_kernel])
-def build_nixos_bechmark_image(c: Any) -> None:
+@task(pre=[make_build_dirs],
+      help={"no_cvm_io": "whether to disable CVM_IO"})
+def build_nixos_bechmark_image(c: Any, no_cvm_io: bool = False) -> None:
     """
     Builds NixOS image w/ SEV Kernel.
     Configurable in {REPO_DIR}/nix/native-guest-config.nix.
     """
+    # configure sev kernel ( not as pretask as we pass param )
+    # configure_sev_kernel, build_kernel
+    configure_sev_kernel(c, no_cvm_io=no_cvm_io)
+    build_kernel(c)
     # update kernel src to allow cached builds (vs building from scratch)
     print_and_run(c, "nix flake lock --update-input kernelSrc")
     print_and_run(c, f"nix build --out-link {IMG_RO_DIR} --builders '' {NIX_BENCHMARK_IMG_RECIPE}")
