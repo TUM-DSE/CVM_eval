@@ -14,14 +14,27 @@ from invoke import task
 # warning: dependency
 from ovmf import UEFI_BIOS_CODE_RW_PATH, UEFI_BIOS_VARS_RW_PATH, make_ovmf
 from build import IMG_RW_PATH, build_nixos_bechmark_image
-from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu
+from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu, await_vm_fio
 
 # constants
 QEMU_BIN = "qemu-system-x86_64"
+DEFAULT_NUM_CPUS = 4
+DEFAULT_NUM_MEM_GB = 16
 
 ## paths
 # NOTE: only available if bound to nvme driver (not vfio-pci)
 EVAL_NVME_PATH = "/dev/nvme1n1"
+
+benchmak_help={
+    'num_mem_gb': f"Number of GBs of memory (default: {DEFAULT_NUM_MEM_GB})",
+    'num_cpus': f"Number of vCPUs (default: {DEFAULT_NUM_CPUS})",
+    'rebuild_image': "Rebuild nixos image (also recompiles kernel- takes a while)",
+    'dm_benchmark': "Runs fio on dm devices on top of SSD",
+    'stop_qemu_before_benchmark': "Stops QEMU before running benchmark",
+    'fio_benchmark': "Which fio benchmark to run. Options: all, alat, bw, iops, <custom>",
+    'ignore_warning': "Ignore warning about using NVMe device",
+    'await_results': "Wait for fio results to be available and copy to host (takes duration of benchmark, can be called separately)"
+    }
 
 
 # build artefacts
@@ -31,8 +44,8 @@ EVAL_NVME_PATH = "/dev/nvme1n1"
 def build_base_qemu_cmd(
         c: Any,
         ssh_forward_port: int,
-        num_mem_gb:int = 16,
-        num_cpus: int = 4
+        num_mem_gb:int = DEFAULT_NUM_MEM_GB,
+        num_cpus: int = DEFAULT_NUM_CPUS
         ) -> str:
     return f"{QEMU_BIN} " \
         "-cpu EPYC-v4,host-phys-bits=true " \
@@ -58,8 +71,8 @@ def build_debug_qemu_cmd(
         c: Any,
         kernel_path: str = kernel.KERNEL_PATH,
         extra_kernel_cmdline: str = "",
-        num_mem_gb: int = 16,
-        num_cpus: int = 4
+        num_mem_gb: int = DEFAULT_NUM_MEM_GB,
+        num_cpus: int = DEFAULT_NUM_CPUS
         ) -> str:
     base_cmd = build_base_qemu_cmd(
             c,
@@ -76,8 +89,8 @@ def build_debug_qemu_cmd(
 
 def build_benchmark_qemu_cmd(
         c: Any,
-        num_mem_gb: int = 16,
-        num_cpus: int = 4,
+        num_mem_gb: int = DEFAULT_NUM_MEM_GB,
+        num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False
         ):
     base_cmd = build_base_qemu_cmd(
@@ -100,8 +113,8 @@ def build_benchmark_qemu_cmd(
 
 def build_sev_qemu_cmd(
         c: Any,
-        num_mem_gb: int = 16,
-        num_cpus: int = 4,
+        num_mem_gb: int = DEFAULT_NUM_MEM_GB,
+        num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False
         ):
     base_cmd = build_benchmark_qemu_cmd(
@@ -116,19 +129,15 @@ def build_sev_qemu_cmd(
         "-object memory-backend-memfd-private,id=ram1,size=16G,share=true " \
         "-object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA"
 
-def build_sev_virtio_blk_qemu_cmd(
-        c: Any,
-        num_mem_gb: int = 16,
-        num_cpus: int = 4,
-        rebuild_image: bool = False,
-        nvme_path: str = EVAL_NVME_PATH
+def add_virtio_blk_nvme_to_qemu_cmd(
+        base_cmd: str,
+        nvme_path: str = EVAL_NVME_PATH,
+        ignore_warning: bool = False
         ):
-    base_cmd = build_sev_qemu_cmd(
-            c,
-            num_mem_gb=num_mem_gb,
-            num_cpus=num_cpus,
-            rebuild_image=rebuild_image
-            )
+
+    if not ignore_warning:
+        warn_nvm_use(nvme_path)
+
     return f"{base_cmd} " \
         f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path} " \
         "-device virtio-blk,drive=q1"
@@ -136,7 +145,7 @@ def build_sev_virtio_blk_qemu_cmd(
 def build_debug_poll_qemu_cmd(
         c: Any,
         ignore_warning: bool = False,
-        num_queues: int = 4,
+        num_queues: int = DEFAULT_NUM_CPUS,
         num_poll_queues: int = 2,
         nvme_path: str = EVAL_NVME_PATH
         ) -> str:
@@ -152,10 +161,10 @@ def build_debug_poll_qemu_cmd(
 
 def build_debug_vhost_blk_poll_qemu_cmd(
         c: Any,
-        num_queues: int = 4,
+        num_queues: int = DEFAULT_NUM_CPUS,
         num_poll_queues: int = 2,
-        num_mem_gb: int = 16,
-        num_cpus: int = 4,
+        num_mem_gb: int = DEFAULT_NUM_MEM_GB,
+        num_cpus: int = DEFAULT_NUM_CPUS,
         ) -> str:
     base_cmd = build_debug_qemu_cmd(
             c,
@@ -181,7 +190,7 @@ def build_debug_vhost_blk_poll_qemu_cmd(
 def run_debug_virtio_blk_poll_qemu(
         c: Any,
         ignore_warning: bool = False,
-        num_queues: int = 4,
+        num_queues: int = DEFAULT_NUM_CPUS,
         num_poll_queues: int = 2
         ) -> None:
     """
@@ -205,10 +214,10 @@ def run_debug_virtio_blk_poll_qemu(
     })
 def run_debug_vhost_blk_poll_qemu(
         c: Any,
-        num_queues: int = 4,
+        num_queues: int = DEFAULT_NUM_CPUS,
         num_poll_queues: int = 2,
-        num_mem_gb: int = 16,
-        num_cpus: int = 4
+        num_mem_gb: int = DEFAULT_NUM_MEM_GB,
+        num_cpus: int = DEFAULT_NUM_CPUS
         ) -> None:
     """
     Run native debug QEMU with vhost-blk-pci and poll mode enabled.
@@ -232,55 +241,47 @@ def run_debug_vhost_blk_poll_qemu(
     })
 def run_sev_virtio_blk_qemu(
         c: Any,
-        num_mem_gb: int = 16,
-        num_cpus: int = 4,
+        num_mem_gb: int = DEFAULT_NUM_MEM_GB,
+        num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False,
         ) -> None:
     """
     Run Qemu SEV guest with virtio-blk-pci to NVMe SSD.
     """
-    qemu_cmd: str = build_sev_virtio_blk_qemu_cmd(
+    base_cmd = build_sev_qemu_cmd(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
             rebuild_image=rebuild_image
+            )
+    qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
+            base_cmd=base_cmd
             )
     print_and_sudo(c, qemu_cmd, pty=True)
 
 
-@task(help={
-    'num_mem_gb': "Number of GBs of memory",
-    'num_cpus': "Number of CPUs",
-    'rebuild_image': "Rebuild nixos image (also recompiles kernel- takes a while)",
-    'dm_benchmark': "Runs fio on dm devices on top of SSD",
-    'stop_qemu_before_benchmark': "Stops QEMU before running benchmark",
-    'fio_benchmark': "Which fio benchmark to run. Options: all, alat, bw, iops, <custom>"
-    })
-def benchmark_sev_virtio_blk_qemu(
+# shared code for sev and native qemu virtio blk nvme benchmarks
+def exec_virtio_blk_nvme_benchmark(
         c: Any,
-        num_mem_gb: int = 16,
-        num_cpus: int = 4,
-        rebuild_image: bool = False,
-        dm_benchmark: bool = False,
-        stop_qemu_before_benchmark: bool = False,
-        fio_benchmark: str = "all"
+        base_cmd: str,
+        dm_benchmark: bool,
+        stop_qemu_before_benchmark: bool,
+        fio_benchmark: str,
+        ignore_warning: bool,
+        num_cpus: int,
+        await_results: bool
         ) -> None:
-    """
-    Benchmark SEV QEMU with virtio-blk-pci.
-    Polling must be enabled in the nixos configuration.
-    """
+    qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
+            base_cmd=base_cmd,
+            ignore_warning=ignore_warning
+            )
+    # pin cpus to cmd
+    qemu_cmd: str = f"taskset -c 4-{4+num_cpus-1} {qemu_cmd}"
+
     if stop_qemu_before_benchmark:
         warn_print("Stopping QEMU")
         stop_qemu(c)
 
-    qemu_cmd: str = build_sev_virtio_blk_qemu_cmd(
-            c,
-            num_mem_gb=num_mem_gb,
-            num_cpus=num_cpus,
-            rebuild_image=rebuild_image
-            )
-    # pin cpus to cmd
-    qemu_cmd: str = f"taskset -c 4-{4+num_cpus-1} {qemu_cmd}"
     print_and_sudo(c, qemu_cmd, disown=True)
     timeout = 10
     # wait until qemu is ready
@@ -302,4 +303,54 @@ def benchmark_sev_virtio_blk_qemu(
 
     exec_fio_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, fio_filename=fio_filename, fio_benchmark=fio_benchmark)
 
+    if await_results:
+        await_vm_fio(c)
 
+
+@task(help=benchmak_help)
+def benchmark_sev_virtio_blk_qemu(
+        c: Any,
+        num_mem_gb: int = DEFAULT_NUM_MEM_GB,
+        num_cpus: int = DEFAULT_NUM_CPUS,
+        rebuild_image: bool = False,
+        dm_benchmark: bool = False,
+        stop_qemu_before_benchmark: bool = False,
+        fio_benchmark: str = "all",
+        ignore_warning: bool = False,
+        await_results: bool = False
+        ) -> None:
+    """
+    Benchmark SEV QEMU with virtio-blk-pci.
+    Polling must be enabled in the nixos configuration.
+    """
+    base_cmd = build_sev_qemu_cmd(
+            c,
+            num_mem_gb=num_mem_gb,
+            num_cpus=num_cpus,
+            rebuild_image=rebuild_image
+            )
+    exec_virtio_blk_nvme_benchmark(c, base_cmd=base_cmd, dm_benchmark=dm_benchmark, stop_qemu_before_benchmark=stop_qemu_before_benchmark, fio_benchmark=fio_benchmark, ignore_warning=ignore_warning, num_cpus=num_cpus, await_results=await_results)
+
+
+@task(help=benchmak_help)
+def benchmark_native_virtio_blk_qemu(
+        c: Any,
+        num_mem_gb: int = DEFAULT_NUM_MEM_GB,
+        num_cpus: int = DEFAULT_NUM_CPUS,
+        rebuild_image: bool = False,
+        dm_benchmark: bool = False,
+        stop_qemu_before_benchmark: bool = False,
+        fio_benchmark: str = "all",
+        ignore_warning: bool = False,
+        await_results: bool = False
+        ) -> None:
+    """
+    Benchmark native QEMU with virtio-blk-pci.
+    """
+    base_cmd: str = build_benchmark_qemu_cmd(
+            c,
+            num_mem_gb=num_mem_gb,
+            num_cpus=num_cpus,
+            rebuild_image=rebuild_image
+            )
+    exec_virtio_blk_nvme_benchmark(c, base_cmd=base_cmd, dm_benchmark=dm_benchmark, stop_qemu_before_benchmark=stop_qemu_before_benchmark, fio_benchmark=fio_benchmark, ignore_warning=ignore_warning, num_cpus=num_cpus, await_results=await_results)
