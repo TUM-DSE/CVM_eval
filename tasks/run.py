@@ -78,11 +78,12 @@ def build_benchmark_qemu_cmd(
         c: Any,
         num_mem_gb: int = 16,
         num_cpus: int = 4,
-        rebuild_image: bool = False
+        rebuild_image: bool = False,
+        port: int = DEFAULT_SSH_FORWARD_PORT
         ):
     base_cmd = build_base_qemu_cmd(
             c,
-            DEFAULT_SSH_FORWARD_PORT,
+            port,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus
             )
@@ -102,13 +103,15 @@ def build_sev_qemu_cmd(
         c: Any,
         num_mem_gb: int = 16,
         num_cpus: int = 4,
-        rebuild_image: bool = False
+        rebuild_image: bool = False,
+        port: int = DEFAULT_SSH_FORWARD_PORT
         ):
     base_cmd = build_benchmark_qemu_cmd(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
-            rebuild_image=rebuild_image
+            rebuild_image=rebuild_image,
+            port=port,
             )
 
     return f"{base_cmd} " \
@@ -116,21 +119,42 @@ def build_sev_qemu_cmd(
         "-object memory-backend-memfd-private,id=ram1,size=16G,share=true " \
         "-object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA"
 
-def build_sev_virtio_blk_qemu_cmd(
+def build_sev_virtio_blk_host_device_qemu_cmd(
         c: Any,
         num_mem_gb: int = 16,
         num_cpus: int = 4,
         rebuild_image: bool = False,
-        nvme_path: str = EVAL_NVME_PATH
+        nvme_path: str = EVAL_NVME_PATH,
+        port: int = DEFAULT_SSH_FORWARD_PORT
         ):
     base_cmd = build_sev_qemu_cmd(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
-            rebuild_image=rebuild_image
+            rebuild_image=rebuild_image,
+            port=port,
             )
     return f"{base_cmd} " \
         f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path} " \
+        "-device virtio-blk,drive=q1"
+
+def build_sev_virtio_blk_file_qemu_cmd(
+        c: Any,
+        blk_file: str,
+        num_mem_gb: int = 16,
+        num_cpus: int = 4,
+        rebuild_image: bool = False,
+        port: int = DEFAULT_SSH_FORWARD_PORT,
+        ):
+    base_cmd = build_sev_qemu_cmd(
+            c,
+            num_mem_gb=num_mem_gb,
+            num_cpus=num_cpus,
+            rebuild_image=rebuild_image,
+            port=port,
+            )
+    return f"{base_cmd} " \
+        f"-blockdev node-name=q1,driver=raw,file.driver=file,file.filename={blk_file} " \
         "-device virtio-blk,drive=q1"
 
 def build_debug_poll_qemu_cmd(
@@ -229,21 +253,52 @@ def run_debug_vhost_blk_poll_qemu(
     'num_mem_gb': "Number of GBs of memory",
     'num_cpus': "Number of CPUs",
     'rebuild_image': "Rebuild nixos image (also recompiles kernel- takes a while)",
+    'port': "SSH port",
     })
 def run_sev_virtio_blk_qemu(
         c: Any,
         num_mem_gb: int = 16,
         num_cpus: int = 4,
         rebuild_image: bool = False,
+        port: int = DEFAULT_SSH_FORWARD_PORT
         ) -> None:
     """
-    Run Qemu SEV guest with virtio-blk-pci to NVMe SSD.
+    Run Qemu SEV guest with virtio-blk-pci.
     """
-    qemu_cmd: str = build_sev_virtio_blk_qemu_cmd(
+    qemu_cmd: str = build_sev_virtio_blk_host_device_qemu_cmd(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
-            rebuild_image=rebuild_image
+            rebuild_image=rebuild_image,
+            port=port
+            )
+    print_and_sudo(c, qemu_cmd, pty=True)
+
+@task(help={
+    'num_mem_gb': "Number of GBs of memory",
+    'num_cpus': "Number of CPUs",
+    'rebuild_image': "Rebuild nixos image (also recompiles kernel- takes a while)",
+    'blk_file': "Path to block device file",
+    'port': "SSH port",
+    })
+def run_sev_virtio_blk_file_qemu(
+        c: Any,
+        blk_file,
+        num_mem_gb: int = 16,
+        num_cpus: int = 4,
+        rebuild_image: bool = False,
+        port: int = DEFAULT_SSH_FORWARD_PORT,
+        ) -> None:
+    """
+    Run Qemu SEV guest with virtio-blk-pci.
+    """
+    qemu_cmd: str = build_sev_virtio_blk_file_qemu_cmd(
+            c,
+            num_mem_gb=num_mem_gb,
+            num_cpus=num_cpus,
+            rebuild_image=rebuild_image,
+            blk_file=blk_file,
+            port=port
             )
     print_and_sudo(c, qemu_cmd, pty=True)
 
