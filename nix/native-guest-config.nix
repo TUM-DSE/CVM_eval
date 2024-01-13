@@ -2,6 +2,7 @@
   pkgs
   , lib
   , kernelSrc
+  , selfpkgs
   , ...
 }:
 let
@@ -30,7 +31,7 @@ in
   [
     # ({ config, ...}: {})
     # ./modules/encrypt.nix
-    ./modules/fio-runner.nix
+    # ./modules/fio-runner.nix
   ];
 
   services.sshd.enable = true;
@@ -71,7 +72,12 @@ in
     vim
     tmux
     fzf
-  ];
+  ] ++
+  ( with selfpkgs;
+    [
+      bm-cpuid
+    ]
+  );
 
   # set kernel
   boot.kernelPackages = lib.mkForce prebuiltLinuxPackages;
@@ -81,11 +87,11 @@ in
 
   boot.kernelParams = [ "virtio_blk.cvm_io_driver_name=virtio2" ];
 
-  programs.fio-runner =
-  {
-    enable = true;
-    encrypted-run = true;
-    bounce-buffer = false;
-  };
+#  programs.fio-runner =
+#  {
+#    enable = true;
+#    encrypted-run = true;
+#    bounce-buffer = false;
+#  };
 
 }

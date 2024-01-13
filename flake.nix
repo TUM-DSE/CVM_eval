@@ -70,6 +70,9 @@
           nixos-image = pkgs.callPackage ./nix/nixos-image.nix { };
           lib.nixpkgsRev = nixpkgs-direct.shortRev;
           # build config from prebuilt kernel
+
+          # benchmarking tools
+          bm-cpuid = pkgs.callPackage ./benchmarks/vm-benchmarks.nix { inherit pkgs; };
         };
 
         devShells = {
@@ -124,6 +127,7 @@
   {
     nixosConfigurations = let
       pkgs = nixpkgs-unstable.legacyPackages.x86_64-linux;
+      selfpkgs = self.packages.x86_64-linux;
     in
     {
       native-guest = nixpkgs-unstable.lib.nixosSystem
@@ -135,6 +139,7 @@
             import ./nix/native-guest-config.nix
             {
               inherit pkgs;
+              inherit selfpkgs;
               inherit (nixpkgs-unstable) lib;
               inherit kernelSrc;
             }
