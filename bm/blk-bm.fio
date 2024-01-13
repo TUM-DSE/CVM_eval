@@ -5,6 +5,7 @@ thread=1
 ioengine=libaio # linux native async-io engine
 norandommap=1 # generate random offset for IO (independent of previous offsets)
 randrepeat=0 # RNG for generating offset is seeded in random manner
+filename=/dev/mapper/target
 
 time_based=1
 runtime=600 # from Intel SPDK BM guidelines
@@ -75,17 +76,17 @@ rwmixread=30
 iodepth=32
 numjobs=4
 
-[iops randread]
+[iops randread] # not this one
 stonewall
 blocksize=4k
 rw=randread
 iodepth=32
 numjobs=4
 
-[iops randwrite]
+[iops randwrite] # makes device-mapper hang
 stonewall
 blocksize=4k
 rw=randwrite
 iodepth=32
-numjobs=4
+numjobs=4 # this with writes probably makes things fail
 
