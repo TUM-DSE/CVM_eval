@@ -32,6 +32,7 @@ benchmark_help={
     'await_results': "Wait for fio results to be available and copy to host (takes duration of benchmark, can be called separately)",
     'rebuild_ovmf': "Rebuild OVMF (sometimes necessary if Qemu doesn\'t boot)",
     'benchmark_tag': "Tag for benchmark (used for naming results file)",
+    'ssd_path': f"Path to SSD device (default: {EVAL_NVME_PATH})",
     }
 
 
@@ -114,7 +115,7 @@ def build_benchmark_qemu_cmd(
         f"-drive if=pflash,format=raw,unit=0,file={UEFI_BIOS_CODE_RW_PATH},readonly=on " \
         f"-drive if=pflash,format=raw,unit=1,file={UEFI_BIOS_VARS_RW_PATH}"
 
-def build_sev_qemu_cmd(
+def build_benchmark_sev_qemu_cmd(
         c: Any,
         num_mem_gb: int = DEFAULT_NUM_MEM_GB,
         num_cpus: int = DEFAULT_NUM_CPUS,
@@ -254,24 +255,27 @@ def run_debug_vhost_blk_poll_qemu(
     'num_mem_gb': "Number of GBs of memory",
     'num_cpus': "Number of CPUs",
     'rebuild_image': "Rebuild nixos image (also recompiles kernel- takes a while)",
+    'ssd_path': "Path to NVMe SSD",
     })
 def run_sev_virtio_blk_qemu(
         c: Any,
         num_mem_gb: int = DEFAULT_NUM_MEM_GB,
         num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False,
+        ssd_path: str = EVAL_NVME_PATH,
         ) -> None:
     """
     Run Qemu SEV guest with virtio-blk-pci to NVMe SSD.
     """
-    base_cmd = build_sev_qemu_cmd(
+    base_cmd = build_benchmark_sev_qemu_cmd(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
             rebuild_image=rebuild_image
             )
     qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
-            base_cmd=base_cmd
+            base_cmd=base_cmd,
+            nvme_path=ssd_path,
             )
     print_and_sudo(c, qemu_cmd, pty=True)
 
@@ -293,7 +297,7 @@ def run_sev_virtio_blk_file_qemu(
     """
     Run Qemu SEV guest with virtio-blk-pci to NVMe SSD.
     """
-    base_cmd = build_sev_qemu_cmd(
+    base_cmd = build_benchmark_sev_qemu_cmd(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
@@ -318,10 +322,12 @@ def exec_virtio_blk_nvme_benchmark(
         num_cpus: int,
         await_results: bool,
         benchmark_tag: str,
+        ssd_path: str,
         ) -> None:
     qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
             base_cmd=base_cmd,
-            ignore_warning=ignore_warning
+            nvme_path=ssd_path,
+            ignore_warning=ignore_warning,
             )
     # pin cpus to cmd
     qemu_cmd: str = f"taskset -c 4-{4+num_cpus-1} {qemu_cmd}"
@@ -368,21 +374,32 @@ def benchmark_sev_virtio_blk_qemu(
         fio_benchmark: str = "all",
         ignore_warning: bool = False,
         await_results: bool = False,
-        benchmark_tag: str = "sev_virtio_blk"
+        benchmark_tag: str = "sev_virtio_blk",
+        ssd_path: str = EVAL_NVME_PATH,
         ) -> None:
     """
     Benchmark SEV QEMU with virtio-blk-pci.
     Polling must be enabled in the nixos configuration.
     """
-    base_cmd = build_sev_qemu_cmd(
+    base_cmd = build_benchmark_sev_qemu_cmd(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
             rebuild_image=rebuild_image,
-            rebuild_ovmf=rebuild_ovmf
+            rebuild_ovmf=rebuild_ovmf,
             )
-    exec_virtio_blk_nvme_benchmark(c, base_cmd=base_cmd, dm_benchmark=dm_benchmark, stop_qemu_before_benchmark=stop_qemu_before_benchmark, fio_benchmark=fio_benchmark, ignore_warning=ignore_warning, num_cpus=num_cpus, await_results=await_results,
-                                   benchmark_tag=benchmark_tag)
+    exec_virtio_blk_nvme_benchmark(
+            c,
+            base_cmd=base_cmd,
+            dm_benchmark=dm_benchmark,
+            stop_qemu_before_benchmark=stop_qemu_before_benchmark,
+            fio_benchmark=fio_benchmark,
+            ignore_warning=ignore_warning,
+            num_cpus=num_cpus,
+            await_results=await_results,
+            benchmark_tag=benchmark_tag,
+            ssd_path=ssd_path,
+            )
 
 
 @task(help=benchmark_help)
@@ -398,6 +415,7 @@ def benchmark_native_virtio_blk_qemu(
         ignore_warning: bool = False,
         await_results: bool = False,
         benchmark_tag: str = "native-virtio-blk",
+        ssd_path: str = EVAL_NVME_PATH,
         ) -> None:
     """
     Benchmark native QEMU with virtio-blk-pci.
@@ -407,7 +425,17 @@ def benchmark_native_virtio_blk_qemu(
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
             rebuild_image=rebuild_image,
-            rebuild_ovmf=rebuild_ovmf
+            rebuild_ovmf=rebuild_ovmf,
             )
-    exec_virtio_blk_nvme_benchmark(c, base_cmd=base_cmd, dm_benchmark=dm_benchmark, stop_qemu_before_benchmark=stop_qemu_before_benchmark, fio_benchmark=fio_benchmark, ignore_warning=ignore_warning, num_cpus=num_cpus, await_results=await_results,
-                                   benchmark_tag=benchmark_tag)
+    exec_virtio_blk_nvme_benchmark(
+            c,
+            base_cmd=base_cmd,
+            dm_benchmark=dm_benchmark,
+            stop_qemu_before_benchmark=stop_qemu_before_benchmark,
+            fio_benchmark=fio_benchmark,
+            ignore_warning=ignore_warning,
+            num_cpus=num_cpus,
+            await_results=await_results,
+            benchmark_tag=benchmark_tag,
+            ssd_path=ssd_path,
+            )
