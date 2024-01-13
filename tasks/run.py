@@ -8,7 +8,7 @@ import utils
 
 from spdk import VHOST_CONTROLLER_NAME
 
-from common import info_print, warn_nvm_use, print_and_run, print_and_sudo, err_print, REPO_DIR, VM_BUILD_DIR, warn_print
+from common import info_print, warn_nvm_use, print_and_run, print_and_sudo, err_print, REPO_DIR, VM_BUILD_DIR, warn_print, EVAL_NVME_PATH
 
 from invoke import task
 # warning: dependency
@@ -29,7 +29,9 @@ benchmark_help={
     'stop_qemu_before_benchmark': "Stops QEMU before running benchmark",
     'fio_benchmark': "Which fio benchmark to run. Options: all, alat, bw, iops, <custom>",
     'ignore_warning': "Ignore warning about using NVMe device",
-    'await_results': "Wait for fio results to be available and copy to host (takes duration of benchmark, can be called separately)"
+    'await_results': "Wait for fio results to be available and copy to host (takes duration of benchmark, can be called separately)",
+    'rebuild_ovmf': "Rebuild OVMF (sometimes necessary if Qemu doesn\'t boot)",
+    'benchmark_tag': "Tag for benchmark (used for naming results file)",
     }
 
 
@@ -88,6 +90,7 @@ def build_benchmark_qemu_cmd(
         num_mem_gb: int = DEFAULT_NUM_MEM_GB,
         num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False,
+        rebuild_ovmf: bool = False,
         port: int = DEFAULT_SSH_FORWARD_PORT
         ):
     base_cmd = build_base_qemu_cmd(
@@ -98,6 +101,9 @@ def build_benchmark_qemu_cmd(
             )
     if rebuild_image or not os.path.exists(IMG_RW_PATH):
         build_nixos_bechmark_image(c)
+
+    if rebuild_ovmf or not (os.path.exists(UEFI_BIOS_CODE_RW_PATH) and os.path.exists(UEFI_BIOS_VARS_RW_PATH)):
+        make_ovmf(c)
     # no need to rebuild ovmf if already exist
     if not (os.path.exists(UEFI_BIOS_CODE_RW_PATH) and os.path.exists(UEFI_BIOS_VARS_RW_PATH)):
         make_ovmf(c)
@@ -113,6 +119,7 @@ def build_sev_qemu_cmd(
         num_mem_gb: int = DEFAULT_NUM_MEM_GB,
         num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False,
+        rebuild_ovmf: bool = False,
         port: int = DEFAULT_SSH_FORWARD_PORT
         ):
     base_cmd = build_benchmark_qemu_cmd(
@@ -120,6 +127,7 @@ def build_sev_qemu_cmd(
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
             rebuild_image=rebuild_image,
+            rebuild_ovmf=rebuild_ovmf,
             port=port
             )
 
@@ -308,7 +316,8 @@ def exec_virtio_blk_nvme_benchmark(
         fio_benchmark: str,
         ignore_warning: bool,
         num_cpus: int,
-        await_results: bool
+        await_results: bool,
+        benchmark_tag: str,
         ) -> None:
     qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
             base_cmd=base_cmd,
@@ -326,7 +335,7 @@ def exec_virtio_blk_nvme_benchmark(
     # wait until qemu is ready
     info_print("Waiting for QEMU to start")
     while ssh_vm(c, cmd="exit").failed:
-        info_print(f"QEMU not ready yet. {timeout} seconds left")
+        info_print(f"QEMU not ready yet. {timeout} tries left")
         time.sleep(1)
         if timeout == 0:
             err_print("QEMU did not start")
@@ -343,20 +352,23 @@ def exec_virtio_blk_nvme_benchmark(
     exec_fio_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, fio_filename=fio_filename, fio_benchmark=fio_benchmark)
 
     if await_results:
-        await_vm_fio(c)
+        await_vm_fio(c, fio_host_output_tag=benchmark_tag)
+        # TODO add tag to fio results
 
 
-@task(help=benchmak_help)
+@task(help=benchmark_help)
 def benchmark_sev_virtio_blk_qemu(
         c: Any,
         num_mem_gb: int = DEFAULT_NUM_MEM_GB,
         num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False,
+        rebuild_ovmf: bool = False,
         dm_benchmark: bool = False,
         stop_qemu_before_benchmark: bool = False,
         fio_benchmark: str = "all",
         ignore_warning: bool = False,
-        await_results: bool = False
+        await_results: bool = False,
+        benchmark_tag: str = "sev_virtio_blk"
         ) -> None:
     """
     Benchmark SEV QEMU with virtio-blk-pci.
@@ -366,22 +378,26 @@ def benchmark_sev_virtio_blk_qemu(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
-            rebuild_image=rebuild_image
+            rebuild_image=rebuild_image,
+            rebuild_ovmf=rebuild_ovmf
             )
-    exec_virtio_blk_nvme_benchmark(c, base_cmd=base_cmd, dm_benchmark=dm_benchmark, stop_qemu_before_benchmark=stop_qemu_before_benchmark, fio_benchmark=fio_benchmark, ignore_warning=ignore_warning, num_cpus=num_cpus, await_results=await_results)
+    exec_virtio_blk_nvme_benchmark(c, base_cmd=base_cmd, dm_benchmark=dm_benchmark, stop_qemu_before_benchmark=stop_qemu_before_benchmark, fio_benchmark=fio_benchmark, ignore_warning=ignore_warning, num_cpus=num_cpus, await_results=await_results,
+                                   benchmark_tag=benchmark_tag)
 
 
-@task(help=benchmak_help)
+@task(help=benchmark_help)
 def benchmark_native_virtio_blk_qemu(
         c: Any,
         num_mem_gb: int = DEFAULT_NUM_MEM_GB,
         num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False,
+        rebuild_ovmf: bool = False,
         dm_benchmark: bool = False,
         stop_qemu_before_benchmark: bool = False,
         fio_benchmark: str = "all",
         ignore_warning: bool = False,
-        await_results: bool = False
+        await_results: bool = False,
+        benchmark_tag: str = "native-virtio-blk",
         ) -> None:
     """
     Benchmark native QEMU with virtio-blk-pci.
@@ -390,6 +406,8 @@ def benchmark_native_virtio_blk_qemu(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
-            rebuild_image=rebuild_image
+            rebuild_image=rebuild_image,
+            rebuild_ovmf=rebuild_ovmf
             )
-    exec_virtio_blk_nvme_benchmark(c, base_cmd=base_cmd, dm_benchmark=dm_benchmark, stop_qemu_before_benchmark=stop_qemu_before_benchmark, fio_benchmark=fio_benchmark, ignore_warning=ignore_warning, num_cpus=num_cpus, await_results=await_results)
+    exec_virtio_blk_nvme_benchmark(c, base_cmd=base_cmd, dm_benchmark=dm_benchmark, stop_qemu_before_benchmark=stop_qemu_before_benchmark, fio_benchmark=fio_benchmark, ignore_warning=ignore_warning, num_cpus=num_cpus, await_results=await_results,
+                                   benchmark_tag=benchmark_tag)

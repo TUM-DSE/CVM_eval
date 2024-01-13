@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from invoke.runners import Result
 
-from common import err_print, print_and_run, REPO_DIR, print_and_sudo, warn_print
+from common import EVAL_NVME_PATH, err_print, print_and_run, REPO_DIR, print_and_sudo, warn_nvm_use, warn_print
 
 from invoke import task
 
@@ -120,7 +120,7 @@ def await_vm_fio(
         c: Any,
         ssh_port: int = DEFAULT_SSH_FORWARD_PORT,
         fio_vm_output_path: str = FIO_VM_OUTPUT_PATH,
-        fio_host_output_path: str = ""
+        fio_host_output_tag: str = ""
         ) -> None:
     """
     Wait until fio in VM is done.
@@ -134,9 +134,12 @@ def await_vm_fio(
     while ssh_vm(c, ssh_port=ssh_port, cmd="pgrep fio").ok:
         time.sleep(10)
     
-    if not fio_host_output_path:
-        # write current date time into string
-        fio_host_output_path = os.path.join(FIO_HOST_VM_OUTPUT_DIR, f"fio-{time.strftime('%Y-%m-%d-%H-%M-%S')}.log")
+    fio_filename = f"fio-{time.strftime('%Y-%m-%d-%H-%M-%S')}.log"
+    if fio_host_output_tag:
+        fio_filename = f"{fio_host_output_tag}-{fio_filename}"
+    # write current date time into string
+    fio_host_output_path = os.path.join(FIO_HOST_VM_OUTPUT_DIR, fio_filename)
+
 
     # copy fio output file from VM to host
     if print_and_run(c, f"scp -i {SSH_KEY} -o 'StrictHostKeyChecking no' -P {ssh_port} root@localhost:{fio_vm_output_path} {fio_host_output_path}", pty=True, warn=True).failed:
@@ -151,3 +154,26 @@ def stop_qemu(c: Any) -> None:
     Stop the QEMU VM.
     """
     print_and_sudo(c, "pkill .qemu-system-x8", warn=True)
+
+# cryptsetup utils
+@task(help={"ssd_path": "Path to SSD"})
+def cryptsetup_crypt_only(
+        c: Any,
+        ssd_path: str = EVAL_NVME_PATH,
+        ) -> None:
+    """
+    Cryptsetup crypt only.
+    """
+    warn_nvm_use(ssd_path)
+    print_and_sudo(c, f"cryptsetup -v -q luksFormat --type luks2 {ssd_path}", warn=True)
+
+@task(help={"ssd_path": "Path to SSD"})
+def cryptsetup_crypt_integrity(
+        c: Any,
+        ssd_path: str = EVAL_NVME_PATH,
+        ) -> None:
+    """
+    Cryptsetup crypt with integrity.
+    """
+    warn_nvm_use(ssd_path)
+    print_and_sudo(c, f"yes '' | cryptsetup -v -q luksFormat --type luks2 --integrity hmac-sha256 {ssd_path}")

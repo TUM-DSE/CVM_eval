@@ -16,6 +16,9 @@ KERNEL_PATH = os.path.join(KERNEL_SRC_DIR, "arch", "x86", "boot", "bzImage")
 BUILD_DIR = os.path.join(REPO_DIR, "build")
 VM_BUILD_DIR = os.path.join(BUILD_DIR, "vm")
 
+# NOTE: only available if bound to nvme driver (not vfio-pci)
+EVAL_NVME_PATH = "/dev/nvme1n1"
+
 # helpers
 def cmd_print(msg: str) -> None:
     print(Style.BRIGHT + Back.CYAN + Fore.MAGENTA + msg)
