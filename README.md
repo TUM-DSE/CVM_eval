@@ -94,3 +94,14 @@ SEV:
 - enabled SME
 - enabled SNP
 - enabled SNP memory coverage ( selects SNP )
+
+
+## Troubleshooting
+
+> I started Qemu, yet the Kernel does not boot
+
+You probably need to rebuild the kernel.
+There are two builds- benchmark and debug build.
+Make sure to first apply the correct kernel config, and then build the kernel.
+
+Also, possibly OVMF is missing or broken. Run an `inv ovmf.*` command to rebuild OVMF.
