@@ -47,6 +47,15 @@ def ssh_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, asynchronous: bool 
             ssh_cmd += f" '{cmd}'"
     return print_and_run(c, ssh_cmd, pty=True, warn=warn)
 
+@task
+def notify_terminal_after_completion(c: Any) -> None:
+    """
+    Notify terminal after completion.
+    """
+    while True:
+        print_and_run(c, "tput bel")
+        time.sleep(1)
+
 # tasks
 @task(help={"ssh_port": "port to connect ssh to"})
 def ssh_vm_pty(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT) -> None:

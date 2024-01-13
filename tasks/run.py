@@ -21,11 +21,7 @@ QEMU_BIN = "qemu-system-x86_64"
 DEFAULT_NUM_CPUS = 4
 DEFAULT_NUM_MEM_GB = 16
 
-## paths
-# NOTE: only available if bound to nvme driver (not vfio-pci)
-EVAL_NVME_PATH = "/dev/nvme1n1"
-
-benchmak_help={
+benchmark_help={
     'num_mem_gb': f"Number of GBs of memory (default: {DEFAULT_NUM_MEM_GB})",
     'num_cpus': f"Number of vCPUs (default: {DEFAULT_NUM_CPUS})",
     'rebuild_image': "Rebuild nixos image (also recompiles kernel- takes a while)",

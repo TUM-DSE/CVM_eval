@@ -8,6 +8,7 @@ from invoke import task
 from common import print_and_run, REPO_DIR, KERNEL_SRC_DIR, KERNEL_PATH, NIX_RESULTS_DIR, VM_BUILD_DIR, BUILD_DIR
 # warning: dependency
 from kernel import build_kernel, configure_debug_kernel, configure_sev_kernel, build_kernel
+from tasks.utils import notify_terminal_after_completion
 
 
 # constants
@@ -40,8 +41,13 @@ def build_nixos_debug_image(c: Any) -> None:
 
 
 @task(pre=[make_build_dirs],
-      help={"no_cvm_io": "whether to disable CVM_IO"})
-def build_nixos_bechmark_image(c: Any, no_cvm_io: bool = False) -> None:
+      help={"no_cvm_io": "disable CVM_IO",
+            "notify": "notify terminal after completion"})
+def build_nixos_bechmark_image(
+        c: Any,
+        no_cvm_io: bool = False,
+        notify: bool = False
+        ) -> None:
     """
     Builds NixOS image w/ SEV Kernel.
     Configurable in {REPO_DIR}/nix/native-guest-config.nix.
@@ -54,6 +60,8 @@ def build_nixos_bechmark_image(c: Any, no_cvm_io: bool = False) -> None:
     print_and_run(c, "nix flake lock --update-input kernelSrc")
     print_and_run(c, f"nix build --out-link {IMG_RO_DIR} --builders '' {NIX_BENCHMARK_IMG_RECIPE}")
     print_and_run(c, f"install -D -m600 {IMG_RO_PATH} {IMG_RW_PATH}")
+    if notify:
+        notify_terminal_after_completion()
 
 @task
 def make_clean(c: Any) -> None:
