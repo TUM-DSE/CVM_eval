@@ -70,6 +70,7 @@ in
     blktrace
     vim
     tmux
+    fzf
   ];
 
   # set kernel
