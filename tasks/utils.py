@@ -32,6 +32,11 @@ FIO_POSSIBLE_BENCHMARKS = [
 
 # helpers
 # asynchronous only applies if cmd passed
+@task(help={
+    "ssh_port": f"port to connect ssh to in lcoalhost (to connect to VM) (default: {DEFAULT_SSH_FORWARD_PORT})",
+    "asynchronous": "whether to run the command asynchronously",
+    "cmd": "command to run in VM (default: empty -> just ssh into VM)",
+    "warn": "whether to warn if command fails"})
 def ssh_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, asynchronous: bool = False, cmd: str = "", warn: bool = True) -> Result:
     ssh_cmd: str = f"ssh -i {SSH_KEY} -o 'StrictHostKeyChecking no' -p {ssh_port} root@localhost"
     # difficulty with multiple commands
@@ -46,6 +51,21 @@ def ssh_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, asynchronous: bool 
         else:
             ssh_cmd += f" '{cmd}'"
     return print_and_run(c, ssh_cmd, pty=True, warn=warn)
+
+@task(help={"ssh_port": "port to connect ssh to",
+            "vm_source_path": "source path to file in VM",
+            "host_target_path": "target path to file in host"})
+def scp_vm_to_host(
+        c: Any,
+        vm_source_path: str,
+        host_target_path: str,
+        ssh_port: int = DEFAULT_SSH_FORWARD_PORT,
+        ) -> None:
+    """
+    SCP from VM to host.
+    """
+    scp_cmd: str = f"scp -i {SSH_KEY} -o 'StrictHostKeyChecking no' -P {ssh_port} root@localhost:{vm_source_path} {host_target_path}"
+    print_and_run(c, scp_cmd)
 
 @task
 def notify_terminal_after_completion(c: Any) -> None:
@@ -167,13 +187,32 @@ def cryptsetup_crypt_only(
     warn_nvm_use(ssd_path)
     print_and_sudo(c, f"cryptsetup -v -q luksFormat --type luks2 {ssd_path}", warn=True)
 
-@task(help={"ssd_path": "Path to SSD"})
+@task(help={"ssd_path": "Path to SSD",
+            "integrity": "Integrity mode, one of {aead, hmac-sha256}"})
 def cryptsetup_crypt_integrity(
         c: Any,
+        integrity: str = "aead",
         ssd_path: str = EVAL_NVME_PATH,
         ) -> None:
     """
     Cryptsetup crypt with integrity.
     """
+    crypt_cmd = f"cryptsetup -v -q luksFormat --type luks2 --integrity {integrity} {ssd_path}"
+    if integrity == "aead":
+        crypt_cmd += " --cipher aes-gcm-random --key-size 256"
     warn_nvm_use(ssd_path)
-    print_and_sudo(c, f"yes '' | cryptsetup -v -q luksFormat --type luks2 --integrity hmac-sha256 {ssd_path}")
+    print_and_sudo(c, f"yes '' | sudo {crypt_cmd}", pty=True, warn=True)
+
+
+@task
+def ramdisk_setup(c: Any) -> None:
+    """
+    Setup ramdisk.
+    Run corresponding Qemu with:
+    ```
+    inv run.run-sev-virtio-blk-file-qemu --blk-file=/mnt/tmpfs/file1GB --port=3333
+    ```
+    """
+    print_and_sudo(c, "mkdir -p /mnt/tmpfs")
+    print_and_sudo(c, "mount -t tmpfs -o size=1G tmpfs /mnt/tmpfs")
+    print_and_sudo(c, "dd if=/dev/zero of=/mnt/tmpfs/file1GB bs=1M count=1024")

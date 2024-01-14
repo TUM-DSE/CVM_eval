@@ -251,6 +251,35 @@ def run_debug_vhost_blk_poll_qemu(
             )
     print_and_sudo(c, qemu_cmd, pty=True)
 
+
+@task(help={
+    'num_mem_gb': "Number of GBs of memory",
+    'num_cpus': "Number of CPUs",
+    'rebuild_image': "Rebuild nixos image (also recompiles kernel- takes a while)",
+    'rebuild_ovmf': "Rebuild OVMF",
+    'ssd_path': "Path to NVMe SSD",
+    })
+def run_native_virtio_blk_qemu(
+        c: Any,
+        num_mem_gb: int = DEFAULT_NUM_MEM_GB,
+        num_cpus: int = DEFAULT_NUM_CPUS,
+        rebuild_image: bool = False,
+        rebuild_ovmf: bool = False,
+        ssd_path: str = EVAL_NVME_PATH,
+        ) -> None:
+    """
+    Run native QEMU with virtio-blk-pci.
+    """
+    base_cmd: str = build_benchmark_qemu_cmd(
+            c,
+            num_mem_gb=num_mem_gb,
+            num_cpus=num_cpus,
+            rebuild_image=rebuild_image,
+            rebuild_ovmf=rebuild_ovmf,
+            )
+    qemu_cmd = add_virtio_blk_nvme_to_qemu_cmd(base_cmd, ssd_path)
+    print_and_sudo(c, qemu_cmd, pty=True)
+
 @task(help={
     'num_mem_gb': "Number of GBs of memory",
     'num_cpus': "Number of CPUs",
@@ -344,7 +373,7 @@ def exec_virtio_blk_nvme_benchmark(
         info_print(f"QEMU not ready yet. {timeout} tries left")
         time.sleep(1)
         if timeout == 0:
-            err_print("QEMU did not start")
+            err_print("VM did not start. Try rebuilding OVMF, Kernel, or Image.")
             exit(1)
         timeout -= 1
 
