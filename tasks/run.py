@@ -20,6 +20,7 @@ from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_o
 QEMU_BIN = "qemu-system-x86_64"
 DEFAULT_NUM_CPUS = 4
 DEFAULT_NUM_MEM_GB = 16
+DEFAULT_QMP_SOCKET_PATH = "/tmp/qmp-sock"
 
 benchmark_help={
     'num_mem_gb': f"Number of GBs of memory (default: {DEFAULT_NUM_MEM_GB})",
@@ -44,7 +45,8 @@ def build_base_qemu_cmd(
         c: Any,
         ssh_forward_port: int,
         num_mem_gb:int = DEFAULT_NUM_MEM_GB,
-        num_cpus: int = DEFAULT_NUM_CPUS
+        num_cpus: int = DEFAULT_NUM_CPUS,
+        qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH
         ) -> str:
     return f"{QEMU_BIN} " \
         "-cpu EPYC-v4,host-phys-bits=true " \
@@ -58,7 +60,8 @@ def build_base_qemu_cmd(
         "-device virtio-serial " \
         "-chardev stdio,mux=on,id=char0,signal=off " \
         "-mon chardev=char0,mode=readline " \
-        "-device virtconsole,chardev=char0,id=cvmio,nr=0"
+        "-device virtconsole,chardev=char0,id=cvmio,nr=0 " \
+        f"-qmp unix:{qmp_socket_path},server=on,wait=off"
 
 
 
@@ -92,13 +95,15 @@ def build_benchmark_qemu_cmd(
         num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False,
         rebuild_ovmf: bool = False,
-        port: int = DEFAULT_SSH_FORWARD_PORT
+        port: int = DEFAULT_SSH_FORWARD_PORT,
+        qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH
         ):
     base_cmd = build_base_qemu_cmd(
             c,
             port,
             num_mem_gb=num_mem_gb,
-            num_cpus=num_cpus
+            num_cpus=num_cpus,
+            qmp_socket_path=qmp_socket_path
             )
     if rebuild_image or not os.path.exists(IMG_RW_PATH):
         build_nixos_bechmark_image(c)
@@ -121,7 +126,8 @@ def build_benchmark_sev_qemu_cmd(
         num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False,
         rebuild_ovmf: bool = False,
-        port: int = DEFAULT_SSH_FORWARD_PORT
+        port: int = DEFAULT_SSH_FORWARD_PORT,
+        qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH
         ):
     base_cmd = build_benchmark_qemu_cmd(
             c,
@@ -129,7 +135,8 @@ def build_benchmark_sev_qemu_cmd(
             num_cpus=num_cpus,
             rebuild_image=rebuild_image,
             rebuild_ovmf=rebuild_ovmf,
-            port=port
+            port=port,
+            qmp_socket_path=qmp_socket_path
             )
 
     return f"{base_cmd} " \
@@ -285,6 +292,7 @@ def run_native_virtio_blk_qemu(
     'num_cpus': "Number of CPUs",
     'rebuild_image': "Rebuild nixos image (also recompiles kernel- takes a while)",
     'ssd_path': "Path to NVMe SSD",
+    'qmp_socket_path': "Path to QMP socket",
     })
 def run_sev_virtio_blk_qemu(
         c: Any,
@@ -292,6 +300,7 @@ def run_sev_virtio_blk_qemu(
         num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False,
         ssd_path: str = EVAL_NVME_PATH,
+        qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH,
         ) -> None:
     """
     Run Qemu SEV guest with virtio-blk-pci to NVMe SSD.
@@ -300,7 +309,8 @@ def run_sev_virtio_blk_qemu(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
-            rebuild_image=rebuild_image
+            rebuild_image=rebuild_image,
+            qmp_socket_path=qmp_socket_path,
             )
     qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
             base_cmd=base_cmd,
@@ -352,6 +362,8 @@ def exec_virtio_blk_nvme_benchmark(
         await_results: bool,
         benchmark_tag: str,
         ssd_path: str,
+        pin: bool,
+        qmp_socket_path: str,
         ) -> None:
     qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
             base_cmd=base_cmd,
@@ -376,6 +388,11 @@ def exec_virtio_blk_nvme_benchmark(
             err_print("VM did not start. Try rebuilding OVMF, Kernel, or Image.")
             exit(1)
         timeout -= 1
+
+    if pin:
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        print_and_sudo(c, f"python3 {script_dir}/pin.py {qmp_socket_path}")
+
 
     if dm_benchmark:
         fio_filename: str = CRYPTSETUP_TARGET_PATH
@@ -405,6 +422,8 @@ def benchmark_sev_virtio_blk_qemu(
         await_results: bool = False,
         benchmark_tag: str = "sev_virtio_blk",
         ssd_path: str = EVAL_NVME_PATH,
+        pin: bool = True,
+        qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH,
         ) -> None:
     """
     Benchmark SEV QEMU with virtio-blk-pci.
@@ -416,6 +435,7 @@ def benchmark_sev_virtio_blk_qemu(
             num_cpus=num_cpus,
             rebuild_image=rebuild_image,
             rebuild_ovmf=rebuild_ovmf,
+            qmp_socket_path=qmp_socket_path,
             )
     exec_virtio_blk_nvme_benchmark(
             c,
@@ -428,6 +448,8 @@ def benchmark_sev_virtio_blk_qemu(
             await_results=await_results,
             benchmark_tag=benchmark_tag,
             ssd_path=ssd_path,
+            pin=pin,
+            qmp_socket_path=qmp_socket_path,
             )
 
 
@@ -445,6 +467,8 @@ def benchmark_native_virtio_blk_qemu(
         await_results: bool = False,
         benchmark_tag: str = "native-virtio-blk",
         ssd_path: str = EVAL_NVME_PATH,
+        pin: bool = True,
+        qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH,
         ) -> None:
     """
     Benchmark native QEMU with virtio-blk-pci.
@@ -455,6 +479,7 @@ def benchmark_native_virtio_blk_qemu(
             num_cpus=num_cpus,
             rebuild_image=rebuild_image,
             rebuild_ovmf=rebuild_ovmf,
+            qmp_socket_path=qmp_socket_path,
             )
     exec_virtio_blk_nvme_benchmark(
             c,
@@ -467,4 +492,6 @@ def benchmark_native_virtio_blk_qemu(
             await_results=await_results,
             benchmark_tag=benchmark_tag,
             ssd_path=ssd_path,
+            pin=pin,
+            qmp_socket_path=qmp_socket_path,
             )

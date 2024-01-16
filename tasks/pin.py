@@ -1,0 +1,60 @@
+import time
+import sys
+import os
+
+from subprocess import call
+from qmp import QEMUMonitorProtocol
+
+# Adopted from https://github.com/64kramsystem/qemu-pinning/wiki/Python-pinning-script
+
+def cpu_pin(qmp_sock, cpu_base=4):
+    if not os.path.exists(qmp_sock):
+        print(f'{qmp_sock} does not exist')
+        return
+
+    qmp = QEMUMonitorProtocol(qmp_sock)
+
+    while True:
+        try:
+            print("Connecting to {}".format(sys.argv[1]))
+            qmp.connect()
+            break
+        except Exception as e:
+            print('Failed to connect to QEMU: {}'.format(e))
+            time.sleep(0.1)
+
+    print('Pin vCPUs')
+    num_cpus = len(qmp.command('query-cpus-fast'))
+    for cpu in qmp.command('query-cpus-fast'):
+        tid = cpu['thread-id']
+        cpuidx = cpu['cpu-index']
+        try:
+            cmd = ['taskset', '-pc', str(cpuidx+cpu_base), str(tid)]
+            call(cmd)
+        except OSError as e:
+            print('Failed to pin vCPU{}: {}'.format(cpuidx, e))
+
+    num_iothreads = len(qmp.command('query-iothreads'))
+    if num_iothreads == 0:
+        print('No iothreads found')
+        return
+    print('Pin iothreads')
+    for i, cpu in enumerate(qmp.command('query-iothreads')):
+        tid = cpu['thread-id']
+        try:
+            cmd = ['taskset', '-pc', str(cpu_base + num_cpus + i), str(tid)]
+            call(cmd)
+        except OSError as e:
+            print('Failed to pin vCPU{}: {}'.format(cpuidx, e))
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print('Usage: {} <qemu-socket>'.format(sys.argv[0]))
+        sys.exit(1)
+    sock = sys.argv[1]
+    cpu_base = 4
+    if len(sys.argv) == 3:
+        cpu_base = int(sys.argv[2])
+    cpu_pin(sock, cpu_base)
+

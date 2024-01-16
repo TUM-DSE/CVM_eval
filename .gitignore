@@ -1,6 +1,10 @@
 *.iso
 .ipynb_checkpoints/
 archive/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 *.luks
 
