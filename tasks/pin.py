@@ -14,14 +14,18 @@ def cpu_pin(qmp_sock, cpu_base=4):
 
     qmp = QEMUMonitorProtocol(qmp_sock)
 
+    count = 0
     while True:
         try:
+            count += 1
             print("Connecting to {}".format(sys.argv[1]))
             qmp.connect()
             break
         except Exception as e:
             print('Failed to connect to QEMU: {}'.format(e))
             time.sleep(0.1)
+            if count >= 100:
+                exit(1)
 
     print('Pin vCPUs')
     num_cpus = len(qmp.command('query-cpus-fast'))
@@ -33,6 +37,7 @@ def cpu_pin(qmp_sock, cpu_base=4):
             call(cmd)
         except OSError as e:
             print('Failed to pin vCPU{}: {}'.format(cpuidx, e))
+            exit(1)
 
     num_iothreads = len(qmp.command('query-iothreads'))
     if num_iothreads == 0:
@@ -46,6 +51,7 @@ def cpu_pin(qmp_sock, cpu_base=4):
             call(cmd)
         except OSError as e:
             print('Failed to pin vCPU{}: {}'.format(cpuidx, e))
+            exit(1)
 
 
 if __name__ == '__main__':
