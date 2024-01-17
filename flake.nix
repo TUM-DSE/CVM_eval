@@ -89,6 +89,7 @@
             in
             with pkgs;
             [
+              # tasks
               python3
               python3.pkgs.invoke
               python3.pkgs.colorama
@@ -103,6 +104,12 @@
               gdb
               trace-cmd
               jq
+
+              # fio-plotters
+              python3.pkgs.click
+              python3.pkgs.seaborn
+              python3.pkgs.pandas
+              python3.pkgs.binary
             ] ++ 
             (
               with self.packages.${system};
