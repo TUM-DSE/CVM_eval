@@ -187,6 +187,17 @@ def stop_qemu(c: Any,
         ssh_vm(c, ssh_port=ssh_port, cmd="poweroff", warn=True)
 
 # cryptsetup utils
+@task(help={"ssd_path": "Path to SSD",
+            "crypt_name": "Name of cryptsetup target"})
+def cryptsetup_open(
+        c: Any,
+        ssd_path: str = EVAL_NVME_PATH,
+        crypt_name: str = CRYPTSETUP_TARGET_NAME) -> None:
+    """
+    Cryptsetup open SSD to target.
+    """
+    print_and_sudo(c, f"cryptsetup open {ssd_path} {crypt_name} no_read_workqueue no_write_workqueue", warn=True)
+
 @task(help={"ssd_path": "Path to SSD"})
 def cryptsetup_crypt_only(
         c: Any,
