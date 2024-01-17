@@ -359,7 +359,9 @@ def exec_virtio_blk_nvme_benchmark(
             ignore_warning=ignore_warning,
             )
     # pin cpus to cmd
-    qemu_cmd: str = f"taskset -c 4-{4+num_cpus-1} {qemu_cmd}"
+    # qemu_cmd: str = f"taskset -c 4-{4+num_cpus-1} {qemu_cmd}"
+    # gives one cpu extra- however, we need an extra cpu for qemu IMO
+    qemu_cmd: str = f"taskset -c 4-{4+num_cpus} {qemu_cmd}"
 
     if stop_qemu_before_benchmark:
         warn_print("Stopping QEMU")

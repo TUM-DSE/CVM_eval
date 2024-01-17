@@ -36,8 +36,9 @@ FIO_POSSIBLE_BENCHMARKS = [
     "ssh_port": f"port to connect ssh to in lcoalhost (to connect to VM) (default: {DEFAULT_SSH_FORWARD_PORT})",
     "asynchronous": "whether to run the command asynchronously",
     "cmd": "command to run in VM (default: empty -> just ssh into VM)",
-    "warn": "whether to warn if command fails"})
-def ssh_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, asynchronous: bool = False, cmd: str = "", warn: bool = True) -> Result:
+    "warn": "whether to warn if command fails",
+    "hide": "whether to hide output of command"})
+def ssh_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, asynchronous: bool = False, cmd: str = "", warn: bool = True, hide:bool = False) -> Result:
     ssh_cmd: str = f"ssh -i {SSH_KEY} -o 'StrictHostKeyChecking no' -p {ssh_port} root@localhost"
     # difficulty with multiple commands
     if cmd:
@@ -50,7 +51,7 @@ def ssh_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, asynchronous: bool 
             ssh_cmd += f" 'tmux new-session -d -s {cmd_log_name}-session \"{cmd}\"'"
         else:
             ssh_cmd += f" '{cmd}'"
-    return print_and_run(c, ssh_cmd, pty=True, warn=warn)
+    return print_and_run(c, ssh_cmd, pty=True, warn=warn, hide=hide)
 
 @task(help={"ssh_port": "port to connect ssh to",
             "vm_source_path": "source path to file in VM",
@@ -104,7 +105,8 @@ def exec_fio_in_vm(
         fio_job_path=FIO_VM_JOB_PATH,
         fio_filename: str = VM_BENCHMARK_SSD_PATH,
         fio_output_path: str = FIO_VM_OUTPUT_PATH,
-        fio_benchmark: str = "all"
+        fio_benchmark: str = "all",
+        fio_output_format: str = "json"
         ) -> None:
     """
     SSH into the VM and execute fio.
@@ -112,6 +114,7 @@ def exec_fio_in_vm(
     fio_cmd: str = f"fio {fio_job_path}"
     fio_cmd += f" --filename={fio_filename}"
     fio_cmd += f" --output={fio_output_path}"
+    fio_cmd += f" --output-format={fio_output_format}"
 
     if fio_benchmark not in FIO_POSSIBLE_BENCHMARKS:
         warn_print(f"custom benchmark {fio_benchmark} not in {FIO_POSSIBLE_BENCHMARKS}")
@@ -147,11 +150,11 @@ def await_vm_fio(
     Thereafter, copy the fio output file from VM to host.
     """
     # assert fio is running
-    if ssh_vm(c, ssh_port=ssh_port, cmd="pgrep fio").failed:
+    if ssh_vm(c, ssh_port=ssh_port, cmd="pgrep fio", hide=True).failed:
         err_print("fio is not running in VM")
         exit(1)
 
-    while ssh_vm(c, ssh_port=ssh_port, cmd="pgrep fio").ok:
+    while ssh_vm(c, ssh_port=ssh_port, cmd="pgrep fio", hide=True).ok:
         time.sleep(10)
     
     fio_filename = f"fio-{time.strftime('%Y-%m-%d-%H-%M-%S')}.log"
@@ -185,7 +188,7 @@ def cryptsetup_crypt_only(
     Cryptsetup crypt only.
     """
     warn_nvm_use(ssd_path)
-    print_and_sudo(c, f"cryptsetup -v -q luksFormat --type luks2 {ssd_path}", warn=True)
+    print_and_sudo(c, f"yes '' | sudo cryptsetup -v -q luksFormat --type luks2 {ssd_path}", warn=True)
 
 @task(help={"ssd_path": "Path to SSD",
             "integrity": "Integrity mode, one of {aead, hmac-sha256}"})
