@@ -171,12 +171,20 @@ def await_vm_fio(
 
 
 # clean up
-@task
-def stop_qemu(c: Any) -> None:
+@task(help={"ssh_port": "port to connect ssh to",
+            "kill_qemu": "kill qemu process"})
+def stop_qemu(c: Any,
+              ssh_port: int = DEFAULT_SSH_FORWARD_PORT,
+              kill_qemu: bool = False
+              ) -> None:
     """
     Stop the QEMU VM.
+    By default, connects to the given ssh_port, and shuts the qemu down.
     """
-    print_and_sudo(c, "pkill .qemu-system-x8", warn=True)
+    if kill_qemu:
+        print_and_sudo(c, "pkill .qemu-system-x8", warn=True)
+    else:
+        ssh_vm(c, ssh_port=ssh_port, cmd="poweroff", warn=True)
 
 # cryptsetup utils
 @task(help={"ssd_path": "Path to SSD"})
