@@ -68,6 +68,21 @@ def scp_vm_to_host(
     scp_cmd: str = f"scp -i {SSH_KEY} -o 'StrictHostKeyChecking no' -P {ssh_port} root@localhost:{vm_source_path} {host_target_path}"
     print_and_run(c, scp_cmd)
 
+@task(help={"ssh_port": "port to connect ssh to",
+            "vm_target_path": "target path to file in VM",
+            "host_source_path": "source path to file in host"})
+def scp_host_to_vm(
+        c: Any,
+        vm_target_path: str,
+        host_source_path: str,
+        ssh_port: int = DEFAULT_SSH_FORWARD_PORT,
+        ) -> None:
+    """
+    SCP from host to VM.
+    """
+    scp_cmd: str = f"scp -i {SSH_KEY} -o 'StrictHostKeyChecking no' -P {ssh_port} {host_source_path} root@localhost:{vm_target_path}"
+    print_and_run(c, scp_cmd)
+
 @task
 def notify_terminal_after_completion(c: Any) -> None:
     """
