@@ -147,15 +147,35 @@ def build_benchmark_sev_qemu_cmd(
 def add_virtio_blk_nvme_to_qemu_cmd(
         base_cmd: str,
         nvme_path: str = EVAL_NVME_PATH,
-        ignore_warning: bool = False
+        ignore_warning: bool = False,
+        iothreads: bool = True,
+        aio: str = "threads", # threads, native, io_uring
         ):
 
     if not ignore_warning:
         warn_nvm_use(nvme_path)
 
-    return f"{base_cmd} " \
-        f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path} " \
-        "-device virtio-blk,drive=q1"
+    if len(aio) > 0 and not iothreads:
+        # not implemented
+        warn_print("aio is enabled only with iothreads")
+
+    if iothreads:
+        if len(aio) > 0:
+            cmd = f"{base_cmd} " \
+                f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},file.aio={aio},cache.direct=true " \
+                "-device virtio-blk,drive=q1,iothread=iothread0 " \
+                "-object iothread,id=iothread0 "
+        else:
+            cmd = f"{base_cmd} " \
+                f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path} " \
+                "-device virtio-blk,drive=q1,iothread=iothread0 " \
+                "-object iothread,id=iothread0 "
+    else:
+        cmd = f"{base_cmd} " \
+            f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path} " \
+            "-device virtio-blk,drive=q1 "
+
+    return cmd
 
 def add_virtio_blk_file_to_qemu_cmd(
         base_cmd: str,
@@ -364,16 +384,26 @@ def exec_virtio_blk_nvme_benchmark(
         ssd_path: str,
         pin: bool,
         qmp_socket_path: str,
+        iothreads: bool,
+        aio: str,
+        noexec: bool,
         ) -> None:
     qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
             base_cmd=base_cmd,
             nvme_path=ssd_path,
             ignore_warning=ignore_warning,
+            iothreads=iothreads,
+            aio=aio,
             )
     # pin cpus to cmd
     # qemu_cmd: str = f"taskset -c 4-{4+num_cpus-1} {qemu_cmd}"
     # gives one cpu extra- however, we need an extra cpu for qemu IMO
-    qemu_cmd: str = f"taskset -c 4-{4+num_cpus} {qemu_cmd}"
+    if pin:
+        # pin qemu threads to 8+num_cpus+1(io_thread)
+        # (vcpu will be pineed 8-(8+num_cpus-1)
+        qemu_cmd: str = f"taskset -c {8+num_cpus+1} {qemu_cmd}"
+    else:
+        qemu_cmd: str = f"taskset -c 8-{8+num_cpus} {qemu_cmd}"
 
     if stop_qemu_before_benchmark:
         warn_print("Stopping QEMU")
@@ -403,6 +433,9 @@ def exec_virtio_blk_nvme_benchmark(
     else:
         fio_filename: str = VM_BENCHMARK_SSD_PATH
 
+    if noexec:
+        return
+
     exec_fio_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, fio_filename=fio_filename, fio_benchmark=fio_benchmark)
 
     if await_results:
@@ -426,6 +459,9 @@ def benchmark_sev_virtio_blk_qemu(
         ssd_path: str = EVAL_NVME_PATH,
         pin: bool = True,
         qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH,
+        iothreads: bool = True,
+        aio: str = "threads",
+        noexec: bool = False,
         ) -> None:
     """
     Benchmark SEV QEMU with virtio-blk-pci.
@@ -452,6 +488,9 @@ def benchmark_sev_virtio_blk_qemu(
             ssd_path=ssd_path,
             pin=pin,
             qmp_socket_path=qmp_socket_path,
+            iothreads=iothreads,
+            aio=aio,
+            noexec=noexec,
             )
 
 
@@ -471,6 +510,9 @@ def benchmark_native_virtio_blk_qemu(
         ssd_path: str = EVAL_NVME_PATH,
         pin: bool = True,
         qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH,
+        iothreads: bool = True,
+        aio: str = "threads",
+        noexec: bool = False,
         ) -> None:
     """
     Benchmark native QEMU with virtio-blk-pci.
@@ -496,4 +538,7 @@ def benchmark_native_virtio_blk_qemu(
             ssd_path=ssd_path,
             pin=pin,
             qmp_socket_path=qmp_socket_path,
+            iothreads=iothreads,
+            aio=aio,
+            noexec=noexec,
             )
