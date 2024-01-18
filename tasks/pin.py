@@ -7,7 +7,7 @@ from qmp import QEMUMonitorProtocol
 
 # Adopted from https://github.com/64kramsystem/qemu-pinning/wiki/Python-pinning-script
 
-def cpu_pin(qmp_sock, cpu_base=4):
+def cpu_pin(qmp_sock, cpu_base=8):
     if not os.path.exists(qmp_sock):
         print(f'[PIN] {qmp_sock} does not exist')
         return
@@ -59,7 +59,7 @@ if __name__ == '__main__':
         print('[PIN] Usage: {} <qemu-socket>'.format(sys.argv[0]))
         sys.exit(1)
     sock = sys.argv[1]
-    cpu_base = 4
+    cpu_base = 8
     if len(sys.argv) == 3:
         cpu_base = int(sys.argv[2])
     cpu_pin(sock, cpu_base)
