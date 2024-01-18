@@ -50,14 +50,14 @@ stonewall
 blocksize=128k
 rw=read
 iodepth=128
-numjobs=1
+numjobs=4
 
 [bw write]
 stonewall
 rw=write
 blocksize=128k
 iodepth=128
-numjobs=1
+numjobs=4
 
 
 [iops rwmixread]
