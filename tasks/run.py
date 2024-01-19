@@ -158,6 +158,8 @@ def add_virtio_blk_nvme_to_qemu_cmd(
     if len(aio) > 0 and not iothreads:
         # not implemented
         warn_print("aio is enabled only with iothreads")
+    if aio != "threads" and aio != "native" and aio != "io_uring":
+        warn_print(f"aio must be either of threads, native, io_uring: {aio}")
 
     if iothreads:
         if len(aio) > 0:
