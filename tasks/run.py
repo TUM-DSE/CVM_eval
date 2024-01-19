@@ -149,7 +149,7 @@ def add_virtio_blk_nvme_to_qemu_cmd(
         nvme_path: str = EVAL_NVME_PATH,
         ignore_warning: bool = False,
         iothreads: bool = True,
-        aio: str = "threads", # threads, native, io_uring
+        aio: str = "native", # threads, native, io_uring
         ):
 
     if not ignore_warning:
