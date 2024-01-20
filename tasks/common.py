@@ -16,6 +16,16 @@ KERNEL_PATH = os.path.join(KERNEL_SRC_DIR, "arch", "x86", "boot", "bzImage")
 BUILD_DIR = os.path.join(REPO_DIR, "build")
 VM_BUILD_DIR = os.path.join(BUILD_DIR, "vm")
 
+FIO_HOST_VM_OUTPUT_DIR = os.path.join(REPO_DIR, "inv-fio-logs")
+os.makedirs(FIO_HOST_VM_OUTPUT_DIR, exist_ok=True)
+FIO_POSSIBLE_BENCHMARKS = [
+        "alat",
+        "bw",
+        "iops",
+        "all"
+        ]
+
+
 # NOTE: only available if bound to nvme driver (not vfio-pci)
 EVAL_NVME_PATH = "/dev/nvme1n1"
 
@@ -68,3 +78,39 @@ def _get_nix_rev():
 
 # private func dependent constants
 NIX_RESULTS_DIR = os.path.join(REPO_DIR, ".git", "nix-results", f"{_get_nix_rev()}")
+
+
+
+def build_fio_cmd(
+        fio_benchmark: str,
+        fio_filename: str,
+        fio_job_path: str,
+        fio_output_path: str,
+        fio_output_format: str = "json",
+        ) -> str:
+    fio_cmd: str = f"fio {fio_job_path}"
+    fio_cmd += f" --filename={fio_filename}"
+    fio_cmd += f" --output={fio_output_path}"
+    fio_cmd += f" --output-format={fio_output_format}"
+
+    if fio_benchmark not in FIO_POSSIBLE_BENCHMARKS:
+        warn_print(f"custom benchmark {fio_benchmark} not in {FIO_POSSIBLE_BENCHMARKS}")
+        warn_print("using custom benchmark 'as is' in `--section`")
+
+
+    if fio_benchmark == "all":
+        pass
+    elif fio_benchmark == "alat":
+        for bench_id in ["reandread", "randwrite", "read", "write"]:
+            fio_cmd += f" --section=alat\\ {bench_id}"
+    elif fio_benchmark == "bw":
+        for bench_id in ["read", "write"]:
+            fio_cmd += f" --section=bw\\ {bench_id}"
+    elif fio_benchmark == "iops":
+        for bench_id in ["randread", "randwrite", "rwmixread", "rwmixwrite"]:
+            fio_cmd += f" --section=iops\\ {bench_id}"
+    else:
+        breaked_fio_benchmark = fio_benchmark.replace(' ', '\\ ')
+        fio_cmd += f" --section={breaked_fio_benchmark}"
+
+    return fio_cmd

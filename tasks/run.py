@@ -14,13 +14,20 @@ from invoke import task
 # warning: dependency
 from ovmf import UEFI_BIOS_CODE_RW_PATH, UEFI_BIOS_VARS_RW_PATH, make_ovmf
 from build import IMG_RW_PATH, build_nixos_bechmark_image
-from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu, await_vm_fio
+from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu, await_vm_fio, NVME_VM_BENCHMARK_SSD_PATH
 
 # constants
 QEMU_BIN = "qemu-system-x86_64"
 DEFAULT_NUM_CPUS = 4
 DEFAULT_NUM_MEM_GB = 16
 DEFAULT_QMP_SOCKET_PATH = "/tmp/qmp-sock"
+
+ENGINE_VIRTIO_BLK = "virtio-blk"
+ENGINE_NVME = "nvme"
+STORAGE_ENGINES = [
+    ENGINE_VIRTIO_BLK,
+    ENGINE_NVME
+        ]
 
 benchmark_help={
     'num_mem_gb': f"Number of GBs of memory (default: {DEFAULT_NUM_MEM_GB})",
@@ -34,6 +41,7 @@ benchmark_help={
     'rebuild_ovmf': "Rebuild OVMF (sometimes necessary if Qemu doesn\'t boot)",
     'benchmark_tag': "Tag for benchmark (used for naming results file)",
     'ssd_path': f"Path to SSD device (default: {EVAL_NVME_PATH})",
+    'storage_engine': f"Storage engine to use (default: {ENGINE_VIRTIO_BLK}; of {STORAGE_ENGINES})",
     }
 
 
@@ -154,8 +162,22 @@ def add_virtio_blk_nvme_to_qemu_cmd(
         warn_nvm_use(nvme_path)
 
     return f"{base_cmd} " \
+        "-object iothread,id=iothread0 " \
+        f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},aio=io_uring " \
+        "-device virtio-blk,drive=q1,iothread=iothread0"
+
+def add_nvme_to_qemu_cmd(
+        base_cmd: str,
+        nvme_path: str = EVAL_NVME_PATH,
+        ignore_warning: bool = False
+        ):
+
+    if not ignore_warning:
+        warn_nvm_use(nvme_path)
+
+    return f"{base_cmd} " \
         f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path} " \
-        "-device virtio-blk,drive=q1"
+        "-device nvme,drive=q1,serial=deadbeef"
 
 def add_virtio_blk_file_to_qemu_cmd(
         base_cmd: str,
@@ -163,8 +185,9 @@ def add_virtio_blk_file_to_qemu_cmd(
         ):
 
     return f"{base_cmd} " \
+        "-object iothread,id=iothread0 " \
         f"-blockdev node-name=q1,driver=raw,file.driver=file,file.filename={file_path} " \
-        "-device virtio-blk,drive=q1"
+        "-device virtio-blk,drive=q1,iothread=iothread0"
 
 def build_debug_poll_qemu_cmd(
         c: Any,
@@ -351,7 +374,7 @@ def run_sev_virtio_blk_file_qemu(
 
 
 # shared code for sev and native qemu virtio blk nvme benchmarks
-def exec_virtio_blk_nvme_benchmark(
+def exec_benchmark(
         c: Any,
         base_cmd: str,
         dm_benchmark: bool,
@@ -364,12 +387,24 @@ def exec_virtio_blk_nvme_benchmark(
         ssd_path: str,
         pin: bool,
         qmp_socket_path: str,
+        storage_engine: str = ENGINE_VIRTIO_BLK,
         ) -> None:
-    qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
-            base_cmd=base_cmd,
-            nvme_path=ssd_path,
-            ignore_warning=ignore_warning,
-            )
+    if storage_engine == ENGINE_VIRTIO_BLK:
+        qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
+                base_cmd=base_cmd,
+                nvme_path=ssd_path,
+                ignore_warning=ignore_warning,
+                )
+    elif storage_engine == ENGINE_NVME:
+        qemu_cmd: str = add_nvme_to_qemu_cmd(
+                base_cmd=base_cmd,
+                nvme_path=ssd_path,
+                ignore_warning=ignore_warning,
+                )
+    else:
+        err_print(f"Unknown storage engine {storage_engine}")
+        exit(1)
+
     # pin cpus to cmd
     # qemu_cmd: str = f"taskset -c 4-{4+num_cpus-1} {qemu_cmd}"
     # gives one cpu extra- however, we need an extra cpu for qemu IMO
@@ -401,7 +436,13 @@ def exec_virtio_blk_nvme_benchmark(
         cryptsetup_open_ssd_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, vm_ssd_path=VM_BENCHMARK_SSD_PATH)
 
     else:
-        fio_filename: str = VM_BENCHMARK_SSD_PATH
+        if storage_engine == ENGINE_VIRTIO_BLK:
+            fio_filename: str = VM_BENCHMARK_SSD_PATH
+        elif storage_engine == ENGINE_NVME:
+            fio_filename: str = NVME_VM_BENCHMARK_SSD_PATH
+        else:
+            err_print(f"Unknown storage engine {storage_engine}")
+            exit(1)
 
     exec_fio_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, fio_filename=fio_filename, fio_benchmark=fio_benchmark)
 
@@ -426,6 +467,7 @@ def benchmark_sev_virtio_blk_qemu(
         ssd_path: str = EVAL_NVME_PATH,
         pin: bool = True,
         qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH,
+        storage_engine: str = ENGINE_VIRTIO_BLK,
         ) -> None:
     """
     Benchmark SEV QEMU with virtio-blk-pci.
@@ -439,7 +481,7 @@ def benchmark_sev_virtio_blk_qemu(
             rebuild_ovmf=rebuild_ovmf,
             qmp_socket_path=qmp_socket_path,
             )
-    exec_virtio_blk_nvme_benchmark(
+    exec_benchmark(
             c,
             base_cmd=base_cmd,
             dm_benchmark=dm_benchmark,
@@ -452,6 +494,7 @@ def benchmark_sev_virtio_blk_qemu(
             ssd_path=ssd_path,
             pin=pin,
             qmp_socket_path=qmp_socket_path,
+            storage_engine=storage_engine,
             )
 
 
@@ -471,6 +514,7 @@ def benchmark_native_virtio_blk_qemu(
         ssd_path: str = EVAL_NVME_PATH,
         pin: bool = True,
         qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH,
+        storage_engine: str = ENGINE_VIRTIO_BLK,
         ) -> None:
     """
     Benchmark native QEMU with virtio-blk-pci.
@@ -483,7 +527,7 @@ def benchmark_native_virtio_blk_qemu(
             rebuild_ovmf=rebuild_ovmf,
             qmp_socket_path=qmp_socket_path,
             )
-    exec_virtio_blk_nvme_benchmark(
+    exec_benchmark(
             c,
             base_cmd=base_cmd,
             dm_benchmark=dm_benchmark,
@@ -496,4 +540,5 @@ def benchmark_native_virtio_blk_qemu(
             ssd_path=ssd_path,
             pin=pin,
             qmp_socket_path=qmp_socket_path,
+            storage_engine=storage_engine,
             )

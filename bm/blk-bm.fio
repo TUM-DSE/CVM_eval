@@ -2,10 +2,9 @@
 direct=1 # non-buffered IO
 # SPDK BM guidelines
 thread=1
-ioengine=libaio # linux native async-io engine
+ioengine=io_uring
 norandommap=1 # generate random offset for IO (independent of previous offsets)
 randrepeat=0 # RNG for generating offset is seeded in random manner
-filename=/dev/mapper/target
 
 time_based=1
 runtime=600 # from Intel SPDK BM guidelines
@@ -21,6 +20,8 @@ blocksize=4k
 rw=randread
 iodepth=1
 numjobs=1
+
+group_reporting=1
 
 [alat randwrite]
 # alat for r,w,randr,randw

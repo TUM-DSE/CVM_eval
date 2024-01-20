@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from invoke.runners import Result
 
-from common import EVAL_NVME_PATH, err_print, print_and_run, REPO_DIR, print_and_sudo, warn_nvm_use, warn_print
+from common import EVAL_NVME_PATH, FIO_HOST_VM_OUTPUT_DIR, FIO_POSSIBLE_BENCHMARKS, build_fio_cmd, err_print, print_and_run, REPO_DIR, print_and_sudo, warn_nvm_use, warn_print
 
 from invoke import task
 
@@ -15,20 +15,13 @@ DEFAULT_SSH_FORWARD_PORT = 2222
 SSH_KEY = os.path.join(REPO_DIR, "nix", "ssh_key")
 
 # VM internal paths
+FIO_VM_JOB_PATH = "/mnt/blk-bm.fio"
+FIO_VM_OUTPUT_PATH = "/mnt/blk-bm.log"
 VM_BENCHMARK_SSD_PATH = "/dev/vdb"
+NVME_VM_BENCHMARK_SSD_PATH = "/dev/nvme0n1"
 CRYPTSETUP_TARGET_NAME = "target"
 CRYPTSETUP_TARGET_PATH = f"/dev/mapper/{CRYPTSETUP_TARGET_NAME}"
 
-FIO_VM_JOB_PATH = "/mnt/blk-bm.fio"
-FIO_VM_OUTPUT_PATH = "/mnt/blk-bm.log"
-FIO_HOST_VM_OUTPUT_DIR = os.path.join(REPO_DIR, "inv-fio-logs")
-os.makedirs(FIO_HOST_VM_OUTPUT_DIR, exist_ok=True)
-FIO_POSSIBLE_BENCHMARKS = [
-        "alat",
-        "bw",
-        "iops",
-        "all"
-        ]
 
 # helpers
 # asynchronous only applies if cmd passed
@@ -111,31 +104,12 @@ def exec_fio_in_vm(
     """
     SSH into the VM and execute fio.
     """
-    fio_cmd: str = f"fio {fio_job_path}"
-    fio_cmd += f" --filename={fio_filename}"
-    fio_cmd += f" --output={fio_output_path}"
-    fio_cmd += f" --output-format={fio_output_format}"
-
-    if fio_benchmark not in FIO_POSSIBLE_BENCHMARKS:
-        warn_print(f"custom benchmark {fio_benchmark} not in {FIO_POSSIBLE_BENCHMARKS}")
-        warn_print("using custom benchmark 'as is' in `--section`")
-        
-
-    if fio_benchmark == "all":
-        pass
-    elif fio_benchmark == "alat":
-        for bench_id in ["reandread", "randwrite", "read", "write"]:
-            fio_cmd += f" --section=alat\\ {bench_id}"
-    elif fio_benchmark == "bw":
-        for bench_id in ["read", "write"]:
-            fio_cmd += f" --section=bw\\ {bench_id}"
-    elif fio_benchmark == "iops":
-        for bench_id in ["randread", "randwrite", "rwmixread", "rwmixwrite"]:
-            fio_cmd += f" --section=iops\\ {bench_id}"
-    else:
-        breaked_fio_benchmark = fio_benchmark.replace(' ', '\\ ')
-        fio_cmd += f" --section={breaked_fio_benchmark}"
-
+    fio_cmd: str = build_fio_cmd(
+            fio_job_path=fio_job_path,
+            fio_filename=fio_filename,
+            fio_output_path=fio_output_path,
+            fio_benchmark=fio_benchmark,
+            fio_output_format=fio_output_format)
     ssh_vm(c, ssh_port=ssh_port, asynchronous=True, cmd=fio_cmd)
 
 @task
