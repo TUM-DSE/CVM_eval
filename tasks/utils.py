@@ -202,15 +202,18 @@ def stop_qemu(c: Any,
         ssh_vm(c, ssh_port=ssh_port, cmd="poweroff", warn=True)
 
 # cryptsetup utils
-@task(help={"ssd_path": "Path to SSD"})
+@task(help={"ssd_path": "Path to SSD",
+            "ignore_warning": "Ignore warning about using an NVMe SSD"})
 def cryptsetup_crypt_only(
         c: Any,
         ssd_path: str = EVAL_NVME_PATH,
+        ignore_warning: bool = False
         ) -> None:
     """
     Cryptsetup crypt only.
     """
-    warn_nvm_use(ssd_path)
+    if not ignore_warning:
+        warn_nvm_use(ssd_path)
     print_and_sudo(c, f"yes '' | sudo cryptsetup -v -q luksFormat --type luks2 {ssd_path}", warn=True)
 
 @task(help={"ssd_path": "Path to SSD",
