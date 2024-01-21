@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from invoke.runners import Result
 
-from common import EVAL_NVME_PATH, err_print, print_and_run, REPO_DIR, print_and_sudo, warn_nvm_use, warn_print
+from common import EVAL_NVME_PATH, err_print, print_and_run, REPO_DIR, print_and_sudo, warn_nvm_use, warn_print, info_print
 
 from invoke import task
 
@@ -150,6 +150,8 @@ def exec_fio_in_vm(
     else:
         breaked_fio_benchmark = fio_benchmark.replace(' ', '\\ ')
         fio_cmd += f" --section={breaked_fio_benchmark}"
+
+    info_print(f"executing fio in VM with command: {fio_cmd}")
 
     ssh_vm(c, ssh_port=ssh_port, asynchronous=True, cmd=fio_cmd)
 
