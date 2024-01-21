@@ -13,6 +13,7 @@ ramp_time=60 # from Intel SPDK BM guidelines
 # runtime=120 # PerChar CHEOPS '23
 # ramp_time=20 # PerChar CHEOPS '23
 
+group_reporting=1
 
 # bs, rw, iodepth, numjobs from Spool ATC ‘20
 [alat randread]
