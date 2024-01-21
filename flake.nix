@@ -62,6 +62,10 @@
                 source = ./bm/blk-bm.fio;
                 target = "/mnt/blk-bm.fio";
               }
+              {
+                source = ./bm/blk-bm-quick.fio;
+                target = "/mnt/blk-bm-quick.fio";
+              }
             ];
           };
 

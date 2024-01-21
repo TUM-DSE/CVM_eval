@@ -20,6 +20,7 @@ CRYPTSETUP_TARGET_NAME = "target"
 CRYPTSETUP_TARGET_PATH = f"/dev/mapper/{CRYPTSETUP_TARGET_NAME}"
 
 FIO_VM_JOB_PATH = "/mnt/blk-bm.fio"
+FIO_QUICK_VM_JOB_PATH = "/mnt/blk-bm-quick.fio"
 FIO_VM_OUTPUT_PATH = "/mnt/blk-bm.log"
 FIO_HOST_VM_OUTPUT_DIR = os.path.join(REPO_DIR, "inv-fio-logs")
 os.makedirs(FIO_HOST_VM_OUTPUT_DIR, exist_ok=True)
@@ -121,7 +122,7 @@ def exec_fio_in_vm(
         fio_filename: str = VM_BENCHMARK_SSD_PATH,
         fio_output_path: str = FIO_VM_OUTPUT_PATH,
         fio_benchmark: str = "all",
-        fio_output_format: str = "json"
+        fio_output_format: str = "json",
         ) -> None:
     """
     SSH into the VM and execute fio.
@@ -134,7 +135,7 @@ def exec_fio_in_vm(
     if fio_benchmark not in FIO_POSSIBLE_BENCHMARKS:
         warn_print(f"custom benchmark {fio_benchmark} not in {FIO_POSSIBLE_BENCHMARKS}")
         warn_print("using custom benchmark 'as is' in `--section`")
-        
+
 
     if fio_benchmark == "all":
         pass

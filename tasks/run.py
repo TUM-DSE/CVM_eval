@@ -15,6 +15,7 @@ from invoke import task
 from ovmf import UEFI_BIOS_CODE_RW_PATH, UEFI_BIOS_VARS_RW_PATH, make_ovmf
 from build import IMG_RW_PATH, build_nixos_bechmark_image
 from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu, await_vm_fio
+from utils import FIO_VM_JOB_PATH, FIO_QUICK_VM_JOB_PATH
 
 # constants
 QEMU_BIN = "qemu-system-x86_64"
@@ -389,6 +390,7 @@ def exec_virtio_blk_nvme_benchmark(
         iothreads: bool,
         aio: str,
         noexec: bool,
+        quick: bool,
         ) -> None:
     qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
             base_cmd=base_cmd,
@@ -438,7 +440,14 @@ def exec_virtio_blk_nvme_benchmark(
     if noexec:
         return
 
-    exec_fio_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, fio_filename=fio_filename, fio_benchmark=fio_benchmark)
+    if quick:
+        fio_job_path = FIO_QUICK_VM_JOB_PATH
+    else:
+        fio_job_path = FIO_VM_JOB_PATH
+
+    exec_fio_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT,
+                   fio_job_path=fio_job_path,
+                   fio_filename=fio_filename, fio_benchmark=fio_benchmark)
 
     if await_results:
         await_vm_fio(c, fio_host_output_tag=benchmark_tag)
@@ -464,6 +473,7 @@ def benchmark_sev_virtio_blk_qemu(
         iothreads: bool = True,
         aio: str = "threads",
         noexec: bool = False,
+        quick: bool = False,
         ) -> None:
     """
     Benchmark SEV QEMU with virtio-blk-pci.
@@ -493,6 +503,7 @@ def benchmark_sev_virtio_blk_qemu(
             iothreads=iothreads,
             aio=aio,
             noexec=noexec,
+            quick=quick,
             )
 
 
@@ -515,6 +526,7 @@ def benchmark_native_virtio_blk_qemu(
         iothreads: bool = True,
         aio: str = "threads",
         noexec: bool = False,
+        quick: bool = False,
         ) -> None:
     """
     Benchmark native QEMU with virtio-blk-pci.
@@ -543,4 +555,5 @@ def benchmark_native_virtio_blk_qemu(
             iothreads=iothreads,
             aio=aio,
             noexec=noexec,
+            quick=quick,
             )
