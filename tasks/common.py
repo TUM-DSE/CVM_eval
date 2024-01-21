@@ -16,6 +16,9 @@ KERNEL_PATH = os.path.join(KERNEL_SRC_DIR, "arch", "x86", "boot", "bzImage")
 BUILD_DIR = os.path.join(REPO_DIR, "build")
 VM_BUILD_DIR = os.path.join(BUILD_DIR, "vm")
 
+RAMDISK_TEMPFS_PATH = os.path.join(os.sep, "mnt", "tmpfs")
+RAMDISK_PATH = os.path.join(RAMDISK_TEMPFS_PATH, "file1GB")
+
 FIO_HOST_VM_OUTPUT_DIR = os.path.join(REPO_DIR, "inv-fio-logs")
 os.makedirs(FIO_HOST_VM_OUTPUT_DIR, exist_ok=True)
 FIO_POSSIBLE_BENCHMARKS = [

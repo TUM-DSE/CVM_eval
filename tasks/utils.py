@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from invoke.runners import Result
 
-from common import EVAL_NVME_PATH, FIO_HOST_VM_OUTPUT_DIR, FIO_POSSIBLE_BENCHMARKS, build_fio_cmd, err_print, print_and_run, REPO_DIR, print_and_sudo, warn_nvm_use, warn_print
+from common import EVAL_NVME_PATH, FIO_HOST_VM_OUTPUT_DIR, FIO_POSSIBLE_BENCHMARKS, RAMDISK_PATH, RAMDISK_TEMPFS_PATH, build_fio_cmd, err_print, print_and_run, REPO_DIR, print_and_sudo, warn_nvm_use, warn_print
 
 from invoke import task
 
@@ -209,6 +209,6 @@ def ramdisk_setup(c: Any) -> None:
     inv run.run-sev-virtio-blk-file-qemu --blk-file=/mnt/tmpfs/file1GB --port=3333
     ```
     """
-    print_and_sudo(c, "mkdir -p /mnt/tmpfs")
-    print_and_sudo(c, "mount -t tmpfs -o size=1G tmpfs /mnt/tmpfs")
-    print_and_sudo(c, "dd if=/dev/zero of=/mnt/tmpfs/file1GB bs=1M count=1024")
+    print_and_sudo(c, f"mkdir -p {RAMDISK_TEMPFS_PATH}")
+    print_and_sudo(c, f"mount -t tmpfs -o size=1G tmpfs {RAMDISK_TEMPFS_PATH}")
+    print_and_sudo(c, f"dd if=/dev/zero of={RAMDISK_PATH} bs=1M count=1024")
