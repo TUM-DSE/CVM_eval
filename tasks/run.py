@@ -155,6 +155,19 @@ def add_virtio_blk_nvme_to_qemu_cmd(
         no_flush: bool = False,
         ):
 
+    # QEMU options (https://www.qemu.org/docs/master/system/qemu-manpage.html)
+    # -drive cache=
+    #
+    # |              | cache.writeback | cache.direct | cache.no-flush |
+    # |--------------|-----------------|--------------|----------------|
+    # | writeback    | on              | off          | off            |
+    # | none         | on              | on           | off            |
+    # | writethrough | off             | off          | off            |
+    # | directsync   | off             | on           | off            |
+    # | unsafe       | on              | off          | on             |
+    #
+    # cache.writeback=on by default
+
     if not ignore_warning:
         warn_nvm_use(nvme_path)
 
