@@ -72,6 +72,7 @@ in
     vim
     tmux
     fzf
+    prebuiltLinuxPackages.perf
   ] ++
   ( with selfpkgs;
     [
