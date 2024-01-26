@@ -152,6 +152,7 @@ def add_virtio_blk_nvme_to_qemu_cmd(
         iothreads: bool = True,
         aio: str = "native", # threads, native, io_uring
         direct: bool = True,
+        no_flush: bool = False,
         ):
 
     if not ignore_warning:
@@ -171,23 +172,29 @@ def add_virtio_blk_nvme_to_qemu_cmd(
         if aio == "native":
             warn_print("aio=native requires cache.direct=on")
 
+    if no_flush:
+        no_flush_option = "on"
+        warn_print(f"blockdev cache.no-flush={direct_option}")
+    else:
+        no_flush_option = "off"
+
     if iothreads:
         if len(aio) > 0:
             # iothreads, aio
             cmd = f"{base_cmd} " \
-                f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},file.aio={aio},cache.direct={direct_option} " \
+                f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},file.aio={aio},cache.direct={direct_option},cache.no-flush={no_flush_option} " \
                 "-device virtio-blk,drive=q1,iothread=iothread0 " \
                 "-object iothread,id=iothread0 "
         else:
             # iothreads, no aio
             cmd = f"{base_cmd} " \
-                f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},cache.direct={direct_option} " \
+                f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},cache.direct={direct_option},cache.no-flush={no_flush_option} " \
                 "-device virtio-blk,drive=q1,iothread=iothread0 " \
                 "-object iothread,id=iothread0 "
     else:
         # no iothreads, no aio
         cmd = f"{base_cmd} " \
-            f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},cache.direct={direct_option} " \
+            f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},cache.direct={direct_option},cache.no-flush={no_flush_option} " \
             "-device virtio-blk,drive=q1 "
 
     return cmd
@@ -404,6 +411,7 @@ def exec_virtio_blk_nvme_benchmark(
         noexec: bool,
         quick: bool,
         direct: bool,
+        no_flush: bool,
         ) -> None:
     qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
             base_cmd=base_cmd,
@@ -412,6 +420,7 @@ def exec_virtio_blk_nvme_benchmark(
             iothreads=iothreads,
             aio=aio,
             direct=direct,
+            no_flush=no_flush,
             )
     # pin cpus to cmd
     # qemu_cmd: str = f"taskset -c 4-{4+num_cpus-1} {qemu_cmd}"
@@ -489,6 +498,7 @@ def benchmark_sev_virtio_blk_qemu(
         noexec: bool = False,
         quick: bool = False,
         direct: bool = True,
+        no_flush: bool = False,
         ) -> None:
     """
     Benchmark SEV QEMU with virtio-blk-pci.
@@ -520,6 +530,7 @@ def benchmark_sev_virtio_blk_qemu(
             noexec=noexec,
             quick=quick,
             direct=direct,
+            no_flush=no_flush,
             )
 
 
@@ -544,6 +555,7 @@ def benchmark_native_virtio_blk_qemu(
         noexec: bool = False,
         quick: bool = False,
         direct: bool = True,
+        no_flush: bool = False,
         ) -> None:
     """
     Benchmark native QEMU with virtio-blk-pci.
@@ -574,4 +586,5 @@ def benchmark_native_virtio_blk_qemu(
             noexec=noexec,
             quick=quick,
             direct=direct,
+            no_flush=no_flush,
             )
