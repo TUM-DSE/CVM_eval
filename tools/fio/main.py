@@ -12,8 +12,19 @@ import seaborn as sns
 
 
 def read_json(file):
+    lines = []
     with open(file) as f:
-        data = json.load(f)
+        # ignore error massages if any
+        # (skip line until "{" is found)
+        for line in f:
+            if line.strip() == "{":
+                lines.append(line)
+                break
+            else:
+                print(f"[warn] skipping line: {line.strip()}")
+        for line in f:
+            lines.append(line)
+    data = json.loads("".join(lines))
     return data
 
 
@@ -72,6 +83,7 @@ def read_files(files):
 def plot_bw(df):
     ## read
     bw = df[(df["jobname"] == "bw read")]
+    bw = bw.groupby(["name"]).sum().reset_index()
     ax = sns.barplot(data=bw, x="jobname", y="read_bw_mean", hue="name")
     hue_labels = ["native", "sev"]
     h, l = ax.get_legend_handles_labels()
@@ -84,6 +96,7 @@ def plot_bw(df):
 
     ## write
     bw = df[(df["jobname"] == "bw write")]
+    bw = bw.groupby(["name"]).sum().reset_index()
     ax = sns.barplot(data=bw, x="jobname", y="write_bw_mean", hue="name")
     hue_labels = ["native", "sev"]
     h, l = ax.get_legend_handles_labels()
