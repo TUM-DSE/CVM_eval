@@ -85,7 +85,8 @@ in
   # boot.kernelPackages = lib.mkForce linuxPackages;
 
 
-  boot.kernelParams = [ "virtio_blk.cvm_io_driver_name=virtio2" ];
+  # boot.kernelParams = [ "virtio_blk.cvm_io_driver_name=virtio2" ];
+  # boot.kernelParams = [ "swiotlb=force" ];
 
 #  programs.fio-runner =
 #  {

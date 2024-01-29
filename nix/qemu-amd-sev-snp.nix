@@ -15,6 +15,10 @@ qemu_full.overrideAttrs
     configureFlags = old.configureFlags ++
     [
       "--enable-debug"
+      # requires libblkio build
+      # "--enable-blkio"
+      # too new for current version?
+      # "--enable-download"
     ];
   }
 
