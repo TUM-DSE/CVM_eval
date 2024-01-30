@@ -136,7 +136,7 @@ tracepoint:kvm:kvm_entry  / @t[tid] / {
 }
 
 // for SEV
-tracepoint:kvm:kvm_vmgexit_exit {
+tracepoint:kvm:kvm_vmgexit_enter {
     @vmgexit_t[tid] = nsecs;
     @vmgexit_e[tid] = args->exit_reason;
     if ((args->exit_reason > 0x403 && args->exit_reason < 0x80000001) ||
