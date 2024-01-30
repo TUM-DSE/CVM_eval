@@ -422,7 +422,7 @@ def exec_virtio_blk_nvme_benchmark(
         iothreads: bool,
         aio: str,
         noexec: bool,
-        quick: bool,
+        fio_job_path: str,
         direct: bool,
         no_flush: bool,
         ) -> None:
@@ -476,11 +476,6 @@ def exec_virtio_blk_nvme_benchmark(
     if noexec:
         return
 
-    if quick:
-        fio_job_path = FIO_QUICK_VM_JOB_PATH
-    else:
-        fio_job_path = FIO_VM_JOB_PATH
-
     exec_fio_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT,
                    fio_job_path=fio_job_path,
                    fio_filename=fio_filename, fio_benchmark=fio_benchmark)
@@ -509,7 +504,7 @@ def benchmark_sev_virtio_blk_qemu(
         iothreads: bool = True,
         aio: str = "threads",
         noexec: bool = False,
-        quick: bool = False,
+        fio_job_path: str = FIO_VM_JOB_PATH,
         direct: bool = True,
         no_flush: bool = False,
         ) -> None:
@@ -541,7 +536,7 @@ def benchmark_sev_virtio_blk_qemu(
             iothreads=iothreads,
             aio=aio,
             noexec=noexec,
-            quick=quick,
+            fio_job_path=fio_job_path,
             direct=direct,
             no_flush=no_flush,
             )
@@ -566,7 +561,7 @@ def benchmark_native_virtio_blk_qemu(
         iothreads: bool = True,
         aio: str = "threads",
         noexec: bool = False,
-        quick: bool = False,
+        fio_job_path: str = FIO_VM_JOB_PATH,
         direct: bool = True,
         no_flush: bool = False,
         ) -> None:
@@ -597,7 +592,7 @@ def benchmark_native_virtio_blk_qemu(
             iothreads=iothreads,
             aio=aio,
             noexec=noexec,
-            quick=quick,
+            fio_job_path=fio_job_path,
             direct=direct,
             no_flush=no_flush,
             )
