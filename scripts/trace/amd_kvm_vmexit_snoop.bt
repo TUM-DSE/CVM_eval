@@ -1,0 +1,178 @@
+#!/usr/bin/env bpftrace
+
+BEGIN {
+    // cf.
+    // (1) AMD64 Architecture Programmer's Manual Volume 2: System Programming
+    // (2) linux/arch/x86/include/uapi/asm/svm.h
+    @exit_reason[0x000] = "READ_CR0";
+    @exit_reason[0x002] = "READ_CR2";
+    @exit_reason[0x003] = "READ_CR3";
+    @exit_reason[0x004] = "READ_CR4";
+    @exit_reason[0x008] = "READ_CR8";
+    @exit_reason[0x010] = "WRITE_CR0";
+    @exit_reason[0x012] = "WRITE_CR2";
+    @exit_reason[0x013] = "WRITE_CR3";
+    @exit_reason[0x014] = "WRITE_CR4";
+    @exit_reason[0x018] = "WRITE_CR8";
+    @exit_reason[0x020] = "READ_DR0";
+    @exit_reason[0x021] = "READ_DR1";
+    @exit_reason[0x022] = "READ_DR2";
+    @exit_reason[0x023] = "READ_DR3";
+    @exit_reason[0x024] = "READ_DR4";
+    @exit_reason[0x025] = "READ_DR5";
+    @exit_reason[0x026] = "READ_DR6";
+    @exit_reason[0x027] = "READ_DR7";
+    @exit_reason[0x030] = "WRITE_DR0";
+    @exit_reason[0x031] = "WRITE_DR1";
+    @exit_reason[0x032] = "WRITE_DR2";
+    @exit_reason[0x033] = "WRITE_DR3";
+    @exit_reason[0x034] = "WRITE_DR4";
+    @exit_reason[0x035] = "WRITE_DR5";
+    @exit_reason[0x036] = "WRITE_DR6";
+    @exit_reason[0x037] = "WRITE_DR7";
+    @exit_reason[0x040] = "EXCP_BASE";
+    @exit_reason[0x05f] = "LAST_EXCP";
+    @exit_reason[0x060] = "INTR";
+    @exit_reason[0x061] = "NMI";
+    @exit_reason[0x062] = "SMI";
+    @exit_reason[0x063] = "INIT";
+    @exit_reason[0x064] = "VINTR";
+    @exit_reason[0x065] = "CR0_SEL_WRITE";
+    @exit_reason[0x066] = "IDTR_READ";
+    @exit_reason[0x067] = "GDTR_READ";
+    @exit_reason[0x068] = "LDTR_READ";
+    @exit_reason[0x069] = "TR_READ";
+    @exit_reason[0x06a] = "IDTR_WRITE";
+    @exit_reason[0x06b] = "GDTR_WRITE";
+    @exit_reason[0x06c] = "LDTR_WRITE";
+    @exit_reason[0x06d] = "TR_WRITE";
+    @exit_reason[0x06e] = "RDTSC";
+    @exit_reason[0x06f] = "RDPMC";
+    @exit_reason[0x070] = "PUSHF";
+    @exit_reason[0x071] = "POPF";
+    @exit_reason[0x072] = "CPUID";
+    @exit_reason[0x073] = "RSM";
+    @exit_reason[0x074] = "IRET";
+    @exit_reason[0x075] = "SWINT";
+    @exit_reason[0x076] = "INVD";
+    @exit_reason[0x077] = "PAUSE";
+    @exit_reason[0x078] = "HLT";
+    @exit_reason[0x079] = "INVLPG";
+    @exit_reason[0x07a] = "INVLPGA";
+    @exit_reason[0x07b] = "IOIO";
+    @exit_reason[0x07c] = "MSR";
+    @exit_reason[0x07d] = "TASK_SWITCH";
+    @exit_reason[0x07e] = "FERR_FREEZE";
+    @exit_reason[0x07f] = "SHUTDOWN";
+    @exit_reason[0x080] = "VMRUN";
+    @exit_reason[0x081] = "VMMCALL";
+    @exit_reason[0x082] = "VMLOAD";
+    @exit_reason[0x083] = "VMSAVE";
+    @exit_reason[0x084] = "STGI";
+    @exit_reason[0x085] = "CLGI";
+    @exit_reason[0x086] = "SKINIT";
+    @exit_reason[0x087] = "RDTSCP";
+    @exit_reason[0x088] = "ICEBP";
+    @exit_reason[0x089] = "WBINVD";
+    @exit_reason[0x08a] = "MONITOR";
+    @exit_reason[0x08b] = "MWAIT";
+    @exit_reason[0x08c] = "MWAIT_COND";
+    @exit_reason[0x08d] = "XSETBV";
+    @exit_reason[0x08e] = "RDPRU";
+    @exit_reason[0x08f] = "EFER_WRITE_TRAP";
+    @exit_reason[0x090] = "CR0_WRITE_TRAP";
+    @exit_reason[0x091] = "CR1_WRITE_TRAP";
+    @exit_reason[0x092] = "CR2_WRITE_TRAP";
+    @exit_reason[0x093] = "CR3_WRITE_TRAP";
+    @exit_reason[0x094] = "CR4_WRITE_TRAP";
+    @exit_reason[0x095] = "CR5_WRITE_TRAP";
+    @exit_reason[0x096] = "CR6_WRITE_TRAP";
+    @exit_reason[0x097] = "CR7_WRITE_TRAP";
+    @exit_reason[0x098] = "CR8_WRITE_TRAP";
+    @exit_reason[0x099] = "CR9_WRITE_TRAP";
+    @exit_reason[0x09a] = "CR10_WRITE_TRAP";
+    @exit_reason[0x09b] = "CR11_WRITE_TRAP";
+    @exit_reason[0x09c] = "CR12_WRITE_TRAP";
+    @exit_reason[0x09d] = "CR13_WRITE_TRAP";
+    @exit_reason[0x09e] = "CR14_WRITE_TRAP";
+    @exit_reason[0x09f] = "CR15_WRITE_TRAP";
+    @exit_reason[0x0a2] = "INVPCID";
+    @exit_reason[0x400] = "NPF";
+    @exit_reason[0x401] = "AVIC_INCOMPLETE_IPI";
+    @exit_reason[0x402] = "AVIC_UNACCELERATED_ACCESS";
+    @exit_reason[0x403] = "VMGEXIT";
+
+    // cf.
+    // (1) SEV-ES Guest-Hypervisor Communication Block Standardization
+    // (2) linux/arch/x86/kvm/svm/sev.c:sev_handle_vmgexit()
+    @vmgexit_reason[0x80000001] = "MMIO_READ";
+    @vmgexit_reason[0x80000002] = "MMIO_WRITE";
+    @vmgexit_reason[0x80000003] = "NMI_COMPLETE";
+    @vmgexit_reason[0x80000004] = "AP_HLT_LOOP";
+    @vmgexit_reason[0x80000005] = "AP_JUMP_TABLE";
+    @vmgexit_reason[0x80000010] = "PSC";
+    @vmgexit_reason[0x80000011] = "GUEST_REQUEST";
+    @vmgexit_reason[0x80000012] = "EXT_GUEST_REQUEST";
+    @vmgexit_reason[0x80000013] = "AP_CREATION";
+    @vmgexit_reason[0x8000fffd] = "HV_FEATURES";
+    @vmgexit_reason[0x8000fffe] = "TERM_REQUEST";
+    @vmgexit_reason[0x8000ffff] = "UNSUPPORTED_EVENT";
+}
+
+tracepoint:kvm:kvm_exit {
+    @count[args->exit_reason] += 1;
+    if (args->exit_reason > 0x403) {
+        printf("Unknown exit reason! %d\n", args->exit_reason);
+    }
+}
+
+// for SEV
+tracepoint:kvm:kvm_vmgexit_exit {
+    @vmgexit_count[args->exit_reason] += 1;
+    if ((args->exit_reason > 0x403 && args->exit_reason < 0x80000001) ||
+        (args->exit_reason > 0x80000013 && args->exit_reason < 0x8000fffd)) {
+        printf("Unknown vmgexit reason! %d\n", args->exit_reason);
+    }
+}
+
+i:s:1 {
+    printf("--------------------\n");
+    $i = 0;
+    while ($i <= 0x403) {
+        if (@count[$i] > 0) {
+            printf("%s: %d\n", @exit_reason[$i], @count[$i]);
+        }
+        $i += 1;
+    }
+    $i = 0;
+    while ($i <= 0x403) {
+        if (@vmgexit_count[$i] > 0) {
+            printf("  %s: %d\n", @exit_reason[$i], @vmgexit_count[$i]);
+        }
+        $i += 1;
+    }
+    $i = 0x80000001;
+    while ($i <= 0x80000013) {
+        if (@vmgexit_count[$i] > 0) {
+            printf("  %s: %d\n", @vmgexit_reason[$i], @vmgexit_count[$i]);
+        }
+        $i += 1;
+    }
+    $i = 0x8000fffd;
+    while ($i <= 0x8000ffff) {
+        if (@vmgexit_count[$i] > 0) {
+            printf("  %s: %d\n", @vmgexit_reason[$i], @vmgexit_count[$i]);
+        }
+        $i += 1;
+    }
+
+    clear(@count);
+    clear(@vmgexit_count);
+}
+
+END {
+    clear(@exit_reason);
+    clear(@vmgexit_reason);
+    clear(@count);
+    clear(@vmgexit_count);
+}
