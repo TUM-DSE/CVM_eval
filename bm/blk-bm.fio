@@ -2,7 +2,9 @@
 direct=1 # non-buffered IO
 # SPDK BM guidelines
 thread=1
+
 ioengine=libaio # linux native async-io engine
+
 norandommap=1 # generate random offset for IO (independent of previous offsets)
 randrepeat=0 # RNG for generating offset is seeded in random manner
 filename=/dev/mapper/target
