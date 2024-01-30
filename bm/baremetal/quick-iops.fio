@@ -4,7 +4,14 @@
 direct=1 # non-buffered IO
 # SPDK BM guidelines
 thread=1
-ioengine=libaio # linux native async-io engine
+
+#ioengine=libaio # linux native async-io engine
+ioengine=io_uring # linux native async-io engine
+hipri
+sqthread_poll=1
+registerfiles=1
+fixedbufs=1
+
 norandommap=1 # generate random offset for IO (independent of previous offsets)
 randrepeat=0 # RNG for generating offset is seeded in random manner
 filename=/dev/nvme1n1
