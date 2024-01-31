@@ -259,7 +259,7 @@ def run_debug_virtio_blk_poll_qemu(
         ) -> None:
     """
     Run native debug QEMU with virtio-blk-pci and poll mode enabled.
-    Uses kernel from {kernel.KERNEL_PATH}.
+    Uses debug kernel.
     """
     qemu_cmd: str = build_debug_poll_qemu_cmd(
             c,
@@ -326,6 +326,7 @@ def run_native_virtio_blk_qemu(
             )
     qemu_cmd = add_virtio_blk_nvme_to_qemu_cmd(base_cmd, ssd_path)
     qemu_cmd = add_ovmf_to_qemu_cmd(qemu_cmd)
+
     print_and_sudo(c, qemu_cmd, pty=True)
 
 @task(help={
