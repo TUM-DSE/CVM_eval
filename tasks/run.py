@@ -13,7 +13,7 @@ from common import info_print, warn_nvm_use, print_and_run, print_and_sudo, err_
 from invoke import task
 # warning: dependency
 from ovmf import UEFI_BIOS_CODE_RW_PATH, UEFI_BIOS_VARS_RW_PATH, make_ovmf
-from build import IMG_RW_PATH, build_nixos_bechmark_image
+from build import build_nixos_bechmark_image
 from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu, await_vm_fio
 from utils import FIO_VM_JOB_PATH, FIO_QUICK_VM_JOB_PATH
 
@@ -22,6 +22,14 @@ QEMU_BIN = "qemu-system-x86_64"
 DEFAULT_NUM_CPUS = 4
 DEFAULT_NUM_MEM_GB = 16
 DEFAULT_QMP_SOCKET_PATH = "/tmp/qmp-sock"
+
+CVM_SEV = "sev"
+CVM_TDX = "tdx"
+CVM_TYPES = [ CVM_SEV, CVM_TDX ]
+
+TDVF_FIRMWARE = "/usr/share/ovmf/OVMF.fd"
+# ugly tdx patch
+IMG_RW_PATH = "/home/sdp/work/robert/tdx/guest-tools/image/tdx-guest-ubuntu-23.10.qcow2"
 
 benchmark_help={
     'num_mem_gb': f"Number of GBs of memory (default: {DEFAULT_NUM_MEM_GB})",
@@ -50,7 +58,7 @@ def build_base_qemu_cmd(
         qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH
         ) -> str:
     return f"{QEMU_BIN} " \
-        "-cpu EPYC-v4,host-phys-bits=true " \
+        "-cpu host,host-phys-bits=true " \
         "-enable-kvm " \
         f"-smp {num_cpus} " \
         f"-m {num_mem_gb}G " \
@@ -106,29 +114,28 @@ def build_benchmark_qemu_cmd(
             num_cpus=num_cpus,
             qmp_socket_path=qmp_socket_path
             )
-    if rebuild_image or not os.path.exists(IMG_RW_PATH):
-        build_nixos_bechmark_image(c)
+    # if rebuild_image or not os.path.exists(IMG_RW_PATH):
+    #     build_nixos_bechmark_image(c)
 
-    if rebuild_ovmf or not (os.path.exists(UEFI_BIOS_CODE_RW_PATH) and os.path.exists(UEFI_BIOS_VARS_RW_PATH)):
-        make_ovmf(c)
+    # if rebuild_ovmf or not (os.path.exists(UEFI_BIOS_CODE_RW_PATH) and os.path.exists(UEFI_BIOS_VARS_RW_PATH)):
+    #     make_ovmf(c)
     # no need to rebuild ovmf if already exist
-    if not (os.path.exists(UEFI_BIOS_CODE_RW_PATH) and os.path.exists(UEFI_BIOS_VARS_RW_PATH)):
-        make_ovmf(c)
+    # if not (os.path.exists(UEFI_BIOS_CODE_RW_PATH) and os.path.exists(UEFI_BIOS_VARS_RW_PATH)):
+    #     make_ovmf(c)
 
     return f"{base_cmd} " \
         f"-blockdev qcow2,node-name=q2,file.driver=file,file.filename={IMG_RW_PATH} " \
-        "-device virtio-blk-pci,drive=q2 " \
-        f"-drive if=pflash,format=raw,unit=0,file={UEFI_BIOS_CODE_RW_PATH},readonly=on " \
-        f"-drive if=pflash,format=raw,unit=1,file={UEFI_BIOS_VARS_RW_PATH}"
+        "-device virtio-blk-pci,drive=q2 "
 
-def build_benchmark_sev_qemu_cmd(
+def build_benchmark_cvm_qemu_cmd(
         c: Any,
         num_mem_gb: int = DEFAULT_NUM_MEM_GB,
         num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False,
         rebuild_ovmf: bool = False,
         port: int = DEFAULT_SSH_FORWARD_PORT,
-        qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH
+        qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH,
+        cvm_type: str = CVM_SEV,
         ):
     base_cmd = build_benchmark_qemu_cmd(
             c,
@@ -140,10 +147,22 @@ def build_benchmark_sev_qemu_cmd(
             qmp_socket_path=qmp_socket_path
             )
 
-    return f"{base_cmd} " \
-        "-machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off " \
-        "-object memory-backend-memfd-private,id=ram1,size=16G,share=true " \
-        "-object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA"
+    if cvm_type == CVM_SEV:
+        return f"{base_cmd} " \
+            "-machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off " \
+            f"-object memory-backend-memfd-private,id=ram1,size={num_mem_gb}G,share=true " \
+            "-object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA " \
+            f"-drive if=pflash,format=raw,unit=0,file={UEFI_BIOS_CODE_RW_PATH},readonly=on " \
+            f"-drive if=pflash,format=raw,unit=1,file={UEFI_BIOS_VARS_RW_PATH}"
+    elif cvm_type == CVM_TDX:
+        return f"{base_cmd} " \
+            "-object tdx-guest,id=tdx " \
+		    "-machine q35,hpet=off,kernel_irqchip=split,memory-encryption=tdx,memory-backend=ram1 " \
+		    f"-object memory-backend-ram,id=ram1,size={num_mem_gb}G,private=on " \
+		    f"-bios {TDVF_FIRMWARE} " \
+            "-device vhost-vsock-pci,guest-cid=3 " \
+            "-nodefaults"
+
 
 def add_virtio_blk_nvme_to_qemu_cmd(
         base_cmd: str,
@@ -348,29 +367,32 @@ def run_native_virtio_blk_qemu(
     'rebuild_image': "Rebuild nixos image (also recompiles kernel- takes a while)",
     'ssd_path': "Path to NVMe SSD",
     'qmp_socket_path': "Path to QMP socket",
+    'cvm_type': f"type of CVM to run of {CVM_TYPES} (default :{CVM_SEV})",
     })
-def run_sev_virtio_blk_qemu(
+def run_cvm_virtio_blk_qemu(
         c: Any,
         num_mem_gb: int = DEFAULT_NUM_MEM_GB,
         num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False,
         ssd_path: str = EVAL_NVME_PATH,
         qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH,
+        cvm_type: str = CVM_SEV,
         ) -> None:
     """
     Run Qemu SEV guest with virtio-blk-pci to NVMe SSD.
     """
-    base_cmd = build_benchmark_sev_qemu_cmd(
+    qemu_cmd = build_benchmark_cvm_qemu_cmd(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
             rebuild_image=rebuild_image,
             qmp_socket_path=qmp_socket_path,
+            cvm_type=cvm_type,
             )
-    qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
-            base_cmd=base_cmd,
-            nvme_path=ssd_path,
-            )
+    # qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
+    #         base_cmd=base_cmd,
+    #         nvme_path=ssd_path,
+    #         )
     print_and_sudo(c, qemu_cmd, pty=True)
 
 @task(help={
@@ -391,7 +413,7 @@ def run_sev_virtio_blk_file_qemu(
     """
     Run Qemu SEV guest with virtio-blk-pci to NVMe SSD.
     """
-    base_cmd = build_benchmark_sev_qemu_cmd(
+    base_cmd = build_benchmark_cvm_qemu_cmd(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
@@ -512,7 +534,7 @@ def benchmark_sev_virtio_blk_qemu(
     Benchmark SEV QEMU with virtio-blk-pci.
     Polling must be enabled in the nixos configuration.
     """
-    base_cmd = build_benchmark_sev_qemu_cmd(
+    base_cmd = build_benchmark_cvm_qemu_cmd(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,

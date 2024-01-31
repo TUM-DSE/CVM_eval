@@ -118,8 +118,8 @@
             (
               with self.packages.${system};
               [
-                qemu-amd-sev-snp # patched amd-sev-snp qemu
-                spdk # nvme SSD formatting
+                # qemu-amd-sev-snp # patched amd-sev-snp qemu
+                # spdk # nvme SSD formatting
               ]
             ) ++
             (
