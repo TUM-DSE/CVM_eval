@@ -14,7 +14,7 @@ from invoke import task
 # warning: dependency
 from ovmf import UEFI_BIOS_CODE_RW_PATH, UEFI_BIOS_VARS_RW_PATH, make_ovmf
 from build import IMG_RW_PATH, build_nixos_bechmark_image
-from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu, await_vm_fio
+from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, VM_BENCHMARK_SCSI_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu, await_vm_fio
 from utils import FIO_VM_JOB_PATH, FIO_QUICK_VM_JOB_PATH
 
 # constants
@@ -117,7 +117,7 @@ def build_benchmark_qemu_cmd(
 
     return f"{base_cmd} " \
         f"-blockdev qcow2,node-name=q2,file.driver=file,file.filename={IMG_RW_PATH} " \
-        "-device virtio-blk-pci,drive=q2 " \
+        "-device virtio-blk-pci,bootindex=0,drive=q2 " \
         f"-drive if=pflash,format=raw,unit=0,file={UEFI_BIOS_CODE_RW_PATH},readonly=on " \
         f"-drive if=pflash,format=raw,unit=1,file={UEFI_BIOS_VARS_RW_PATH}"
 
@@ -153,6 +153,7 @@ def add_virtio_blk_nvme_to_qemu_cmd(
         aio: str = "native", # threads, native, io_uring
         direct: bool = True,
         no_flush: bool = False,
+        scsi: bool = False,
         ):
 
     # QEMU options (https://www.qemu.org/docs/master/system/qemu-manpage.html)
@@ -194,21 +195,32 @@ def add_virtio_blk_nvme_to_qemu_cmd(
     if iothreads:
         if len(aio) > 0:
             # iothreads, aio
-            cmd = f"{base_cmd} " \
-                f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},file.aio={aio},cache.direct={direct_option},cache.no-flush={no_flush_option} " \
-                "-device virtio-blk,drive=q1,iothread=iothread0 " \
-                "-object iothread,id=iothread0 "
+            if scsi:
+                cmd = f"{base_cmd} " \
+                    f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},file.aio={aio},cache.direct={direct_option},cache.no-flush={no_flush_option} " \
+                    "-device virtio-scsi-pci,id=scsi0,iothread=iothread0 " \
+                    "-device scsi-hd,drive=q1 " \
+                    "-object iothread,id=iothread0 "
+            else:
+                cmd = f"{base_cmd} " \
+                    f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},file.aio={aio},cache.direct={direct_option},cache.no-flush={no_flush_option} " \
+                    "-device virtio-blk,drive=q1,iothread=iothread0 " \
+                    "-object iothread,id=iothread0 "
         else:
             # iothreads, no aio
             cmd = f"{base_cmd} " \
                 f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},cache.direct={direct_option},cache.no-flush={no_flush_option} " \
                 "-device virtio-blk,drive=q1,iothread=iothread0 " \
                 "-object iothread,id=iothread0 "
+            if scsi:
+                raise NotImplementedError
     else:
         # no iothreads, no aio
         cmd = f"{base_cmd} " \
             f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},cache.direct={direct_option},cache.no-flush={no_flush_option} " \
             "-device virtio-blk,drive=q1 "
+        if scsi:
+            raise NotImplementedError
 
     return cmd
 
@@ -425,6 +437,7 @@ def exec_virtio_blk_nvme_benchmark(
         fio_job_path: str,
         direct: bool,
         no_flush: bool,
+        scsi: bool,
         ) -> None:
     qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
             base_cmd=base_cmd,
@@ -434,6 +447,7 @@ def exec_virtio_blk_nvme_benchmark(
             aio=aio,
             direct=direct,
             no_flush=no_flush,
+            scsi=scsi,
             )
     # pin cpus to cmd
     # qemu_cmd: str = f"taskset -c 4-{4+num_cpus-1} {qemu_cmd}"
@@ -468,10 +482,17 @@ def exec_virtio_blk_nvme_benchmark(
 
     if dm_benchmark:
         fio_filename: str = CRYPTSETUP_TARGET_PATH
-        cryptsetup_open_ssd_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, vm_ssd_path=VM_BENCHMARK_SSD_PATH)
+        if scsi:
+            vm_ssd_path = VM_BENCHMARK_SCSI_PATH
+        else:
+            vm_ssd_path = VM_BENCHMARK_SSD_PATH
+        cryptsetup_open_ssd_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, vm_ssd_path=vm_ssd_path)
 
     else:
-        fio_filename: str = VM_BENCHMARK_SSD_PATH
+        if scsi:
+            fio_filename: str = VM_BENCHMARK_SCSI_PATH
+        else:
+            fio_filename: str = VM_BENCHMARK_SSD_PATH
 
     if noexec:
         return
@@ -507,6 +528,7 @@ def benchmark_sev_virtio_blk_qemu(
         fio_job_path: str = FIO_VM_JOB_PATH,
         direct: bool = True,
         no_flush: bool = False,
+        scsi: bool = False,
         ) -> None:
     """
     Benchmark SEV QEMU with virtio-blk-pci.
@@ -539,6 +561,7 @@ def benchmark_sev_virtio_blk_qemu(
             fio_job_path=fio_job_path,
             direct=direct,
             no_flush=no_flush,
+            scsi=scsi,
             )
 
 
@@ -564,6 +587,7 @@ def benchmark_native_virtio_blk_qemu(
         fio_job_path: str = FIO_VM_JOB_PATH,
         direct: bool = True,
         no_flush: bool = False,
+        scsi: bool = False,
         ) -> None:
     """
     Benchmark native QEMU with virtio-blk-pci.
@@ -595,4 +619,5 @@ def benchmark_native_virtio_blk_qemu(
             fio_job_path=fio_job_path,
             direct=direct,
             no_flush=no_flush,
+            scsi=scsi,
             )

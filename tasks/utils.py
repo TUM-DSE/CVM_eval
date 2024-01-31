@@ -16,6 +16,7 @@ SSH_KEY = os.path.join(REPO_DIR, "nix", "ssh_key")
 
 # VM internal paths
 VM_BENCHMARK_SSD_PATH = "/dev/vdb"
+VM_BENCHMARK_SCSI_PATH = "/dev/sda"
 CRYPTSETUP_TARGET_NAME = "target"
 CRYPTSETUP_TARGET_PATH = f"/dev/mapper/{CRYPTSETUP_TARGET_NAME}"
 

@@ -90,6 +90,7 @@ in
   boot.kernelParams = [
                         "virtio_blk.cvm_io_driver_name=virtio2"
                         "virtio_blk.poll_queues=4"
+                        "virtio_scsi.virtscsi_poll_queues=4"
                         # "swiotlb=force"
                       ];
 
