@@ -5,12 +5,16 @@ import sys
 import os
 import json
 from pathlib import Path
+import glob
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+import colorama
+from colorama import Back, Fore, Style
 
+colorama.init()
 
 mpl.use("Agg")
 mpl.rcParams["text.latex.preamble"] = r"\usepackage{amsmath}"
@@ -24,7 +28,42 @@ sns.set_style("ticks", {"xtick.major.size": 8, "ytick.major.size": 8})
 sns.set_context("paper", rc={"font.size": 5, "axes.titlesize": 5, "axes.labelsize": 8})
 
 palette = sns.color_palette("pastel")
-hatches = ["", "/", "\\", "x", ".", "*", "o", "O", "+"]
+hatches = [
+    "",
+    "/",
+    "\\",
+    "x",
+    ".",
+    "*",
+    "o",
+    "O",
+    "+",
+    "//",
+    "\\\\",
+    "||",
+    "--",
+    "++",
+    "xx",
+    "oo",
+    "OO",
+    "..",
+    "**",
+    "/o",
+    "\\|",
+    "|*",
+    "-\\",
+    "+o",
+    "x*",
+    "o-",
+    "O|",
+    "O.",
+    "*-",
+]
+
+
+def warn_print(msg: str) -> None:
+    print(Style.BRIGHT + Back.CYAN + Fore.LIGHTRED_EX + f"[WARN]: {msg}")
+    print(Style.RESET_ALL)
 
 
 def read_json(file):
@@ -37,7 +76,7 @@ def read_json(file):
                 lines.append(line)
                 break
             else:
-                print(f"[warn] skipping line: {line.strip()}")
+                warn_print(f"skipping line: {line.strip()}")
         for line in f:
             lines.append(line)
     data = json.loads("".join(lines))
@@ -99,7 +138,7 @@ def read_files(files, names=None):
     return df
 
 
-def plot_bw(df):
+def plot_bw(df, basedir="."):
     # read
     bw = df[(df["jobname"] == "bw read")]
     ax = sns.barplot(
@@ -121,7 +160,7 @@ def plot_bw(df):
     ax.get_legend().set_title("")
     for i, bar in enumerate(ax.patches[:n]):
         bar.set_hatch(hatches[i])
-    for i, handle in enumerate(ax.get_legend().legend_handles[::-1]):
+    for i, handle in enumerate(ax.get_legend().legend_handles):
         handle.set_hatch(hatches[i])
 
     ## write
@@ -168,19 +207,23 @@ def plot_bw(df):
 
     ax.set(xticklabels=["seq read", "seq write"])
 
-    # sns.move_legend(
-    #     ax, "lower center",
-    #     bbox_to_anchor=(.5, 0), ncol=3, title=None, frameon=True,
-    # )
+    sns.move_legend(
+        ax,
+        "lower center",
+        bbox_to_anchor=(0.5, 0),
+        ncol=5,
+        title=None,
+        frameon=True,
+    )
 
     plt.ylabel("Maximum Bandwidth [GiB/s]")
     plt.xlabel("")
     plt.title("Higher is better ↑", fontsize=9, color="navy", weight="bold")
-    plt.savefig("bw.pdf")
+    plt.savefig(Path(basedir) / "bw.pdf")
     plt.clf()
 
 
-def plot_iops(df):
+def plot_iops(df, basedir="."):
     ## randread
     iops = df[(df["jobname"] == "iops randread")]
     ax = sns.barplot(
@@ -203,7 +246,7 @@ def plot_iops(df):
     ax.get_legend().set_title("")
     for i, bar in enumerate(ax.patches[:n]):
         bar.set_hatch(hatches[i])
-    for i, handle in enumerate(ax.get_legend().legend_handles[::-1]):
+    for i, handle in enumerate(ax.get_legend().legend_handles):
         handle.set_hatch(hatches[i])
 
     ## randwrite
@@ -252,7 +295,7 @@ def plot_iops(df):
         ax,
         "lower center",
         bbox_to_anchor=(0.5, 0),
-        ncol=3,
+        ncol=5,
         title=None,
         frameon=True,
     )
@@ -262,11 +305,11 @@ def plot_iops(df):
     plt.ylabel("4KB Throughput [K IOPS]")
     plt.xlabel("")
     plt.title("Higher is better ↑", fontsize=9, color="navy", weight="bold")
-    plt.savefig("iops.pdf")
+    plt.savefig(Path(basedir) / "iops.pdf")
     plt.clf()
 
 
-def plot_latency(df):
+def plot_latency(df, basedir="."):
     ## read
     lat = df[(df["jobname"] == "alat read")]
     ax = sns.barplot(
@@ -358,7 +401,7 @@ def plot_latency(df):
     )
     for i, bar in enumerate(ax.patches):
         bar.set_hatch(hatches[i % n])
-    for i, handle in enumerate(ax.get_legend().legend_handles[::-1]):
+    for i, handle in enumerate(ax.get_legend().legend_handles):
         handle.set_hatch(hatches[i])
 
     ax.yaxis.set_major_formatter(
@@ -381,7 +424,7 @@ def plot_latency(df):
         ax,
         "lower center",
         bbox_to_anchor=(0.5, -0.0),
-        ncol=3,
+        ncol=5,
         title=None,
         frameon=True,
     )
@@ -390,41 +433,46 @@ def plot_latency(df):
     plt.ylabel("4KB Latency [us]")
     plt.xlabel("")
     plt.title("Lower is better ↓", fontsize=9, color="navy", weight="bold")
-    plt.savefig("latency.pdf")
+    plt.savefig(Path(basedir) / "latency.pdf")
     plt.clf()
 
 
-def main():
+def find_file(BASE, name):
+    path = str(Path(BASE) / name)
+    files = glob.glob(path)
+    if len(files) != 1:
+        warn_print(f"{path}:  {files}")
+        if len(files) == 0:
+            raise Exception("file not found")
+    return files[0]
+
+
+def main(BASE, nvme="nvme1n1"):
     files = []
     names = []
 
-    BASE = Path("/share/masa/cvm/backup/result/nvme1n1/inv-fio-logs/")
-
     files.append(
-        BASE
-        / "native-no-dmcrypt-aio-io_uring-8-nvme1n1-quick-fio-2024-01-30-20-04-34.log"
+        find_file(BASE, f"native-no-dmcrypt-aio-io_uring-8-{nvme}-quick-fio-*.log")
     )
     names.append("vm")
     files.append(
-        BASE
-        / "native-no-dmcrypt-aio-io_uring-8-nvme1n1-iouring-quick-fio-2024-01-30-20-44-11.log"
+        find_file(
+            BASE, f"native-no-dmcrypt-aio-io_uring-8-{nvme}-iouring-quick-fio-*.log"
+        )
     )
     names.append("vm (poll)")
-    files.append(
-        BASE / "native-aio-io_uring-8-nvme1n1-quick-fio-2024-01-30-20-22-29.log"
-    )
+    files.append(find_file(BASE, f"native-aio-io_uring-8-{nvme}-quick-fio-*.log"))
     names.append("vm w/ dm-crypt")
 
     files.append(
-        BASE / "sev-no-dmcrypt-aio-io_uring-8-nvme1n1-quick-fio-2024-01-30-20-13-04.log"
+        find_file(BASE, f"sev-no-dmcrypt-aio-io_uring-8-{nvme}-quick-fio-*.log")
     )
     names.append("sev")
     files.append(
-        BASE
-        / "sev-no-dmcrypt-aio-io_uring-8-nvme1n1-iouring-quick-fio-2024-01-30-20-52-56.log"
+        find_file(BASE, f"sev-no-dmcrypt-aio-io_uring-8-{nvme}-iouring-quick-fio-*.log")
     )
     names.append("sev (poll)")
-    files.append(BASE / "sev-aio-io_uring-8-nvme1n1-quick-fio-2024-01-30-20-32-02.log")
+    files.append(find_file(BASE, f"sev-aio-io_uring-8-{nvme}-quick-fio-*.log"))
     names.append("sev w/ dm-crypt")
 
     df = read_files(files, names)
@@ -434,8 +482,85 @@ def main():
     plot_iops(df)
     plot_latency(df)
 
-    pass
+
+def main2(BASE, no_dm_crypt=True, dm_crypt=False, outdir=".", ignore_errors=True):
+    files = []
+    names = []
+
+    def try_add(name, pattern):
+        try:
+            files.append(find_file(BASE, pattern))
+            names.append(name)
+        except:
+            if not ignore_errors:
+                raise
+
+    if no_dm_crypt:
+        try_add("libaio", f"native-no-dmcrypt-*-libaio-*.log")
+        try_add("iou", f"native-no-dmcrypt-*-iou-*.log")
+        try_add("iou-s", f"native-no-dmcrypt-*-iou_s-*.log")
+        try_add("iou-c", f"native-no-dmcrypt-*-iou_c-*.log")
+        try_add("iou-sc", f"native-no-dmcrypt-*-iou_sc-*.log")
+
+    if dm_crypt:
+        try_add("libaio*", f"native-aio-*-libaio-*.log")
+        try_add("iou*", f"native-aio-*-iou-*.log")
+        try_add("iou_s*", f"native-aio-*-iou_s-*.log")
+        # try_add("iou_c*", f"native-aio-*-iou_c-*.log")
+        # try_add("iou_sc*", f"native-aio-*-iou_sc-*.log")
+
+    if no_dm_crypt:
+        try_add("sev libaio", f"sev-no-dmcrypt-*-libaio-*.log")
+        try_add("sev iou", f"sev-no-dmcrypt-*-iou-*.log")
+        try_add("sev iou_s", f"sev-no-dmcrypt-*-iou_s-*.log")
+        try_add("sev iou_c", f"sev-no-dmcrypt-*-iou_c-*.log")
+        try_add("sev iou_sc", f"sev-no-dmcrypt-*-iou_sc-*.log")
+
+    if dm_crypt:
+        try_add("sev libaio*", f"sev-aio-*-libaio-*.log")
+        try_add("sev iou*", f"sev-aio-*-iou-*.log")
+        try_add("sev iou_s*", f"sev-aio-*-iou_s-*.log")
+        # try_add("sev iou_c*", f"sev-aio-*-iou_c-*.log")
+        # try_add("sev iou_sc*", f"sev-aio-*-iou_sc-*.log")
+
+    df = read_files(files, names)
+    print(df)
+
+    # create outdir if not exist
+    Path(outdir).mkdir(parents=True, exist_ok=True)
+
+    plot_bw(df, outdir)
+    plot_iops(df, outdir)
+    plot_latency(df, outdir)
 
 
 if __name__ == "__main__":
-    main()
+    # main("/share/masa/cvm/backup/result/nvme1n1/cvm-io/inv-fio-logs/")
+    # main("/share/masa/cvm/backup/result/nvme1n1/force-swiotlb/inv-fio-logs")
+    # main("/share/masa/cvm/backup/result/nvme1n1/virtio-scsi/inv-fio-logs")
+
+    # main2("/share/masa/cvm/backup/result/new/virtio-blk/inv-fio-logs/")
+
+    def plot_all(base, outdir):
+        main2(base, no_dm_crypt=True, dm_crypt=True, outdir=Path(outdir) / "all")
+        main2(
+            base, no_dm_crypt=True, dm_crypt=False, outdir=Path(outdir) / "no_dm_crypt"
+        )
+        main2(base, no_dm_crypt=False, dm_crypt=True, outdir=Path(outdir) / "dm_crypt")
+
+    plot_all(
+        "/share/masa/cvm/backup/result/new/virtio-blk/inv-fio-logs/",
+        outdir="./plot/virtio-blk/nvme1",
+    )
+    plot_all(
+        "/share/masa/cvm/backup/result/new/virtio-blk/nvme2/inv-fio-logs",
+        outdir="./plot/virtio-blk/nvme2",
+    )
+    plot_all(
+        "/share/masa/cvm/backup/result/new/virtio-scsi/inv-fio-logs",
+        outdir="./plot/virtio-scsi/nvme1",
+    )
+    plot_all(
+        "/share/masa/cvm/backup/result/new/virtio-scsi/nvme2/inv-fio-logs",
+        outdir="./plot/virtio-scsi/nvme2",
+    )
