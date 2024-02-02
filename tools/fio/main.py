@@ -534,10 +534,41 @@ def main2(BASE, no_dm_crypt=True, dm_crypt=False, outdir=".", ignore_errors=True
     plot_latency(df, outdir)
 
 
+def main3(BASE, outdir=".", ignore_errors=True):
+    files = []
+    names = []
+
+    def try_add(name, pattern):
+        try:
+            files.append(find_file(BASE, pattern))
+            names.append(name)
+        except:
+            if not ignore_errors:
+                raise
+
+    try_add("native", f"native-no-dmcrypt-*-long-io_uring-*.log")
+    try_add("native*", f"native-aio-*-long-io_uring-*.log")
+    try_add("tdx", f"tdx-no-dmcrypt-*-long-io_uring-*.log")
+    try_add("tdx*", f"tdx-aio-*-long-io_uring-*.log")
+
+    df = read_files(files, names)
+    print(df)
+
+    # create outdir if not exist
+    Path(outdir).mkdir(parents=True, exist_ok=True)
+
+    # plot_bw(df, outdir)
+    plot_iops(df, outdir)
+    # plot_latency(df, outdir)
+
+
 if __name__ == "__main__":
     # main("/share/masa/cvm/backup/result/nvme1n1/cvm-io/inv-fio-logs/")
     # main("/share/masa/cvm/backup/result/nvme1n1/force-swiotlb/inv-fio-logs")
     # main("/share/masa/cvm/backup/result/nvme1n1/virtio-scsi/inv-fio-logs")
+
+    main3("/scratch/robert/tdx-logs", outdir="./plot/tdx")
+    sys.exit(0)
 
     # main2("/share/masa/cvm/backup/result/new/virtio-blk/inv-fio-logs/")
 
@@ -548,19 +579,23 @@ if __name__ == "__main__":
         )
         main2(base, no_dm_crypt=False, dm_crypt=True, outdir=Path(outdir) / "dm_crypt")
 
+    # plot_all(
+    #    "/share/masa/cvm/backup/result/new/virtio-blk/inv-fio-logs/",
+    #    outdir="./plot/virtio-blk/nvme1",
+    # )
+    # plot_all(
+    #    "/share/masa/cvm/backup/result/new/virtio-blk/nvme2/inv-fio-logs",
+    #    outdir="./plot/virtio-blk/nvme2",
+    # )
+    # plot_all(
+    #    "/share/masa/cvm/backup/result/new/virtio-scsi/inv-fio-logs",
+    #    outdir="./plot/virtio-scsi/nvme1",
+    # )
+    # plot_all(
+    #    "/share/masa/cvm/backup/result/new/virtio-scsi/nvme2/inv-fio-logs",
+    #    outdir="./plot/virtio-scsi/nvme2",
+    # )
     plot_all(
-        "/share/masa/cvm/backup/result/new/virtio-blk/inv-fio-logs/",
-        outdir="./plot/virtio-blk/nvme1",
-    )
-    plot_all(
-        "/share/masa/cvm/backup/result/new/virtio-blk/nvme2/inv-fio-logs",
-        outdir="./plot/virtio-blk/nvme2",
-    )
-    plot_all(
-        "/share/masa/cvm/backup/result/new/virtio-scsi/inv-fio-logs",
-        outdir="./plot/virtio-scsi/nvme1",
-    )
-    plot_all(
-        "/share/masa/cvm/backup/result/new/virtio-scsi/nvme2/inv-fio-logs",
-        outdir="./plot/virtio-scsi/nvme2",
+        "/share/masa/cvm/backup/result/new/virtio-blk/vcpu12/inv-fio-logs",
+        outdir="./plot/virtio-blk/nvme1/vcpu12/",
     )
