@@ -13,6 +13,8 @@ ramp_time=60 # from Intel SPDK BM guidelines
 # ramp_time=20 # PerChar CHEOPS '23
 
 
+group_reporting=1
+
 # bs, rw, iodepth, numjobs from Spool ATC ‘20
 [alat randread]
 stonewall
@@ -21,7 +23,6 @@ rw=randread
 iodepth=1
 numjobs=1
 
-group_reporting=1
 
 [alat randwrite]
 # alat for r,w,randr,randw
