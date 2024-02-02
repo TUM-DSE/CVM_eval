@@ -35,6 +35,7 @@ benchmark_help={
     'rebuild_ovmf': "Rebuild OVMF (sometimes necessary if Qemu doesn\'t boot)",
     'benchmark_tag': "Tag for benchmark (used for naming results file)",
     'ssd_path': f"Path to SSD device (default: {EVAL_NVME_PATH})",
+    'ssh_forward_port': f"SSH port to use (default: {DEFAULT_SSH_FORWARD_PORT})",
     }
 
 
@@ -438,6 +439,7 @@ def exec_virtio_blk_nvme_benchmark(
         direct: bool,
         no_flush: bool,
         scsi: bool,
+        ssh_forward_port: int=DEFAULT_SSH_FORWARD_PORT,
         ) -> None:
     qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
             base_cmd=base_cmd,
@@ -460,14 +462,14 @@ def exec_virtio_blk_nvme_benchmark(
         qemu_cmd: str = f"taskset -c 8-{8+num_cpus} {qemu_cmd}"
 
     if stop_qemu_before_benchmark:
-        warn_print("Stopping QEMU")
-        stop_qemu(c)
+        warn_print(f"Stopping QEMU at port {ssh_forward_port}")
+        stop_qemu(c, ssh_port=ssh_forward_port)
 
     print_and_sudo(c, qemu_cmd, disown=True)
     timeout = 10
     # wait until qemu is ready
     info_print("Waiting for QEMU to start")
-    while ssh_vm(c, cmd="exit").failed:
+    while ssh_vm(c, cmd="exit", ssh_port=ssh_forward_port).failed:
         info_print(f"QEMU not ready yet. {timeout} tries left")
         time.sleep(1)
         if timeout == 0:
@@ -486,7 +488,7 @@ def exec_virtio_blk_nvme_benchmark(
             vm_ssd_path = VM_BENCHMARK_SCSI_PATH
         else:
             vm_ssd_path = VM_BENCHMARK_SSD_PATH
-        cryptsetup_open_ssd_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, vm_ssd_path=vm_ssd_path)
+        cryptsetup_open_ssd_in_vm(c, ssh_port=ssh_forward_port, vm_ssd_path=vm_ssd_path)
 
     else:
         if scsi:
@@ -497,12 +499,12 @@ def exec_virtio_blk_nvme_benchmark(
     if noexec:
         return
 
-    exec_fio_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT,
+    exec_fio_in_vm(c, ssh_port=ssh_forward_port,
                    fio_job_path=fio_job_path,
                    fio_filename=fio_filename, fio_benchmark=fio_benchmark)
 
     if await_results:
-        await_vm_fio(c, fio_host_output_tag=benchmark_tag)
+        await_vm_fio(c, fio_host_output_tag=benchmark_tag, ssh_port=ssh_forward_port)
         # TODO add tag to fio results
 
 
@@ -529,6 +531,7 @@ def benchmark_sev_virtio_blk_qemu(
         direct: bool = True,
         no_flush: bool = False,
         scsi: bool = False,
+        ssh_forward_port: int=DEFAULT_SSH_FORWARD_PORT,
         ) -> None:
     """
     Benchmark SEV QEMU with virtio-blk-pci.
@@ -541,6 +544,7 @@ def benchmark_sev_virtio_blk_qemu(
             rebuild_image=rebuild_image,
             rebuild_ovmf=rebuild_ovmf,
             qmp_socket_path=qmp_socket_path,
+            port=ssh_forward_port,
             )
     exec_virtio_blk_nvme_benchmark(
             c,
@@ -562,6 +566,7 @@ def benchmark_sev_virtio_blk_qemu(
             direct=direct,
             no_flush=no_flush,
             scsi=scsi,
+            ssh_forward_port=ssh_forward_port,
             )
 
 
@@ -588,6 +593,7 @@ def benchmark_native_virtio_blk_qemu(
         direct: bool = True,
         no_flush: bool = False,
         scsi: bool = False,
+        ssh_forward_port: int=DEFAULT_SSH_FORWARD_PORT,
         ) -> None:
     """
     Benchmark native QEMU with virtio-blk-pci.
@@ -599,6 +605,7 @@ def benchmark_native_virtio_blk_qemu(
             rebuild_image=rebuild_image,
             rebuild_ovmf=rebuild_ovmf,
             qmp_socket_path=qmp_socket_path,
+            port=ssh_forward_port,
             )
     exec_virtio_blk_nvme_benchmark(
             c,
@@ -620,4 +627,5 @@ def benchmark_native_virtio_blk_qemu(
             direct=direct,
             no_flush=no_flush,
             scsi=scsi,
+            ssh_forward_port=ssh_forward_port,
             )

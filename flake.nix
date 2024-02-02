@@ -63,8 +63,12 @@
                 target = "/mnt/blk-bm.fio";
               }
               {
-                source = ./bm/blk-bm-quick.fio;
-                target = "/mnt/blk-bm-quick.fio";
+                source = ./bm/quick;
+                target = "/mnt/quick";
+              }
+              {
+                source = ./bm/quick-no-dmcrypt;
+                target = "/mnt/quick-no-dmcrypt";
               }
             ];
           };

@@ -6,6 +6,8 @@ NO_DMCRYPT=${NO_DMCRYPT:-0}
 AIO=${AIO:-native io_uring}
 TAG=${TAG:-}
 
+SSH_PORT=${SSH_PORT:-2224}
+
 echo "Using NVME: $NVME"
 echo "Using NUM_CPUS: $NUM_CPUS"
 
@@ -26,7 +28,8 @@ do
        --rebuild-ovmf \
        --ssd-path=${NVME} \
        --fio-job-path=${FIO_JOB_PATH} \
-       --benchmark-tag=native-no-dmcrypt-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG
+       --benchmark-tag=native-no-dmcrypt-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG \
+       --ssh-forward-port=${SSH_PORT}
 done
 
 #######################
@@ -44,7 +47,8 @@ do
        --rebuild-ovmf \
        --ssd-path=${NVME} \
        --fio-job-path=${FIO_JOB_PATH} \
-       --benchmark-tag=sev-no-dmcrypt-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG
+       --benchmark-tag=sev-no-dmcrypt-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG \
+       --ssh-forward-port=${SSH_PORT}
 done
 
 if [ "$NO_DMCRYPT" -eq 1 ]; then
@@ -72,7 +76,8 @@ do
        --rebuild-ovmf \
        --ssd-path=${NVME} \
        --fio-job-path=${FIO_JOB_PATH} \
-       --benchmark-tag=native-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG
+       --benchmark-tag=native-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG \
+       --ssh-forward-port=${SSH_PORT}
 done
 
 #######################
@@ -91,7 +96,8 @@ do
        --rebuild-ovmf \
        --ssd-path=${NVME} \
        --fio-job-path=${FIO_JOB_PATH} \
-       --benchmark-tag=sev-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG
+       --benchmark-tag=sev-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG \
+       --ssh-forward-port=${SSH_PORT}
 done
 
 #######################
