@@ -271,9 +271,38 @@ def plot_iops(df, basedir="."):
         fmt="none",
         c="k",
     )
+
+    ## mixread70
+    iops = df[(df["jobname"] == "iops rwmixread")]
+    iops["iops_mean"] = iops["read_iops_mean"] + iops["write_iops_mean"]
+    ax = sns.barplot(
+        data=iops,
+        x="jobname",
+        y="iops_mean",
+        hue="name",
+        palette=palette,
+        edgecolor="k",
+        linewidth=1.0,
+        legend=False,
+    )
+
+    ## mixread30
+    iops = df[(df["jobname"] == "iops rwmixwrite")]
+    iops["iops_mean"] = iops["read_iops_mean"] + iops["write_iops_mean"]
+    ax = sns.barplot(
+        data=iops,
+        x="jobname",
+        y="iops_mean",
+        hue="name",
+        palette=palette,
+        edgecolor="k",
+        linewidth=1.0,
+        legend=False,
+    )
+
     # apply hatch
     for i, bar in enumerate(ax.patches[n * 2 :]):
-        bar.set_hatch(hatches[i])
+        bar.set_hatch(hatches[i % n])
 
     # put numbers on top of bars
     for i, p in enumerate(ax.patches):
@@ -300,7 +329,7 @@ def plot_iops(df, basedir="."):
         frameon=True,
     )
 
-    ax.set(xticklabels=["readread", "randwrite"])
+    ax.set(xticklabels=["readread", "randwrite", "mixread70", "mixread30"])
     # sns.despine()
     plt.ylabel("4KB Throughput [K IOPS]")
     plt.xlabel("")
