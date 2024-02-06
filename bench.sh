@@ -16,6 +16,9 @@ NVME_NAME=$(basename $NVME)
 #######################
 # native w/o dm-crypt
 
+
+if [ "$NO_DMCRYPT" -eq 1 ]; then
+
 for aio in ${AIO};
 do
     inv run.benchmark-native-virtio-blk-qemu \
@@ -29,7 +32,8 @@ do
        --ssd-path=${NVME} \
        --fio-job-path=${FIO_JOB_PATH} \
        --benchmark-tag=native-no-dmcrypt-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG \
-       --ssh-forward-port=${SSH_PORT}
+       --ssh-forward-port=${SSH_PORT} \
+       --no-direct
 done
 
 #######################
@@ -48,12 +52,11 @@ do
        --ssd-path=${NVME} \
        --fio-job-path=${FIO_JOB_PATH} \
        --benchmark-tag=sev-no-dmcrypt-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG \
-       --ssh-forward-port=${SSH_PORT}
+       --ssh-forward-port=${SSH_PORT} \
+       --no-direct
 done
 
-if [ "$NO_DMCRYPT" -eq 1 ]; then
-    exit 0
-fi
+else
 
 #######################
 # Setup dm-crypt
@@ -77,7 +80,8 @@ do
        --ssd-path=${NVME} \
        --fio-job-path=${FIO_JOB_PATH} \
        --benchmark-tag=native-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG \
-       --ssh-forward-port=${SSH_PORT}
+       --ssh-forward-port=${SSH_PORT} \
+       --no-direct
 done
 
 #######################
@@ -97,10 +101,12 @@ do
        --ssd-path=${NVME} \
        --fio-job-path=${FIO_JOB_PATH} \
        --benchmark-tag=sev-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG \
-       --ssh-forward-port=${SSH_PORT}
+       --ssh-forward-port=${SSH_PORT} \
+       --no-direct
 done
 
+fi
 #######################
 # Stop QEMU
 
-inv utils.stop-qemu
+inv utils.stop-qemu --ssh-port=${SSH_PORT}

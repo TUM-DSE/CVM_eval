@@ -512,7 +512,9 @@ def main(BASE, nvme="nvme1n1"):
     plot_latency(df)
 
 
-def main2(BASE, no_dm_crypt=True, dm_crypt=False, outdir=".", ignore_errors=True):
+# def main2(BASE, no_dm_crypt=True, dm_crypt=False, outdir=".", ignore_errors=True):
+def main2(BASE, no_dm_crypt=True, dm_crypt=False, outdir=".", ignore_errors=True, cvm="tdx"):        
+
     files = []
     names = []
 
@@ -524,33 +526,42 @@ def main2(BASE, no_dm_crypt=True, dm_crypt=False, outdir=".", ignore_errors=True
             if not ignore_errors:
                 raise
 
-    if no_dm_crypt:
-        try_add("libaio", f"native-no-dmcrypt-*-libaio-*.log")
-        try_add("iou", f"native-no-dmcrypt-*-iou-*.log")
-        try_add("iou-s", f"native-no-dmcrypt-*-iou_s-*.log")
-        try_add("iou-c", f"native-no-dmcrypt-*-iou_c-*.log")
-        try_add("iou-sc", f"native-no-dmcrypt-*-iou_sc-*.log")
+#     if no_dm_crypt:
+#         try_add("libaio", f"native-no-dmcrypt-*-libaio-*.log")
+#         try_add("iou", f"native-no-dmcrypt-*-iou-*.log")
+#         try_add("iou-s", f"native-no-dmcrypt-*-iou_s-*.log")
+#         try_add("iou-c", f"native-no-dmcrypt-*-iou_c-*.log")
+#         try_add("iou-sc", f"native-no-dmcrypt-*-iou_sc-*.log")
+# 
+#     if dm_crypt:
+#         try_add("libaio*", f"native-aio-*-libaio-*.log")
+#         try_add("iou*", f"native-aio-*-iou-*.log")
+#         try_add("iou_s*", f"native-aio-*-iou_s-*.log")
+#         # try_add("iou_c*", f"native-aio-*-iou_c-*.log")
+#         # try_add("iou_sc*", f"native-aio-*-iou_sc-*.log")
+# 
+#     if no_dm_crypt:
+#         try_add("tdx libaio", f"tdx-no-dmcrypt-*-libaio-*.log")
+#         try_add("tdx iou", f"tdx-no-dmcrypt-*-iou-*.log")
+#         try_add("tdx iou_s", f"tdx-no-dmcrypt-*-iou_s-*.log")
+#         try_add("tdx iou_c", f"tdx-no-dmcrypt-*-iou_c-*.log")
+#         try_add("tdx iou_sc", f"tdx-no-dmcrypt-*-iou_sc-*.log")
+# 
+#     if dm_crypt:
+#         try_add("tdx libaio*", f"tdx-aio-*-libaio-*.log")
+#         try_add("tdx iou*", f"tdx-aio-*-iou-*.log")
+#         try_add("tdx iou_s*", f"tdx-aio-*-iou_s-*.log")
+#         # try_add("tdx iou_c*", f"tdx-aio-*-iou_c-*.log")
+#         # try_add("tdx iou_sc*", f"tdx-aio-*-iou_sc-*.log")
 
-    if dm_crypt:
-        try_add("libaio*", f"native-aio-*-libaio-*.log")
-        try_add("iou*", f"native-aio-*-iou-*.log")
-        try_add("iou_s*", f"native-aio-*-iou_s-*.log")
-        # try_add("iou_c*", f"native-aio-*-iou_c-*.log")
-        # try_add("iou_sc*", f"native-aio-*-iou_sc-*.log")
+    try_add("vm", f"native-no-dmcrypt-*-iou-*.log")
+    try_add("vm (poll)", f"native-no-dmcrypt-*-iou_sc-*.log")
+    try_add("vm w/ dm-crypt", f"native-aio-*-iou-*.log")
 
-    if no_dm_crypt:
-        try_add("sev libaio", f"sev-no-dmcrypt-*-libaio-*.log")
-        try_add("sev iou", f"sev-no-dmcrypt-*-iou-*.log")
-        try_add("sev iou_s", f"sev-no-dmcrypt-*-iou_s-*.log")
-        try_add("sev iou_c", f"sev-no-dmcrypt-*-iou_c-*.log")
-        try_add("sev iou_sc", f"sev-no-dmcrypt-*-iou_sc-*.log")
+    try_add(f"{cvm}", f"{cvm}-no-dmcrypt-*-iou-*.log")
+    try_add(f"{cvm} (poll)", f"{cvm}-no-dmcrypt-*-iou_sc-*.log")
+    try_add(f"{cvm} w/ dm-crypt", f"{cvm}-aio-*-iou-*.log")
 
-    if dm_crypt:
-        try_add("sev libaio*", f"sev-aio-*-libaio-*.log")
-        try_add("sev iou*", f"sev-aio-*-iou-*.log")
-        try_add("sev iou_s*", f"sev-aio-*-iou_s-*.log")
-        # try_add("sev iou_c*", f"sev-aio-*-iou_c-*.log")
-        # try_add("sev iou_sc*", f"sev-aio-*-iou_sc-*.log")
 
     df = read_files(files, names)
     print(df)
@@ -596,17 +607,19 @@ if __name__ == "__main__":
     # main("/share/masa/cvm/backup/result/nvme1n1/force-swiotlb/inv-fio-logs")
     # main("/share/masa/cvm/backup/result/nvme1n1/virtio-scsi/inv-fio-logs")
 
-    main3("/scratch/robert/tdx-logs", outdir="./plot/tdx")
-    sys.exit(0)
+    # main3("/scratch/robert/tdx-logs", outdir="./plot/tdx")
+    # sys.exit(0)
 
     # main2("/share/masa/cvm/backup/result/new/virtio-blk/inv-fio-logs/")
 
     def plot_all(base, outdir):
-        main2(base, no_dm_crypt=True, dm_crypt=True, outdir=Path(outdir) / "all")
+        main2(base, no_dm_crypt=True, dm_crypt=True, outdir=Path(outdir) / "all", cvm="sev")
         main2(
-            base, no_dm_crypt=True, dm_crypt=False, outdir=Path(outdir) / "no_dm_crypt"
+            base, no_dm_crypt=True, dm_crypt=False, outdir=Path(outdir) / "no_dm_crypt",
+            cvm="sev"
         )
-        main2(base, no_dm_crypt=False, dm_crypt=True, outdir=Path(outdir) / "dm_crypt")
+        main2(base, no_dm_crypt=False, dm_crypt=True, outdir=Path(outdir) / "dm_crypt",
+              cvm="sev")
 
     # plot_all(
     #    "/share/masa/cvm/backup/result/new/virtio-blk/inv-fio-logs/",
@@ -625,6 +638,6 @@ if __name__ == "__main__":
     #    outdir="./plot/virtio-scsi/nvme2",
     # )
     plot_all(
-        "/share/masa/cvm/backup/result/new/virtio-blk/vcpu12/inv-fio-logs",
-        outdir="./plot/virtio-blk/nvme1/vcpu12/",
+        "/scratch/robert/sev-no-direct-logs",
+        outdir="./plot/virtio-blk/nvme1",
     )
