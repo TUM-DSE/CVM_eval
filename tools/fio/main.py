@@ -559,7 +559,7 @@ def main2(BASE, no_dm_crypt=True, dm_crypt=False, outdir=".", ignore_errors=True
     try_add("vm w/ dm-crypt", f"native-aio-*-iou-*.log")
 
     try_add(f"{cvm}", f"{cvm}-no-dmcrypt-*-iou-*.log")
-    try_add(f"{cvm} (poll)", f"{cvm}-no-dmcrypt-*-iou_sc-*.log")
+    # try_add(f"{cvm} (poll)", f"{cvm}-no-dmcrypt-*-iou_sc-*.log")
     try_add(f"{cvm} w/ dm-crypt", f"{cvm}-aio-*-iou-*.log")
 
 
@@ -638,6 +638,10 @@ if __name__ == "__main__":
     #    outdir="./plot/virtio-scsi/nvme2",
     # )
     plot_all(
-        "/scratch/robert/sev-no-direct-logs",
+        # "/scratch/robert/tdx-long-nodirect",
+        # "/home/robert/repos/github.com/TUM_DSE/CVM_eval/logs/sev-no-direct-thesis",
+        #"/home/robert/repos/github.com/TUM_DSE/CVM_eval/inv-fio-logs",
+        # "/home/robert/repos/github.com/TUM_DSE/CVM_eval/logs/sev/direct-long-1",
+        "/home/robert/repos/github.com/TUM_DSE/CVM_eval/logs/sev/no-direct-3",
         outdir="./plot/virtio-blk/nvme1",
     )
