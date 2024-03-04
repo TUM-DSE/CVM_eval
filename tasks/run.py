@@ -8,13 +8,13 @@ import utils
 
 from spdk import VHOST_CONTROLLER_NAME
 
-from common import info_print, warn_nvm_use, print_and_run, print_and_sudo, err_print, REPO_DIR, VM_BUILD_DIR, warn_print, EVAL_NVME_PATH
+from common import RAMDISK_PATH, info_print, warn_nvm_use, print_and_run, print_and_sudo, err_print, REPO_DIR, VM_BUILD_DIR, warn_print, EVAL_NVME_PATH
 
 from invoke import task
 # warning: dependency
-from ovmf import UEFI_BIOS_CODE_RW_PATH, UEFI_BIOS_VARS_RW_PATH, make_ovmf
+from ovmf import OVMF_CODE_NAME, OVMF_RW_DIR, OVMF_VARS_NAME, UEFI_BIOS_CODE_RW_PATH, UEFI_BIOS_VARS_RW_PATH, make_ovmf
 from build import IMG_RW_PATH, build_nixos_bechmark_image
-from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, VM_BENCHMARK_SCSI_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu, await_vm_fio
+from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, VM_BENCHMARK_SCSI_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu, await_vm_fio, NVME_VM_BENCHMARK_SSD_PATH
 from utils import FIO_VM_JOB_PATH, FIO_QUICK_VM_JOB_PATH
 
 # constants
@@ -22,6 +22,13 @@ QEMU_BIN = "qemu-system-x86_64"
 DEFAULT_NUM_CPUS = 4
 DEFAULT_NUM_MEM_GB = 16
 DEFAULT_QMP_SOCKET_PATH = "/tmp/qmp-sock"
+
+ENGINE_VIRTIO_BLK = "virtio-blk"
+ENGINE_NVME = "nvme"
+STORAGE_ENGINES = [
+    ENGINE_VIRTIO_BLK,
+    ENGINE_NVME
+        ]
 
 benchmark_help={
     'num_mem_gb': f"Number of GBs of memory (default: {DEFAULT_NUM_MEM_GB})",
@@ -35,6 +42,7 @@ benchmark_help={
     'rebuild_ovmf': "Rebuild OVMF (sometimes necessary if Qemu doesn\'t boot)",
     'benchmark_tag': "Tag for benchmark (used for naming results file)",
     'ssd_path': f"Path to SSD device (default: {EVAL_NVME_PATH})",
+    'storage_engine': f"Storage engine to use (default: {ENGINE_VIRTIO_BLK}; of {STORAGE_ENGINES})",
     }
 
 
@@ -117,9 +125,7 @@ def build_benchmark_qemu_cmd(
 
     return f"{base_cmd} " \
         f"-blockdev qcow2,node-name=q2,file.driver=file,file.filename={IMG_RW_PATH} " \
-        "-device virtio-blk-pci,bootindex=0,drive=q2 " \
-        f"-drive if=pflash,format=raw,unit=0,file={UEFI_BIOS_CODE_RW_PATH},readonly=on " \
-        f"-drive if=pflash,format=raw,unit=1,file={UEFI_BIOS_VARS_RW_PATH}"
+        "-device virtio-blk-pci,bootindex=0,drive=q2 "
 
 def build_benchmark_sev_qemu_cmd(
         c: Any,
@@ -128,7 +134,8 @@ def build_benchmark_sev_qemu_cmd(
         rebuild_image: bool = False,
         rebuild_ovmf: bool = False,
         port: int = DEFAULT_SSH_FORWARD_PORT,
-        qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH
+        qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH,
+        ovmf_dir: str = OVMF_RW_DIR,
         ):
     base_cmd = build_benchmark_qemu_cmd(
             c,
@@ -140,10 +147,22 @@ def build_benchmark_sev_qemu_cmd(
             qmp_socket_path=qmp_socket_path
             )
 
+    base_cmd = add_ovmf_to_qemu_cmd(base_cmd, ovmf_dir=ovmf_dir)
+
     return f"{base_cmd} " \
         "-machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off " \
         "-object memory-backend-memfd-private,id=ram1,size=16G,share=true " \
         "-object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA"
+
+def add_ovmf_to_qemu_cmd(
+        base_cmd: str,
+        ovmf_dir: str = OVMF_RW_DIR,
+        ):
+    ovmf_code_path = os.path.join(ovmf_dir, OVMF_CODE_NAME)
+    ovmf_vars_path = os.path.join(ovmf_dir, OVMF_VARS_NAME)
+    return f"{base_cmd} " \
+        f"-drive if=pflash,format=raw,unit=0,file={ovmf_code_path},readonly=on " \
+        f"-drive if=pflash,format=raw,unit=1,file={ovmf_vars_path}"
 
 def add_virtio_blk_nvme_to_qemu_cmd(
         base_cmd: str,
@@ -224,14 +243,34 @@ def add_virtio_blk_nvme_to_qemu_cmd(
 
     return cmd
 
+def add_nvme_to_qemu_cmd(
+        base_cmd: str,
+        nvme_path: str = EVAL_NVME_PATH,
+        ignore_warning: bool = False,
+        use_file: bool = False,
+        ):
+
+    if not ignore_warning:
+        warn_nvm_use(nvme_path)
+
+    if use_file:
+        file_driver = "file"
+    else:
+        file_driver = "host_device"
+
+    return f"{base_cmd} " \
+        f"-blockdev node-name=q1,driver=raw,file.driver={file_driver},file.filename={nvme_path} " \
+        "-device nvme,drive=q1,serial=deadbeef"
+
 def add_virtio_blk_file_to_qemu_cmd(
         base_cmd: str,
         file_path: str,
         ):
 
     return f"{base_cmd} " \
+        "-object iothread,id=iothread0 " \
         f"-blockdev node-name=q1,driver=raw,file.driver=file,file.filename={file_path} " \
-        "-device virtio-blk,drive=q1"
+        "-device virtio-blk,drive=q1,iothread=iothread0"
 
 def build_debug_poll_qemu_cmd(
         c: Any,
@@ -286,7 +325,7 @@ def run_debug_virtio_blk_poll_qemu(
         ) -> None:
     """
     Run native debug QEMU with virtio-blk-pci and poll mode enabled.
-    Uses kernel from {kernel.KERNEL_PATH}.
+    Uses debug kernel.
     """
     qemu_cmd: str = build_debug_poll_qemu_cmd(
             c,
@@ -352,6 +391,8 @@ def run_native_virtio_blk_qemu(
             rebuild_ovmf=rebuild_ovmf,
             )
     qemu_cmd = add_virtio_blk_nvme_to_qemu_cmd(base_cmd, ssd_path)
+    qemu_cmd = add_ovmf_to_qemu_cmd(qemu_cmd)
+
     print_and_sudo(c, qemu_cmd, pty=True)
 
 @task(help={
@@ -386,39 +427,59 @@ def run_sev_virtio_blk_qemu(
     print_and_sudo(c, qemu_cmd, pty=True)
 
 @task(help={
-    'num_mem_gb': "Number of GBs of memory",
-    'num_cpus': "Number of CPUs",
+    'file_path': f"Path to file to use as backend storage target (default: {RAMDISK_PATH})",
+    'num_mem_gb': f"Number of GBs of memory (default: {DEFAULT_NUM_MEM_GB})",
+    'num_cpus': f"Number of CPUs (default: {DEFAULT_NUM_CPUS})",
     'rebuild_image': "Rebuild nixos image (also recompiles kernel- takes a while)",
-    'file_path': "Path to file to use as virtio-blk device",
-    'port': "SSH port to use",
+    'storage_engine': f"Storage engine to use (default: {ENGINE_VIRTIO_BLK}; of {STORAGE_ENGINES})",
+    'port': f"SSH port to use (default: {DEFAULT_SSH_FORWARD_PORT})",
+    'ovmf_dir': f"OVMF directory which holds ovmf code + vars to use (default: {OVMF_RW_DIR})",
     })
-def run_sev_virtio_blk_file_qemu(
+def run_sev_file_qemu(
         c: Any,
-        file_path: str,
+        file_path: str = RAMDISK_PATH,
         num_mem_gb: int = DEFAULT_NUM_MEM_GB,
         num_cpus: int = DEFAULT_NUM_CPUS,
         rebuild_image: bool = False,
-        port: int = DEFAULT_SSH_FORWARD_PORT
+        storage_engine: str = ENGINE_VIRTIO_BLK,
+        port: int = DEFAULT_SSH_FORWARD_PORT,
+        ovmf_dir: str = OVMF_RW_DIR,
         ) -> None:
     """
     Run Qemu SEV guest with virtio-blk-pci to NVMe SSD.
     """
+    if not os.path.exists(file_path):
+        err_print(f"file {file_path} does not exist; run ramdisk_setup first")
+        exit(1)
+
     base_cmd = build_benchmark_sev_qemu_cmd(
             c,
             num_mem_gb=num_mem_gb,
             num_cpus=num_cpus,
             rebuild_image=rebuild_image,
-            port=port
+            port=port,
+            ovmf_dir=ovmf_dir,
             )
-    qemu_cmd: str = add_virtio_blk_file_to_qemu_cmd(
-            base_cmd=base_cmd,
-            file_path=file_path
-            )
+    if storage_engine == ENGINE_VIRTIO_BLK:
+        qemu_cmd: str = add_virtio_blk_file_to_qemu_cmd(
+                base_cmd=base_cmd,
+                file_path=file_path
+                )
+    elif storage_engine == ENGINE_NVME:
+        qemu_cmd: str = add_nvme_to_qemu_cmd(
+                base_cmd=base_cmd,
+                nvme_path=file_path,
+                use_file=True
+                )
+    else:
+        err_print(f"Unknown storage engine {storage_engine}")
+        exit(1)
+
     print_and_sudo(c, qemu_cmd, pty=True)
 
 
 # shared code for sev and native qemu virtio blk nvme benchmarks
-def exec_virtio_blk_nvme_benchmark(
+def exec_benchmark(
         c: Any,
         base_cmd: str,
         dm_benchmark: bool,
@@ -438,17 +499,29 @@ def exec_virtio_blk_nvme_benchmark(
         direct: bool,
         no_flush: bool,
         scsi: bool,
+        storage_engine: str = ENGINE_VIRTIO_BLK,
         ) -> None:
-    qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
-            base_cmd=base_cmd,
-            nvme_path=ssd_path,
-            ignore_warning=ignore_warning,
-            iothreads=iothreads,
-            aio=aio,
-            direct=direct,
-            no_flush=no_flush,
-            scsi=scsi,
-            )
+    if storage_engine == ENGINE_VIRTIO_BLK:
+        qemu_cmd: str = add_virtio_blk_nvme_to_qemu_cmd(
+                base_cmd=base_cmd,
+                nvme_path=ssd_path,
+                ignore_warning=ignore_warning,
+                iothreads=iothreads,
+                aio=aio,
+                direct=direct,
+                no_flush=no_flush,
+                scsi=scsi,
+                )
+    elif storage_engine == ENGINE_NVME:
+        qemu_cmd: str = add_nvme_to_qemu_cmd(
+                base_cmd=base_cmd,
+                nvme_path=ssd_path,
+                ignore_warning=ignore_warning,
+                )
+    else:
+        err_print(f"Unknown storage engine {storage_engine}")
+        exit(1)
+
     # pin cpus to cmd
     # qemu_cmd: str = f"taskset -c 4-{4+num_cpus-1} {qemu_cmd}"
     # gives one cpu extra- however, we need an extra cpu for qemu IMO
@@ -489,10 +562,17 @@ def exec_virtio_blk_nvme_benchmark(
         cryptsetup_open_ssd_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, vm_ssd_path=vm_ssd_path)
 
     else:
-        if scsi:
-            fio_filename: str = VM_BENCHMARK_SCSI_PATH
+        if storage_engine == ENGINE_VIRTIO_BLK:
+            # FIXME: we should use ENGINE_VIRITIO_SCSI here
+            if scsi:
+                fio_filename: str = VM_BENCHMARK_SCSI_PATH
+            else:
+                fio_filename: str = VM_BENCHMARK_SSD_PATH
+        elif storage_engine == ENGINE_NVME:
+            fio_filename: str = NVME_VM_BENCHMARK_SSD_PATH
         else:
-            fio_filename: str = VM_BENCHMARK_SSD_PATH
+            err_print(f"Unknown storage engine {storage_engine}")
+            exit(1)
 
     if noexec:
         return
@@ -529,6 +609,7 @@ def benchmark_sev_virtio_blk_qemu(
         direct: bool = True,
         no_flush: bool = False,
         scsi: bool = False,
+        storage_engine: str = ENGINE_VIRTIO_BLK,
         ) -> None:
     """
     Benchmark SEV QEMU with virtio-blk-pci.
@@ -542,7 +623,7 @@ def benchmark_sev_virtio_blk_qemu(
             rebuild_ovmf=rebuild_ovmf,
             qmp_socket_path=qmp_socket_path,
             )
-    exec_virtio_blk_nvme_benchmark(
+    exec_benchmark(
             c,
             base_cmd=base_cmd,
             dm_benchmark=dm_benchmark,
@@ -562,6 +643,7 @@ def benchmark_sev_virtio_blk_qemu(
             direct=direct,
             no_flush=no_flush,
             scsi=scsi,
+            storage_engine=storage_engine,
             )
 
 
@@ -588,6 +670,7 @@ def benchmark_native_virtio_blk_qemu(
         direct: bool = True,
         no_flush: bool = False,
         scsi: bool = False,
+        storage_engine: str = ENGINE_VIRTIO_BLK,
         ) -> None:
     """
     Benchmark native QEMU with virtio-blk-pci.
@@ -600,9 +683,10 @@ def benchmark_native_virtio_blk_qemu(
             rebuild_ovmf=rebuild_ovmf,
             qmp_socket_path=qmp_socket_path,
             )
-    exec_virtio_blk_nvme_benchmark(
+    qemu_cmd = add_ovmf_to_qemu_cmd(base_cmd)
+    exec_benchmark(
             c,
-            base_cmd=base_cmd,
+            base_cmd=qemu_cmd,
             dm_benchmark=dm_benchmark,
             stop_qemu_before_benchmark=stop_qemu_before_benchmark,
             fio_benchmark=fio_benchmark,
@@ -620,4 +704,5 @@ def benchmark_native_virtio_blk_qemu(
             direct=direct,
             no_flush=no_flush,
             scsi=scsi,
+            storage_engine=storage_engine,
             )

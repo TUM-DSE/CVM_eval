@@ -73,6 +73,7 @@ in
     tmux
     fzf
     prebuiltLinuxPackages.perf
+    xterm # for `resize`, if vim messes up serial console size
   ] ++
   ( with selfpkgs;
     [

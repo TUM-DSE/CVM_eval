@@ -3,7 +3,7 @@
 from invoke import Collection, task
 
 
-import build, kernel, ovmf, run, spdk, utils
+import build, kernel, ovmf, run, spdk, utils, benchmark
 
 ns = Collection()
 ns.add_collection(Collection.from_module(build))
@@ -12,3 +12,4 @@ ns.add_collection(Collection.from_module(ovmf))
 ns.add_collection(Collection.from_module(run))
 ns.add_collection(Collection.from_module(spdk))
 ns.add_collection(Collection.from_module(utils))
+ns.add_collection(Collection.from_module(benchmark))
