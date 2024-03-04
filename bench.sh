@@ -3,6 +3,7 @@ NUM_CPUS=${NUM_CPUS:-8}
 FIO_BENCHMARK=${FIO_BENCHMARK:-all}
 FIO_JOB_PATH=${FIO_JOB_PATH:-/mnt/blk-bm.fio}
 NO_DMCRYPT=${NO_DMCRYPT:-0}
+SCSI=${SCSI:-}
 AIO=${AIO:-native io_uring}
 TAG=${TAG:-}
 
@@ -25,7 +26,7 @@ do
        --aio=${aio} \
        --rebuild-ovmf \
        --ssd-path=${NVME} \
-       --fio-job-path=${FIO_JOB_PATH} \
+       --fio-job-path=${FIO_JOB_PATH} ${SCSI} \
        --benchmark-tag=native-no-dmcrypt-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG
 done
 
@@ -43,13 +44,14 @@ do
        --aio=${aio} \
        --rebuild-ovmf \
        --ssd-path=${NVME} \
-       --fio-job-path=${FIO_JOB_PATH} \
+       --fio-job-path=${FIO_JOB_PATH} ${SCSI} \
        --benchmark-tag=sev-no-dmcrypt-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG
 done
 
 if [ "$NO_DMCRYPT" -eq 1 ]; then
     exit 0
 fi
+
 
 #######################
 # Setup dm-crypt
@@ -90,7 +92,7 @@ do
        --aio=${aio} \
        --rebuild-ovmf \
        --ssd-path=${NVME} \
-       --fio-job-path=${FIO_JOB_PATH} \
+       --fio-job-path=${FIO_JOB_PATH} ${SCSI} \
        --benchmark-tag=sev-aio-${aio}-${NUM_CPUS}-${NVME_NAME}$TAG
 done
 
