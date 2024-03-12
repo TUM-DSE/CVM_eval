@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from invoke.runners import Result
 
-from common import EVAL_NVME_PATH, FIO_HOST_VM_OUTPUT_DIR, FIO_POSSIBLE_BENCHMARKS, RAMDISK_PATH, RAMDISK_TEMPFS_PATH, build_fio_cmd, err_print, print_and_run, REPO_DIR, print_and_sudo, warn_nvm_use, warn_print
+from common import EVAL_NVME_PATH, FIO_HOST_VM_OUTPUT_DIR, FIO_POSSIBLE_BENCHMARKS, RAMDISK_PATH, RAMDISK_TEMPFS_PATH, build_fio_cmd, err_print, print_and_run, REPO_DIR, print_and_sudo, warn_nvm_use, warn_print, info_print
 
 from invoke import task
 
@@ -18,10 +18,22 @@ SSH_KEY = os.path.join(REPO_DIR, "nix", "ssh_key")
 FIO_VM_JOB_PATH = "/mnt/blk-bm.fio"
 FIO_VM_OUTPUT_PATH = "/mnt/blk-bm.log"
 VM_BENCHMARK_SSD_PATH = "/dev/vdb"
-NVME_VM_BENCHMARK_SSD_PATH = "/dev/nvme0n1"
+VM_BENCHMARK_SCSI_PATH = "/dev/sda"
 CRYPTSETUP_TARGET_NAME = "target"
 CRYPTSETUP_TARGET_PATH = f"/dev/mapper/{CRYPTSETUP_TARGET_NAME}"
+NVME_VM_BENCHMARK_SSD_PATH = "/dev/nvme0n1"
 
+FIO_VM_JOB_PATH = "/mnt/blk-bm.fio"
+FIO_QUICK_VM_JOB_PATH = "/mnt/blk-bm-quick.fio"
+FIO_VM_OUTPUT_PATH = "/mnt/blk-bm.log"
+FIO_HOST_VM_OUTPUT_DIR = os.path.join(REPO_DIR, "inv-fio-logs")
+os.makedirs(FIO_HOST_VM_OUTPUT_DIR, exist_ok=True)
+FIO_POSSIBLE_BENCHMARKS = [
+        "alat",
+        "bw",
+        "iops",
+        "all"
+        ]
 
 # helpers
 # asynchronous only applies if cmd passed
@@ -59,6 +71,21 @@ def scp_vm_to_host(
     SCP from VM to host.
     """
     scp_cmd: str = f"scp -i {SSH_KEY} -o 'StrictHostKeyChecking no' -P {ssh_port} root@localhost:{vm_source_path} {host_target_path}"
+    print_and_run(c, scp_cmd)
+
+@task(help={"ssh_port": "port to connect ssh to",
+            "vm_target_path": "target path to file in VM",
+            "host_source_path": "source path to file in host"})
+def scp_host_to_vm(
+        c: Any,
+        vm_target_path: str,
+        host_source_path: str,
+        ssh_port: int = DEFAULT_SSH_FORWARD_PORT,
+        ) -> None:
+    """
+    SCP from host to VM.
+    """
+    scp_cmd: str = f"scp -i {SSH_KEY} -o 'StrictHostKeyChecking no' -P {ssh_port} {host_source_path} root@localhost:{vm_target_path}"
     print_and_run(c, scp_cmd)
 
 @task
@@ -99,7 +126,7 @@ def exec_fio_in_vm(
         fio_filename: str = VM_BENCHMARK_SSD_PATH,
         fio_output_path: str = FIO_VM_OUTPUT_PATH,
         fio_benchmark: str = "all",
-        fio_output_format: str = "json"
+        fio_output_format: str = "json",
         ) -> None:
     """
     SSH into the VM and execute fio.
@@ -110,6 +137,9 @@ def exec_fio_in_vm(
             fio_output_path=fio_output_path,
             fio_benchmark=fio_benchmark,
             fio_output_format=fio_output_format)
+
+    info_print(f"executing fio in VM with command: {fio_cmd}")
+
     ssh_vm(c, ssh_port=ssh_port, asynchronous=True, cmd=fio_cmd)
 
 @task
@@ -172,15 +202,18 @@ def cryptsetup_open(
     """
     print_and_sudo(c, f"cryptsetup open {ssd_path} {crypt_name} no_read_workqueue no_write_workqueue", warn=True)
 
-@task(help={"ssd_path": "Path to SSD"})
+@task(help={"ssd_path": "Path to SSD",
+            "ignore_warning": "Ignore warning about using an NVMe SSD"})
 def cryptsetup_crypt_only(
         c: Any,
         ssd_path: str = EVAL_NVME_PATH,
+        ignore_warning: bool = False
         ) -> None:
     """
     Cryptsetup crypt only.
     """
-    warn_nvm_use(ssd_path)
+    if not ignore_warning:
+        warn_nvm_use(ssd_path)
     print_and_sudo(c, f"yes '' | sudo cryptsetup -v -q luksFormat --type luks2 {ssd_path}", warn=True)
 
 @task(help={"ssd_path": "Path to SSD",

@@ -120,59 +120,59 @@ BEGIN {
 }
 
 tracepoint:kvm:kvm_exit {
-    @t[tid] = nsecs;
-    @e[tid] = args->exit_reason;
+    @count[args->exit_reason] += 1;
     if (args->exit_reason > 0x403) {
         printf("Unknown exit reason! %d\n", args->exit_reason);
     }
 }
 
-tracepoint:kvm:kvm_entry  / @t[tid] / {
-    $diff = nsecs - @t[tid];
-    @s[@exit_reason[@e[tid]]] = stats($diff);
-    @h[@exit_reason[@e[tid]]] = hist($diff);
-    @s["all"] = stats($diff);
-    @h["all"] = hist($diff);
-}
-
 // for SEV
 tracepoint:kvm:kvm_vmgexit_enter {
-    @vmgexit_t[tid] = nsecs;
-    @vmgexit_e[tid] = args->exit_reason;
+    @vmgexit_count[args->exit_reason] += 1;
     if ((args->exit_reason > 0x403 && args->exit_reason < 0x80000001) ||
         (args->exit_reason > 0x80000013 && args->exit_reason < 0x8000fffd)) {
         printf("Unknown vmgexit reason! %d\n", args->exit_reason);
     }
 }
 
-tracepoint:kvm:kvm_vmgexit_enter  / @vmgexit_t[tid] / {
-    $diff = nsecs - @vmgexit_t[tid];
-    if (@vmgexit_e[tid] < 0x80000001) {
-        @vmgexit_s[@exit_reason[@vmgexit_e[tid]]] = stats($diff);
-        @vmgexit_h[@exit_reason[@vmgexit_e[tid]]] = hist($diff);
-    } else {
-        @vmgexit_s[@vmgexit_reason[@vmgexit_e[tid]]] = stats($diff);
-        @vmgexit_h[@vmgexit_reason[@vmgexit_e[tid]]] = hist($diff);
+i:s:1 {
+    printf("--------------------\n");
+    $i = 0;
+    while ($i <= 0x403) {
+        if (@count[$i] > 0) {
+            printf("%s: %d\n", @exit_reason[$i], @count[$i]);
+        }
+        $i += 1;
     }
-    @vmgexit_s["all"] = stats($diff);
-    @vmgexit_h["all"] = hist($diff);
+    $i = 0;
+    while ($i <= 0x403) {
+        if (@vmgexit_count[$i] > 0) {
+            printf("  %s: %d\n", @exit_reason[$i], @vmgexit_count[$i]);
+        }
+        $i += 1;
+    }
+    $i = 0x80000001;
+    while ($i <= 0x80000013) {
+        if (@vmgexit_count[$i] > 0) {
+            printf("  %s: %d\n", @vmgexit_reason[$i], @vmgexit_count[$i]);
+        }
+        $i += 1;
+    }
+    $i = 0x8000fffd;
+    while ($i <= 0x8000ffff) {
+        if (@vmgexit_count[$i] > 0) {
+            printf("  %s: %d\n", @vmgexit_reason[$i], @vmgexit_count[$i]);
+        }
+        $i += 1;
+    }
+
+    clear(@count);
+    clear(@vmgexit_count);
 }
 
 END {
-    printf("\n");
-    print(@s);
-    print(@h);
-    print(@vmgexit_s);
-    print(@vmgexit_h);
-
-    clear(@s);
-    clear(@t);
-    clear(@h);
-    clear(@e);
     clear(@exit_reason);
-    clear(@vmgexit_s);
-    clear(@vmgexit_t);
-    clear(@vmgexit_h);
-    clear(@vmgexit_e);
     clear(@vmgexit_reason);
+    clear(@count);
+    clear(@vmgexit_count);
 }

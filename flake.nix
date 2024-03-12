@@ -53,7 +53,8 @@
             format = "qcow2";
             partitionTableType = "efi";
             installBootLoader = true;
-            diskSize = 8192;
+            # diskSize = 8192;
+            diskSize = 32768;
             OVMF = selfpkgs.ovmf-amd-sev-snp.fd;
             touchEFIVars = true;
             contents =
@@ -61,6 +62,10 @@
               {
                 source = ./bm/blk-bm.fio;
                 target = "/mnt/blk-bm.fio";
+              }
+              {
+                source = ./bm/quick;
+                target = "/mnt/quick";
               }
             ];
           };
@@ -104,6 +109,8 @@
               gdb
               # trace-cmd
               jq
+
+              gfortran
 
               # fio-plotters
               python3.pkgs.click

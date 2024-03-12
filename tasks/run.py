@@ -14,7 +14,8 @@ from invoke import task
 # warning: dependency
 from ovmf import OVMF_CODE_NAME, OVMF_RW_DIR, OVMF_VARS_NAME, UEFI_BIOS_CODE_RW_PATH, UEFI_BIOS_VARS_RW_PATH, make_ovmf
 from build import IMG_RW_PATH, build_nixos_bechmark_image
-from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu, await_vm_fio, NVME_VM_BENCHMARK_SSD_PATH
+from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, VM_BENCHMARK_SCSI_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu, await_vm_fio, NVME_VM_BENCHMARK_SSD_PATH
+from utils import FIO_VM_JOB_PATH, FIO_QUICK_VM_JOB_PATH
 
 # constants
 QEMU_BIN = "qemu-system-x86_64"
@@ -124,7 +125,7 @@ def build_benchmark_qemu_cmd(
 
     return f"{base_cmd} " \
         f"-blockdev qcow2,node-name=q2,file.driver=file,file.filename={IMG_RW_PATH} " \
-        "-device virtio-blk-pci,drive=q2 "
+        "-device virtio-blk-pci,bootindex=0,drive=q2 "
 
 def build_benchmark_sev_qemu_cmd(
         c: Any,
@@ -166,16 +167,81 @@ def add_ovmf_to_qemu_cmd(
 def add_virtio_blk_nvme_to_qemu_cmd(
         base_cmd: str,
         nvme_path: str = EVAL_NVME_PATH,
-        ignore_warning: bool = False
+        ignore_warning: bool = False,
+        iothreads: bool = True,
+        aio: str = "native", # threads, native, io_uring
+        direct: bool = True,
+        no_flush: bool = False,
+        scsi: bool = False,
         ):
+
+    # QEMU options (https://www.qemu.org/docs/master/system/qemu-manpage.html)
+    # -drive cache=
+    #
+    # |              | cache.writeback | cache.direct | cache.no-flush |
+    # |--------------|-----------------|--------------|----------------|
+    # | writeback    | on              | off          | off            |
+    # | none         | on              | on           | off            |
+    # | writethrough | off             | off          | off            |
+    # | directsync   | off             | on           | off            |
+    # | unsafe       | on              | off          | on             |
+    #
+    # cache.writeback=on by default
 
     if not ignore_warning:
         warn_nvm_use(nvme_path)
 
-    return f"{base_cmd} " \
-        "-object iothread,id=iothread0 " \
-        f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},aio=io_uring " \
-        "-device virtio-blk,drive=q1,iothread=iothread0"
+    if len(aio) > 0 and not iothreads:
+        # not implemented
+        warn_print("aio is enabled only with iothreads")
+    if aio != "threads" and aio != "native" and aio != "io_uring":
+        warn_print(f"aio must be either of threads, native, io_uring: {aio}")
+
+    if direct:
+        direct_option = "on"
+    else:
+        direct_option = "off"
+        warn_print(f"blockdev cache.direct={direct_option}; use host page-cache")
+        if aio == "native":
+            warn_print("aio=native requires cache.direct=on")
+
+    if no_flush:
+        no_flush_option = "on"
+        warn_print(f"blockdev cache.no-flush={direct_option}")
+    else:
+        no_flush_option = "off"
+
+    if iothreads:
+        if len(aio) > 0:
+            # iothreads, aio
+            if scsi:
+                cmd = f"{base_cmd} " \
+                    f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},file.aio={aio},cache.direct={direct_option},cache.no-flush={no_flush_option} " \
+                    "-device virtio-scsi-pci,id=scsi0,iothread=iothread0 " \
+                    "-device scsi-hd,drive=q1 " \
+                    "-object iothread,id=iothread0 "
+            else:
+                cmd = f"{base_cmd} " \
+                    f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},file.aio={aio},cache.direct={direct_option},cache.no-flush={no_flush_option} " \
+                    "-device virtio-blk,drive=q1,iothread=iothread0 " \
+                    "-object iothread,id=iothread0 "
+        else:
+            # iothreads, no aio
+            cmd = f"{base_cmd} " \
+                f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},cache.direct={direct_option},cache.no-flush={no_flush_option} " \
+                "-device virtio-blk,drive=q1,iothread=iothread0 " \
+                "-object iothread,id=iothread0 "
+            if scsi:
+                raise NotImplementedError
+    else:
+        # no iothreads, no aio
+        cmd = f"{base_cmd} " \
+            f"-blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={nvme_path},cache.direct={direct_option},cache.no-flush={no_flush_option} " \
+            "-device virtio-blk,drive=q1 "
+        if scsi:
+            raise NotImplementedError
+
+    return cmd
 
 def add_nvme_to_qemu_cmd(
         base_cmd: str,
@@ -426,6 +492,13 @@ def exec_benchmark(
         ssd_path: str,
         pin: bool,
         qmp_socket_path: str,
+        iothreads: bool,
+        aio: str,
+        noexec: bool,
+        fio_job_path: str,
+        direct: bool,
+        no_flush: bool,
+        scsi: bool,
         storage_engine: str = ENGINE_VIRTIO_BLK,
         ) -> None:
     if storage_engine == ENGINE_VIRTIO_BLK:
@@ -433,6 +506,11 @@ def exec_benchmark(
                 base_cmd=base_cmd,
                 nvme_path=ssd_path,
                 ignore_warning=ignore_warning,
+                iothreads=iothreads,
+                aio=aio,
+                direct=direct,
+                no_flush=no_flush,
+                scsi=scsi,
                 )
     elif storage_engine == ENGINE_NVME:
         qemu_cmd: str = add_nvme_to_qemu_cmd(
@@ -447,7 +525,12 @@ def exec_benchmark(
     # pin cpus to cmd
     # qemu_cmd: str = f"taskset -c 4-{4+num_cpus-1} {qemu_cmd}"
     # gives one cpu extra- however, we need an extra cpu for qemu IMO
-    qemu_cmd: str = f"taskset -c 4-{4+num_cpus} {qemu_cmd}"
+    if pin:
+        # pin qemu threads to 8+num_cpus+1(io_thread)
+        # (vcpu will be pineed 8-(8+num_cpus-1)
+        qemu_cmd: str = f"taskset -c {8+num_cpus+1} {qemu_cmd}"
+    else:
+        qemu_cmd: str = f"taskset -c 8-{8+num_cpus} {qemu_cmd}"
 
     if stop_qemu_before_benchmark:
         warn_print("Stopping QEMU")
@@ -472,18 +555,31 @@ def exec_benchmark(
 
     if dm_benchmark:
         fio_filename: str = CRYPTSETUP_TARGET_PATH
-        cryptsetup_open_ssd_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, vm_ssd_path=VM_BENCHMARK_SSD_PATH)
+        if scsi:
+            vm_ssd_path = VM_BENCHMARK_SCSI_PATH
+        else:
+            vm_ssd_path = VM_BENCHMARK_SSD_PATH
+        cryptsetup_open_ssd_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, vm_ssd_path=vm_ssd_path)
 
     else:
         if storage_engine == ENGINE_VIRTIO_BLK:
-            fio_filename: str = VM_BENCHMARK_SSD_PATH
+            # FIXME: we should use ENGINE_VIRITIO_SCSI here
+            if scsi:
+                fio_filename: str = VM_BENCHMARK_SCSI_PATH
+            else:
+                fio_filename: str = VM_BENCHMARK_SSD_PATH
         elif storage_engine == ENGINE_NVME:
             fio_filename: str = NVME_VM_BENCHMARK_SSD_PATH
         else:
             err_print(f"Unknown storage engine {storage_engine}")
             exit(1)
 
-    exec_fio_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT, fio_filename=fio_filename, fio_benchmark=fio_benchmark)
+    if noexec:
+        return
+
+    exec_fio_in_vm(c, ssh_port=DEFAULT_SSH_FORWARD_PORT,
+                   fio_job_path=fio_job_path,
+                   fio_filename=fio_filename, fio_benchmark=fio_benchmark)
 
     if await_results:
         await_vm_fio(c, fio_host_output_tag=benchmark_tag)
@@ -506,6 +602,13 @@ def benchmark_sev_virtio_blk_qemu(
         ssd_path: str = EVAL_NVME_PATH,
         pin: bool = True,
         qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH,
+        iothreads: bool = True,
+        aio: str = "threads",
+        noexec: bool = False,
+        fio_job_path: str = FIO_VM_JOB_PATH,
+        direct: bool = True,
+        no_flush: bool = False,
+        scsi: bool = False,
         storage_engine: str = ENGINE_VIRTIO_BLK,
         ) -> None:
     """
@@ -533,6 +636,13 @@ def benchmark_sev_virtio_blk_qemu(
             ssd_path=ssd_path,
             pin=pin,
             qmp_socket_path=qmp_socket_path,
+            iothreads=iothreads,
+            aio=aio,
+            noexec=noexec,
+            fio_job_path=fio_job_path,
+            direct=direct,
+            no_flush=no_flush,
+            scsi=scsi,
             storage_engine=storage_engine,
             )
 
@@ -553,6 +663,13 @@ def benchmark_native_virtio_blk_qemu(
         ssd_path: str = EVAL_NVME_PATH,
         pin: bool = True,
         qmp_socket_path: str = DEFAULT_QMP_SOCKET_PATH,
+        iothreads: bool = True,
+        aio: str = "threads",
+        noexec: bool = False,
+        fio_job_path: str = FIO_VM_JOB_PATH,
+        direct: bool = True,
+        no_flush: bool = False,
+        scsi: bool = False,
         storage_engine: str = ENGINE_VIRTIO_BLK,
         ) -> None:
     """
@@ -580,5 +697,12 @@ def benchmark_native_virtio_blk_qemu(
             ssd_path=ssd_path,
             pin=pin,
             qmp_socket_path=qmp_socket_path,
+            iothreads=iothreads,
+            aio=aio,
+            noexec=noexec,
+            fio_job_path=fio_job_path,
+            direct=direct,
+            no_flush=no_flush,
+            scsi=scsi,
             storage_engine=storage_engine,
             )

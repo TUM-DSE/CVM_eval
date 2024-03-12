@@ -72,6 +72,7 @@ in
     vim
     tmux
     fzf
+    prebuiltLinuxPackages.perf
     xterm # for `resize`, if vim messes up serial console size
   ] ++
   ( with selfpkgs;
@@ -87,7 +88,12 @@ in
 
 
   # boot.kernelParams = [ "virtio_blk.cvm_io_driver_name=virtio2" ];
-  # boot.kernelParams = [ "swiotlb=force" ];
+  boot.kernelParams = [
+                        "virtio_blk.cvm_io_driver_name=virtio2"
+                        "virtio_blk.poll_queues=4"
+                        "virtio_scsi.virtscsi_poll_queues=4"
+                        # "swiotlb=force"
+                      ];
 
 #  programs.fio-runner =
 #  {
