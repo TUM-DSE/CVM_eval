@@ -18,6 +18,9 @@
 
 MODULE_LICENSE("GPL");
 
+static int mode = 0;
+module_param(mode, int, 0);
+
 static inline void _cpuid(uint64_t rax, uint64_t rcx) {
     uint64_t rbx, rdx;
     asm volatile("cpuid\n\t"
@@ -65,9 +68,9 @@ static void bench_cpuid(void) {
 }
 
 static int __init bench_init(void) {
-    pr_info("Initializing\n");
+    pr_info("Initializing: mode=%d\n", mode);
 
-    bench_cpuid();
+    if (!mode || mode == 1) bench_cpuid();
 
     return 0;
 }
