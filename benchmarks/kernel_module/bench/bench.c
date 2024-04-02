@@ -67,10 +67,61 @@ static void bench_cpuid(void) {
     measure_cpuid(0x16, 0);  // TSC freq  (#VE in TDX)
 }
 
+static inline void _rdmsr(uint32_t msr, uint64_t *val) {
+    uint32_t lo, hi;
+    asm volatile("rdmsr\n\t" : "=a"(lo), "=d"(hi) : "c"(msr) :);
+    *val = ((uint64_t)hi << 32) | lo;
+}
+
+/*
+static inline void _wrmsr(uint32_t msr, uint64_t val) {
+    uint32_t lo = val & 0xFFFFFFFF;
+    uint32_t hi = val >> 32;
+    asm volatile("wrmsr\n\t" : : "c"(msr), "a"(lo), "d"(hi) :);
+}
+*/
+
+static void measure_msr(uint32_t msr) {
+    uint64_t N = 0;
+    uint64_t i = 0;
+    uint64_t val = 0;
+
+    N = WARMUP_COUNT;
+    // warmup
+    for (i = 0; i < N; i++) {
+        _rdmsr(msr, &val);
+    }
+
+    N = BENCH_COUNT;
+    s64 start_time = ktime_get_ns();
+    uint64_t start = __tsc_start();
+    for (i = 0; i < N; i++) {
+        _rdmsr(msr, &val);
+    }
+    uint64_t end = __tsc_end();
+    s64 end_time = ktime_get_ns();
+
+    uint64_t total_cycles = end - start;
+    uint64_t avg_cycles = total_cycles / N;
+    s64 total_time = end_time - start_time;
+    s64 avg_time = total_time / N;
+    pr_info("msr (0x%x) :\n", msr);
+    pr_info("  %llu cycles (avg: %llu)\n", total_cycles, avg_cycles);
+    pr_info("  %lld ns (avg: %lld)\n", total_time, avg_time);
+}
+
+static void bench_msr(void) {
+    pr_info("Benchmarking msr\n");
+    measure_msr(0x1b);        // IA32_APIC_BASE
+    measure_msr(0x198);       // IA32_PERF_STATUS
+    measure_msr(0xC0000100);  // IA32_FS_BASE
+}
+
 static int __init bench_init(void) {
     pr_info("Initializing: mode=%d\n", mode);
 
     if (!mode || mode == 1) bench_cpuid();
+    if (!mode || mode == 2) bench_msr();
 
     return 0;
 }
