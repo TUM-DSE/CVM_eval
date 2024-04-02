@@ -117,11 +117,56 @@ static void bench_msr(void) {
     measure_msr(0xC0000100);  // IA32_FS_BASE
 }
 
+// intel: vmcall
+// amd: vmmcall
+#define HYPERCALL ALTERNATIVE("vmcall", "vmmcall", X86_FEATURE_VMMCALL)
+
+static inline uint64_t _hypercall(unsigned int nr) {
+    uint64_t ret;
+    asm volatile(HYPERCALL : "=a"(ret) : "a"(nr) : "memory");
+    return ret;
+}
+
+static void measure_hypercall(unsigned int nr) {
+    uint64_t N = 0;
+    uint64_t i = 0;
+
+    N = WARMUP_COUNT;
+    // warmup
+    for (i = 0; i < N; i++) {
+        _hypercall(nr);
+    }
+
+    N = BENCH_COUNT;
+    s64 start_time = ktime_get_ns();
+    uint64_t start = __tsc_start();
+    for (i = 0; i < N; i++) {
+        _hypercall(nr);
+    }
+    uint64_t end = __tsc_end();
+    s64 end_time = ktime_get_ns();
+
+    uint64_t total_cycles = end - start;
+    uint64_t avg_cycles = total_cycles / N;
+    s64 total_time = end_time - start_time;
+    s64 avg_time = total_time / N;
+    pr_info("hypercall (nr=%u) :\n", nr);
+    pr_info("  %llu cycles (avg: %llu)\n", total_cycles, avg_cycles);
+    pr_info("  %lld ns (avg: %lld)\n", total_time, avg_time);
+}
+
+static void bench_hypercall(void) {
+    pr_info("Benchmarking hypercall\n");
+    // hypercall 2 (KVM_HC_FEATURES) is deprecated, kvm returns -ENOSYS (-1000)
+    measure_hypercall(2);
+}
+
 static int __init bench_init(void) {
     pr_info("Initializing: mode=%d\n", mode);
 
     if (!mode || mode == 1) bench_cpuid();
     if (!mode || mode == 2) bench_msr();
+    if (!mode || mode == 3) bench_hypercall();
 
     return 0;
 }
