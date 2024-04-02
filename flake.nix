@@ -113,6 +113,10 @@
 
               gfortran
 
+              # clang-format
+              libclang.python
+              clang-tools
+
               # fio-plotters
               python3.pkgs.click
               python3.pkgs.seaborn
