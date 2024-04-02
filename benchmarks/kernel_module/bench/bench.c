@@ -57,7 +57,9 @@ static void measure_cpuid(uint64_t rax, uint64_t rcx) {
 static void bench_cpuid(void) {
     pr_info("Benchmarking cpuid\n");
     measure_cpuid(0x0, 0);   // vendor
+    measure_cpuid(0x1, 0);   // feature   (VMGEXIT in SNP)
     measure_cpuid(0x2, 0);   // cache/tlb (#VE in TDX)
+    measure_cpuid(0xb, 0);   // extended topology (#VE in TDX, VMGEXIT in SNP)
     measure_cpuid(0x15, 0);  // TSC freq
     measure_cpuid(0x16, 0);  // TSC freq  (#VE in TDX)
 }
