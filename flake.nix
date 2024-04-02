@@ -13,7 +13,7 @@
     kernelSrc.flake = false;
   };
 
-  outputs = 
+  outputs =
   {
     self
     , nixpkgs-unstable
@@ -47,7 +47,8 @@
           ovmf-amd-sev-snp = pkgs.callPackage ./nix/ovmf-amd-sev-snp.nix { inherit pkgs; };
           guest-image = make-disk-image
           {
-            config = self.nixosConfigurations.native-guest.config;
+            # config = self.nixosConfigurations.native-guest.config;
+            config = self.nixosConfigurations.guest.config;
             inherit (pkgs) lib;
             inherit pkgs;
             format = "qcow2";
@@ -117,7 +118,7 @@
               python3.pkgs.seaborn
               python3.pkgs.pandas
               python3.pkgs.binary
-            ] ++ 
+            ] ++
             (
               with self.packages.${system};
               [
@@ -156,6 +157,22 @@
               inherit selfpkgs;
               inherit (nixpkgs-unstable) lib;
               inherit kernelSrc;
+            }
+          )
+          ./nix/nixos-generators-qcow.nix
+        ];
+      };
+      guest = nixpkgs-unstable.lib.nixosSystem
+      {
+        system = "x86_64-linux";
+        modules =
+        [
+          (
+            import ./nix/guest-config.nix
+            {
+              inherit pkgs;
+              inherit selfpkgs;
+              inherit (nixpkgs-unstable) lib;
             }
           )
           ./nix/nixos-generators-qcow.nix
