@@ -5,12 +5,21 @@ qemu_full.overrideAttrs
 (
   new: old:
   {
-    src = builtins.fetchGit
+    # src = builtins.fetchGit
+    # {
+    #   # url = "git@gitlab.lrz.de:robert/qemu.git";
+    #   # ref = "snp-latest";
+    #   rev = "fe4c9e8e7e7ddac4b19c4366c1f105ffc4a78482";
+    #   submodules = true;
+    # };
+    src = fetchFromGitHub
     {
-      url = "git@gitlab.lrz.de:robert/qemu.git";
-      ref = "snp-latest";
+      owner = "mmisono";
+      repo = "qemu";
+      # branch: snp-latest-20231110
       rev = "fe4c9e8e7e7ddac4b19c4366c1f105ffc4a78482";
-      submodules = true;
+      sha256 = "sha256-51BEYF7P5GteCrWOp7nKPjUDxXFq8KDxMAC5f5TNO2I=";
+      fetchSubmodules = true;
     };
     configureFlags = old.configureFlags ++
     [
