@@ -26,9 +26,7 @@ static inline void _cpuid(uint64_t rax, uint64_t rcx) {
                  :);
 }
 
-static void bench_cpuid(void) {
-    uint64_t rax = 0;
-    uint64_t rcx = 0;
+static void measure_cpuid(uint64_t rax, uint64_t rcx) {
     uint64_t N = 0;
     uint64_t i = 0;
 
@@ -51,8 +49,17 @@ static void bench_cpuid(void) {
     uint64_t avg_cycles = total_cycles / N;
     s64 total_time = end_time - start_time;
     s64 avg_time = total_time / N;
-    pr_info("cpuid: %llu cycles (avg: %llu)\n", total_cycles, avg_cycles);
-    pr_info("       %lld ns (avg: %lld)\n", total_time, avg_time);
+    pr_info("cpuid (rax=%llu, rcx=%llu) :\n", rax, rcx);
+    pr_info("  %llu cycles (avg: %llu)\n", total_cycles, avg_cycles);
+    pr_info("  %lld ns (avg: %lld)\n", total_time, avg_time);
+}
+
+static void bench_cpuid(void) {
+    pr_info("Benchmarking cpuid\n");
+    measure_cpuid(0x0, 0);   // vendor
+    measure_cpuid(0x2, 0);   // cache/tlb (#VE in TDX)
+    measure_cpuid(0x15, 0);  // TSC freq
+    measure_cpuid(0x16, 0);  // TSC freq  (#VE in TDX)
 }
 
 static int __init bench_init(void) {
