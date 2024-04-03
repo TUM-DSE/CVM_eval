@@ -43,6 +43,7 @@ nix_ovmf_amd_sev_snp := join(this_dir, "#ovmf-amd-sev-snp")
 # commands
 update_nix_kernel_src := "nix flake lock --update-input kernelSrc"
 
+nixos_init := "/nix/store/g312ly4aich5jhh180277yks1vglj8k7-nixos-system-native-guest-24.05.20231124.5a09cb4/init"
 
 default:
     @just --choose
@@ -254,18 +255,54 @@ start-sev-vm-spdk:
         -device vhost-user-blk-pci,id=blk0,chardev=char1
 
 
-start-sev-vm:
+start-snp-vm:
     sudo taskset -c 4-7 qemu-system-x86_64 \
         -cpu EPYC-v4,host-phys-bits=true \
         -smp 4 \
         -m 16G \
         -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
-        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
         -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
         -enable-kvm \
         -nographic \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
         -device virtio-blk-pci,drive=q2,bootindex=0 \
+        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
+        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}}
+
+start-vm-direct:
+    sudo taskset -c 4-7 qemu-system-x86_64 \
+        -cpu EPYC-v4,host-phys-bits=true \
+        -smp 4 \
+        -m 16G \
+        -machine q35 \
+        -enable-kvm \
+        -nographic \
+        -kernel ./src/linux/arch/x86_64/boot/bzImage \
+        -append "root=/dev/vda2 console=ttyS0 init={{nixos_init}}" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
+        -device virtio-blk-pci,drive=q2 \
+        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
+        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}}
+
+start-snp-vm-direct:
+    sudo taskset -c 4-7 qemu-system-x86_64 \
+        -cpu EPYC-v4,host-phys-bits=true \
+        -smp 4 \
+        -m 16G \
+        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
+        -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
+        -enable-kvm \
+        -nographic \
+        -kernel ./src/linux/arch/x86_64/boot/bzImage \
+        -append "root=/dev/vda2 console=ttyS0 init={{nixos_init}}" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
+        -device virtio-blk-pci,drive=q2 \
         -netdev user,id=net0,hostfwd=tcp::2223-:22 \
         -device virtio-net-pci,netdev=net0 \
         -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
