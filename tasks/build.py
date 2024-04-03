@@ -12,7 +12,7 @@ from tasks.utils import notify_terminal_after_completion
 
 
 # constants
-# NOTE: if we want to run VMs in parallel, we need separate 
+# NOTE: if we want to run VMs in parallel, we need separate
 QCOW2_NAME = "nixos.qcow2"
 IMG_RO_DIR = os.path.join(VM_BUILD_DIR, "img-ro")
 IMG_RO_PATH = os.path.join(IMG_RO_DIR, QCOW2_NAME)
@@ -41,21 +41,25 @@ def build_nixos_debug_image(c: Any) -> None:
 
 
 @task(pre=[make_build_dirs],
-      help={"no_cvm_io": "disable CVM_IO",
-            "notify": "notify terminal after completion"})
+      help={"cvm_io": "enable CVM_IO",
+            "notify": "notify terminal after completion",
+            "kernel_only": "build kernel only"})
 def build_nixos_bechmark_image(
         c: Any,
-        no_cvm_io: bool = False,
-        notify: bool = False
+        cvm_io: bool = False,
+        notify: bool = False,
+        kernel_only: bool = False,
         ) -> None:
     """
-    Builds NixOS image w/ SEV Kernel.
+    Builds NixOS image w/ custom kernel
     Configurable in {REPO_DIR}/nix/native-guest-config.nix.
     """
     # configure sev kernel ( not as pretask as we pass param )
     # configure_sev_kernel, build_kernel
-    configure_sev_kernel(c, no_cvm_io=no_cvm_io)
+    configure_sev_kernel(c, cvm_io=cvm_io)
     build_kernel(c)
+    if kernel_only:
+        return
     # update kernel src to allow cached builds (vs building from scratch)
     print_and_run(c, "nix flake lock --update-input kernelSrc")
     print_and_run(c, f"nix build --out-link {IMG_RO_DIR} --builders '' {NIX_BENCHMARK_IMG_RECIPE}")

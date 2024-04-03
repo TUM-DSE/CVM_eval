@@ -34,7 +34,6 @@ def configure_debug_kernel(c: Any) -> None:
         run_in_kernel_devshell(c, f"make defconfig -j{NUM_CPUS}")
         run_in_kernel_devshell(c, "scripts/config \
               --enable GDB_SCRIPTS \
-              --enable CVM_IO \
               --enable DEBUG_INFO \
               --enable BPF \
               --enable BPF_SYSCALL \
@@ -55,19 +54,32 @@ def configure_debug_kernel(c: Any) -> None:
               --enable DEBUG \
               --enable DEBUG_DRIVER \
               --enable DM_CRYPT \
-              --enable CRYPTO_XTS")
+              --enable CRYPTO_XTS \
+              --enable VIRTIO_BLK \
+              --enable VIRTIO_PCI \
+              --enable EXT4_FS"
+              )
 
-@task(help={'no_cvm_io': 'Disable CVM_IO in kernel config'})
-def configure_sev_kernel(c: Any, no_cvm_io: bool = False) -> None:
+@task(help={'cvm_io': 'Enable CVM_IO in kernel config'})
+def configure_sev_kernel(c: Any, cvm_io: bool = False) -> None:
     """
     Configure the kernel for SEV execution.
     Required for bechmark build.
     """
     print_and_run(c, f"cp {KERNEL_SRC_DIR}/nixconfig {KERNEL_SRC_DIR}/.config")
-    if no_cvm_io:
+    with c.cd(KERNEL_SRC_DIR):
+        # for direct boot include these in the kernel
+        # TODO: build proper initrd
+        run_in_kernel_devshell(c,
+                "scripts/config " \
+                "--enable VIRTIO_BLK " \
+                "--enable VIRTIO_PCI " \
+                "--enable EXT4_FS "
+                )
+    if cvm_io:
         with c.cd(KERNEL_SRC_DIR):
             run_in_kernel_devshell(c, "scripts/config " \
-                    "--disable CVM_IO")
+                    "--enable CVM_IO")
 
 @task
 def build_kernel(c: Any) -> None:
