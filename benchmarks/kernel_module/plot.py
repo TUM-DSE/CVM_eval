@@ -32,8 +32,8 @@ hatches = ["", "//"]
 
 
 def load_data() -> pd.DataFrame:
-    # cpuid_0, cpuid_b, msr_1b, hypercall_2, pio_40
-    index = ["cpuid_0", "cpuid_b", "msr", "hypercall", "pio"]
+    # cpuid_1, cpuid_b, msr_1b, hypercall_2, pio_40
+    index = ["cpuid_1", "cpuid_b", "msr", "hypercall", "pio"]
     snp = [646, 3859, 3573, 3553, 3885]
     amd = [1226, 1232, 1290, 1255, 1635]
     df = pd.DataFrame({"amd": amd, "snp": snp}, index=index)
@@ -58,7 +58,7 @@ def main():
             hs.append(h)
     for bar, hatch in zip(bars, hs):
         bar.set_hatch(hatch)
-    ax.set_ylabel("Time (us)")
+    ax.set_ylabel("Time (ns)")
     ax.set_xlabel("")
     ax.set_xticklabels(data.index, rotation=0)
     # ax.legend(loc="upper left", title=None, fontsize=FONTSIZE,
