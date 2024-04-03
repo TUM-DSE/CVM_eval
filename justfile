@@ -27,11 +27,11 @@ native_ovmf            := join(vm_build, "native", "OVMF")
 sev_ovmf               := join(vm_build, "sev", "OVMF")
 uefi_bios_code_ro      := join(ovmf_ro_fd, "FV", "OVMF_CODE.fd")
 uefi_bios_vars_ro      := join(ovmf_ro_fd, "FV", "OVMF_VARS.fd")
+uefi_bios_fd           := join(ovmf_ro_fd, "FV", "OVMF.fd")
 native_uefi_bios_code  := join(native_ovmf, "FV", "OVMF_CODE.fd")
 sev_uefi_bios_code     := join(sev_ovmf, "FV", "OVMF_CODE.fd")
 native_uefi_bios_vars  := join(native_ovmf, "FV", "OVMF_VARS.fd")
 sev_uefi_bios_vars     := join(sev_ovmf, "FV", "OVMF_VARS.fd")
-# uefi_bios              := join(ovmf, "FV", "OVMF.fd")
 
 
 # nix identifiers
@@ -286,8 +286,7 @@ start-vm-direct:
         -device virtio-blk-pci,drive=q2 \
         -netdev user,id=net0,hostfwd=tcp::2223-:22 \
         -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
-        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}}
+        -drive if=pflash,format=raw,unit=0,file={{uefi_bios_fd}},readonly=on
 
 start-snp-vm-direct:
     sudo taskset -c 4-7 qemu-system-x86_64 \
@@ -305,8 +304,7 @@ start-snp-vm-direct:
         -device virtio-blk-pci,drive=q2 \
         -netdev user,id=net0,hostfwd=tcp::2223-:22 \
         -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
-        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}}
+        -drive if=pflash,format=raw,unit=0,file={{uefi_bios_fd}},readonly=on
 
 ## VM BUILD
 
