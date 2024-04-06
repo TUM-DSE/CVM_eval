@@ -18,6 +18,8 @@ group_reporting=1
 
 group_reporting=1
 
+size=1G
+
 # bs, rw, iodepth, numjobs from Spool ATC ‘20
 [alat randread]
 stonewall

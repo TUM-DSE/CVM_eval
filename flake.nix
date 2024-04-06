@@ -6,10 +6,11 @@
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-23.05";
     nixpkgs-2311.url = "github:NixOS/nixpkgs/nixos-23.11";
-    nixpkgs-mic92.url = "github:mic92/nixpkgs/spdk";
+    /* nixpkgs-mic92.url = "github:mic92/spdk"; */
+    nixpkgs-mic92.url = "github:NixOS/nixpkgs/nixos-23.11";
     flake-utils.url = "github:numtide/flake-utils";
     # debug build inputs
-    kernelSrc.url = "path:/home/robert/repos/github.com/TUM_DSE/CVM_eval/src/linux";
+    kernelSrc.url = "path:/home/moritz/new/CVM_eval/src/linux";
     kernelSrc.flake = false;
   };
 
@@ -64,9 +65,14 @@
                 target = "/mnt/blk-bm.fio";
               }
               {
+                source = ./bm/phoronix-test-suite;
+                target = "/mnt/phoronix-test-suite";
+              }
+              {
                 source = ./bm/quick;
                 target = "/mnt/quick";
               }
+          
             ];
           };
 
@@ -111,14 +117,16 @@
               jq
 
               gfortran
-
+              glibc
               # fio-plotters
               python3.pkgs.click
               python3.pkgs.seaborn
               python3.pkgs.pandas
               python3.pkgs.binary
+
+              fscrypt-experimental             
             ] ++ 
-            (
+            (   
               with self.packages.${system};
               [
                 qemu-amd-sev-snp # patched amd-sev-snp qemu

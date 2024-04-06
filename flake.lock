@@ -21,13 +21,13 @@
     "kernelSrc": {
       "flake": false,
       "locked": {
-        "lastModified": 1706595502,
-        "narHash": "sha256-5TQTWdCtXusD4Uj0R1ChX2mQWLstg0iwRu4MCjEi4yY=",
-        "path": "/home/robert/repos/github.com/TUM_DSE/CVM_eval/src/linux",
+        "lastModified": 1712419316,
+        "narHash": "sha256-/slC7/UUeH3F/5cjkJ1MXvFnl8adCCId8I+Ui5R2jHE=",
+        "path": "/home/moritz/new/CVM_eval/src/linux",
         "type": "path"
       },
       "original": {
-        "path": "/home/robert/repos/github.com/TUM_DSE/CVM_eval/src/linux",
+        "path": "/home/moritz/new/CVM_eval/src/linux",
         "type": "path"
       }
     },
@@ -49,16 +49,16 @@
     },
     "nixpkgs-mic92": {
       "locked": {
-        "lastModified": 1701167560,
-        "narHash": "sha256-4hTqpXD/OXoLe++CBonLAPMbvuUoa7fftyT+Eoo5IwA=",
-        "owner": "mic92",
+        "lastModified": 1712310679,
+        "narHash": "sha256-XgC/a/giEeNkhme/AV1ToipoZ/IVm1MV2ntiK4Tm+pw=",
+        "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "14e5465261c47a62254b1c21a47af552d5d524ee",
+        "rev": "72da83d9515b43550436891f538ff41d68eecc7f",
         "type": "github"
       },
       "original": {
-        "owner": "mic92",
-        "ref": "spdk",
+        "owner": "NixOS",
+        "ref": "nixos-23.11",
         "repo": "nixpkgs",
         "type": "github"
       }

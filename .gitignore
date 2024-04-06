@@ -12,3 +12,5 @@ __pycache__/
 build/
 result
 result-fd
+temp.txt
+inv-fio-logs

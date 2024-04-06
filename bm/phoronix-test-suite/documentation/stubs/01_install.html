@@ -1,0 +1,48 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<Title>Installation Instructions</Title>
+</head>
+<body>
+<h1>Setup Overview</h1>
+<p>The Phoronix Test Suite supports Linux, Apple macOS, Microsoft Windows, Solaris, Hurd, BSD, and other operating system environments. The only Linux distribution-specific code deals with the external dependencies support feature that are set by individual test profiles. If you are not running one of the supported Linux distributions, Solaris, BSD, or macOS, you may need to install a package manually (as instructed by the Phoronix Test Suite) in order for a test to run. An example of an external dependency would be GCC and the OpenGL Utility Toolkit being needed for test profiles that build an OpenGL benchmark from source-code.</p>
+<p>Among the distributions where the Phoronix Test Suite has been officially tested include Ubuntu, Fedora, Mandriva / Mageia, Gentoo, PCLinuxOS, Arch Linux, Pardus, OpenSuSE, Optware, webOS, Zenwalk, CentOS, Red Hat Enterprise Linux, Oracle Linux, Scientific Linux, Debian, Mint, Alpine Linux, Void Linux, Intel Clear Linux, and Amazon Linux EC2.</p>
+<p>Among the tested BSD distributions are FreeBSD, NetBSD, OpenBSD, and DragonflyBSD. Tested Solaris distributions include Oracle Solaris 11, OpenIndiana, and Illumos.</p>
+<h1>Dependencies</h1>
+<p>The only required dependency for the Phoronix Test Suite is PHP 5.3 or newer. On Linux distributions, the needed package is commonly called <em>php5-cli</em> or <em>php-cli</em> or <em>php7</em> or <em>php</em>. It is important to note that only PHP for the command-line is needed and not a web server (Apache) or other packages commonly associated with PHP and its usage by web-sites. The PHP5 version required is PHP 5.3+ and can also be found at <a href="http://www.php.net/">www.php.net</a>. PHP 7 and PHP 8 are also fully supported by the Phoronix Test Suite.</p>
+
+<p>The <em>phoronix-test-suite.bat</em> Windows launcher for the Phoronix Test Suite will automatically download and setup PHP on the local system if PHP is not present already.</p>
+<p>The Phoronix Test Suite does not need to be installed system-wide but can simply be run from the extracted phoronix-test-suite folder as the local user.</p>
+<p>As part of the PHP requirement, the following PHP extensions are required and/or highly recommended in order to take advantage of the Phoronix Test Suite capabilities:</p>
+<ul>
+<li><strong>PHP DOM</strong> is needed for XML operations and must be installed for the Phoronix Test Suite to function.</li>
+<li><strong>PHP ZIP</strong> is needed for file compression and decompression and specifically dealing with test profiles and suites obtained via OpenBenchmarking.org or when uploading such tests and suites.</li>
+<li><strong>PHP OpenSSL</strong> is used for enabling HTTPS communication with Phoronix Test Suite / OpenBenchmarking.org servers.</li>
+<li><strong>PHP GD</strong> is highly recommended for rendering of test data to JPEG and PNG image formats and is selectively used in other image operations.</li>
+<li><strong>PHP Zlib</strong> is highly recommended for greater data compression when dealing with remote OpenBenchmarking.org assets.</li>
+<li><strong>PHP PCNTL</strong> is used for multi-threaded system sensor monitoring support during the testing process and other threaded tasks by the Phoronix Test Suite module framework.</li>
+<li><strong>PHP POSIX</strong> is used for reliably obtaining more system information in an efficient manner.</li>
+<li><strong>PHP CURL</strong> is supported as an alternative networking library for improved network performance in downloading test files and other operations.</li>
+<li><strong>PHP FPDF</strong> is used to generate PDF reports of test data.</li>
+</ul>
+<p>Without all of these extensions, some capabilities of the Phoronix Test Suite will not be available. Many of these packages are enabled by default and do not require any additional installation steps on most Linux distributions, otherwise they are often found in the package vendor's repository.</p>
+<h1>Notes</h1>
+<h2>General</h2>
+<p>You may need to modify the <em>php.ini</em> file on your system in order to support uploading results to OpenBenchmarking.org or logging into your OpenBenchmarking.org account. The <em>allow_url_fopen</em>, <em>file_uploads</em>, and <em>allow_url_include</em> options must be set to true in the PHP configuration.</p>
+<p>Major updates to the Phoronix Test Suite are released on a quarterly basis. The latest stable and development versions of the Phoronix Test Suite are available at <a href="http://www.phoronix-test-suite.com/">Phoronix-Test-Suite.com</a>. The Git repository where the latest Phoronix Test Suite code is provided is hosted at <a href="https://github.com/phoronix-test-suite/phoronix-test-suite">github.com/phoronix-test-suite</a> and can be cloned/pulled from the <em>https://github.com/phoronix-test-suite/phoronix-test-suite.git</em> repository location. The latest upstream development code is housed in the master tree while older Phoronix Test Suite releases are available in their respective Git branches based upon the release's code-name.</p>
+<p>If building the PHP package from upstream sources, it should just be a matter of running <em>./configure</em> with the <em>--enable-zip</em> flag (all other requirements should be apart of the stock PHP configuration) to satisfy the PHP needs of the Phoronix Test Suite.</p>
+<h2>File Structure</h2>
+<p>If manually changing the location of the <em>phoronix-test-suite</em> launcher file, the <em>PTS_USER_PATH</em> environment variable must be adjusted inside the file to reflect the absolute location that leads to the root directory of the <em>pts</em> and <em>pts-core</em> folders. The <em>pts-core</em> directory contains the &quot;engine&quot; of the Phoronix Test Suite.</p>
+<h2>Running Locally</h2>
+<p>The Phoronix Test Suite can be simply extracted from the downloaded <em>.tar.gz</em> or <em>.zip</em> file or it can also be installed system-wide. If you just wish to run the Phoronix Test Suite without installing it, open a terminal and run <em>./phoronix-test-suite &lt;options&gt;</em> from the same directory.</p>
+<h2>Generic Installation</h2>
+<p>Running <em>install-sh</em> from the root directory of the Phoronix Test Suite will install the software for system-wide access. By default the <em>phoronix-test-suite</em> executable is in <em>/usr/bin/</em>, the Phoronix Test Suite files in <em>/usr/share/phoronix-test-suite/</em>, and the documentation in /<em>usr/share/doc/phoronix-test-suite/</em>. Root access is required. The default installation prefix is /usr/ but can be adjusted as the first argument (example: <em>install-sh /home/user/</em> to install the Phoronix Test Suite in your home directory).</p>
+<h2>Debian/Ubuntu Installation</h2>
+<p>Debian/Ubuntu users are able to follow the Generic Installation instructions or can obtain a Debian Package from the Phoronix Test Suite web-site. The package contains the <em>phoronix-test-suite</em> executable in <em>/usr/bin/</em>, the Phoronix Test Suite files in <em>/usr/share/phoronix-test-suite/</em>, and the documentation in <em>/usr/share/doc/phoronix-test-suite/</em>.</p>
+<h2>Fedora / Red Hat Installation</h2>
+<p>The Phoronix Test Suite can be installed on Fedora, Red Hat Enterprise Linux, and CentOS systems using the generic installation method. Alternatively, a <em>phoronix-test-suite</em> package is available in recent versions of the Fedora repository and in the EPEL (Extra Packages for Enterprise Linux) repository for Red Hat Enterprise Linux. However, at times this package may be out-of-date compared to upstream stable.</p>
+<h2>BSD Installation</h2>
+<p>The Phoronix Test Suite also supports *BSD operating systems. However, like the Solaris support, not all test profiles are compatible with BSD operating systems, but should run well on the likes of FreeBSD and DragonFlyBSD.</p>
+<h2>MacOS Installation</h2>
+<p>The Phoronix Test Suite is fully supported on Apple's macOS operating system. PHP ships with macOS by default on macOS 12 and older so it's simply a matter of downloading the Phoronix Test Suite package, extracting it, and running the executable. For tests that rely upon a compiler, Apple's XCode with GCC and LLVM can be utilized. On newer versions of macOS not shipping with PHP by default, <a href="https://brew.sh/">Homebrew</a> can be used for installing PHP or building PHP from source. The Phoronix Test Suite also supports making use of Homebrew for acquiring necessary Phoronix Test Suite dependencies on macOS.</p>
+</body>
+</html>

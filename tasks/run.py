@@ -249,7 +249,7 @@ def run_virtio_blk_qemu(
             rebuild_ovmf=rebuild_ovmf,
             )
     qemu_cmd = add_ovmf_to_qemu_cmd(base_cmd)
-    qemu_cmd = add_virtio_blk_nvme_to_qemu_cmd(base_cmd, ssd_path)
+    qemu_cmd = add_virtio_blk_nvme_to_qemu_cmd(qemu_cmd, ssd_path)
 
     if vm_type == "sev":
         qemu_cmd = add_sev_to_qemu_cmd(qemu_cmd)
