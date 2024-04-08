@@ -55,8 +55,9 @@ def configure_debug_kernel(c: Any) -> None:
               --enable DEBUG_DRIVER \
               --enable DM_CRYPT \
               --enable CRYPTO_XTS \
-              --enable VIRTIO_BLK \
               --enable VIRTIO_PCI \
+              --enable VIRTIO_BLK \
+              --enable VIRTIO_NET \
               --enable EXT4_FS"
               )
 
@@ -72,8 +73,9 @@ def configure_sev_kernel(c: Any, cvm_io: bool = False) -> None:
         # TODO: build proper initrd
         run_in_kernel_devshell(c,
                 "scripts/config " \
-                "--enable VIRTIO_BLK " \
                 "--enable VIRTIO_PCI " \
+                "--enable VIRTIO_BLK " \
+                "--enable VIRTIO_NET " \
                 "--enable EXT4_FS "
                 )
     if cvm_io:
