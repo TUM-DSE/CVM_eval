@@ -35,6 +35,15 @@ FIO_POSSIBLE_BENCHMARKS = [
         "all"
         ]
 
+
+SSD_FS_PATH = "/mnt/ssd_fs"
+DRIVE="vdb"
+MONITOR=f"MONITOR=cpu.usage,hdd.read-speed.{DRIVE},hdd.write-speed.{DRIVE},sys.iowait"
+PHORONIX_POSSIBLE_BENCHMARKS = [
+    "sqlite",
+    "pgbench"
+]
+
 # helpers
 # asynchronous only applies if cmd passed
 @task(help={
@@ -43,8 +52,8 @@ FIO_POSSIBLE_BENCHMARKS = [
     "cmd": "command to run in VM (default: empty -> just ssh into VM)",
     "warn": "whether to warn if command fails",
     "hide": "whether to hide output of command"})
-def ssh_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, asynchronous: bool = False, cmd: str = "", warn: bool = True, hide:bool = False) -> Result:
-    ssh_cmd: str = f"ssh -i {SSH_KEY} -o 'StrictHostKeyChecking no' -p {ssh_port} root@localhost"
+def ssh_vm(c: Any, ssh_port: int = DEFAULT_SSH_FORWARD_PORT, asynchronous: bool = False, cmd: str = "", user: str = "root", warn: bool = True, hide:bool = False) -> Result:
+    ssh_cmd: str = f"ssh -i {SSH_KEY} -o 'StrictHostKeyChecking no' -p {ssh_port} {user}@localhost"
     # difficulty with multiple commands
     if cmd:
         ssh_cmd += " -t"
@@ -245,3 +254,44 @@ def ramdisk_setup(c: Any) -> None:
     print_and_sudo(c, f"mkdir -p {RAMDISK_TEMPFS_PATH}")
     print_and_sudo(c, f"mount -t tmpfs -o size=1G tmpfs {RAMDISK_TEMPFS_PATH}")
     print_and_sudo(c, f"dd if=/dev/zero of={RAMDISK_PATH} bs=1M count=1024")
+
+
+@task
+def ssd_fs_setup(c : Any) -> None:
+    cmd = f"mkfs.ext4 -F {VM_BENCHMARK_SSD_PATH}; mkdir -p {SSD_FS_PATH}; mount {VM_BENCHMARK_SSD_PATH} {SSD_FS_PATH}"
+    ssh_vm(c, cmd=cmd)
+    ssh_vm(c, cmd=f"chmod 777 {SSD_FS_PATH}")
+
+@task
+def phoronix_setup(c : Any) -> None:
+    """
+    Setup Phoronix Benchmarks on SSD
+    """
+    ssh_vm(c, user="phoronix-limit", cmd="phoronix-test-suite")
+    cmd = f'sed -i "s|~/.phoronix-test-suite/installed-tests/|{SSD_FS_PATH}|" /home/phoronix-limit/.phoronix-test-suite/user-config.xml'
+    ssh_vm(c, user="phoronix-limit", cmd=cmd)
+    ssh_vm(c, user="phoronix-limit", cmd="phoronix-test-suite install sqlite")
+    ssh_vm(c, user="phoronix-limit", cmd="phoronix-test-suite install pgbench")
+    cmd = f'sed -i "1s|^#!/bin/bash|#!/usr/bin/env bash|" {os.path.join(SSD_FS_PATH, "pts/sqlite-2.2.0/sqlite-benchmark")}'
+    ssh_vm(c, user="phoronix-limit", cmd=cmd)
+    
+    
+@task
+def fscrypt_setup(c : Any) -> None:
+    cmd = f"fscrypt setup --quiet --force --all-users; fscrypt setup {SSD_FS_PATH} --quiet --all-users"
+    ssh_vm(c, cmd=cmd)
+    cmd = f'echo "hunter2" | fscrypt encrypt /mnt/disk/dir1 --quiet --source=custom_passphrase  --name="Super Secret"'
+    ssh_vm(c, cmd=cmd)
+    
+@task
+def exec_phoronix_in_vm(c : Any, test_type = "sqlite") -> None:
+    """
+    Execute Phoronix Benchmarks on SSD
+    """
+    if test_type == "sqlite":
+        ssh_vm(c, user="phoronix_limit", cmd=f'{MONITOR} printf "1\nn" | phoronix-test-suite benchmark sqlite')
+        
+    elif test_type == "pgbench":
+        ssh_vm(c, user="phoronix_limit", cmd=f'{MONITOR} printf "1\nn\n1" | phoronix-test-suite benchmark pgbench')
+    
+    

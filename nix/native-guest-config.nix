@@ -48,6 +48,24 @@ in
     (builtins.readFile ./ssh_key.pub)
   ];
   services.getty.autologinUser = lib.mkDefault "root";
+
+  # add a user with limited rights to disable phoronix from saving in /var
+  users.users.phoronix-limit = {
+    isNormalUser = true; # Enable home directory and allow login
+    home = "/home/phoronix-limit"; # Specify the home directory
+    description = "Limit phoronix access rights"; # Optional description
+    extraGroups = [ "wheel" ]; # Add user to additional groups, 'wheel' for sudo
+    shell = pkgs.bash; # Set the default shell
+  };
+  users.users.phoronix-limit.password = "password";
+  users.users.phoronix-limit.openssh.authorizedKeys.keys =
+  [
+    (builtins.readFile ./ssh_key.pub)
+  ];
+
+
+  # Ensure the user is part of the 'wheel' group to allow sudo access
+  security.sudo.wheelNeedsPassword = false;
   time.timeZone = "Europe/Berlin";
   i18n.defaultLocale = "en_US.UTF-8";
   console = {
@@ -74,9 +92,12 @@ in
     fzf
     prebuiltLinuxPackages.perf
     xterm # for `resize`, if vim messes up serial console size
-    #phoronix-test-suite
+    phoronix-test-suite
     php
+    gcc
+    gnumake
     fscrypt-experimental
+    bc
   ] ++
   ( with selfpkgs;
     [

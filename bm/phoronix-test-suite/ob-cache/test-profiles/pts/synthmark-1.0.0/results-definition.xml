@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-<!--Phoronix Test Suite v10.2.0-->
-<PhoronixTestSuite>
-  <ResultsParser>
-    <OutputTemplate>normalized.voices.100 = #_RESULT_#</OutputTemplate>
-  </ResultsParser>
-</PhoronixTestSuite>

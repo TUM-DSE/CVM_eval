@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-<!--Phoronix Test Suite v10.2.1-->
-<PhoronixTestSuite>
-  <ResultsParser>
-    <OutputTemplate>Benchmark: #_RESULT_# fps</OutputTemplate>
-  </ResultsParser>
-</PhoronixTestSuite>

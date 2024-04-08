@@ -1,8 +1,0 @@
-<?xml version="1.0"?>
-<!--Phoronix Test Suite v10.6.1-->
-<PhoronixTestSuite>
-  <ResultsParser>
-    <OutputTemplate>#long     long      #_RESULT_#</OutputTemplate>
-    <LineHint>long</LineHint>
-  </ResultsParser>
-</PhoronixTestSuite>

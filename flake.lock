@@ -21,13 +21,13 @@
     "kernelSrc": {
       "flake": false,
       "locked": {
-        "lastModified": 1712419316,
-        "narHash": "sha256-/slC7/UUeH3F/5cjkJ1MXvFnl8adCCId8I+Ui5R2jHE=",
-        "path": "/home/moritz/new/CVM_eval/src/linux",
+        "lastModified": 1712506903,
+        "narHash": "sha256-mq23T+9KDOpjIR4Nin6HRTZwIqPAY6oBiIlmUmk0Oy0=",
+        "path": "/home/moritz/CVM_eval/src/linux",
         "type": "path"
       },
       "original": {
-        "path": "/home/moritz/new/CVM_eval/src/linux",
+        "path": "/home/moritz/CVM_eval/src/linux",
         "type": "path"
       }
     },

@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-<!--Phoronix Test Suite v7.2.1-->
-<PhoronixTestSuite>
-  <ResultsParser>
-    <OutputTemplate> Average atom update rate:   #_RESULT_# us/atom/task</OutputTemplate>
-  </ResultsParser>
-</PhoronixTestSuite>

@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-<!--Phoronix Test Suite v7.2.1-->
-<PhoronixTestSuite>
-  <ResultsParser>
-    <OutputTemplate>FOM                  =  #_RESULT_# (z/s)</OutputTemplate>
-  </ResultsParser>
-</PhoronixTestSuite>

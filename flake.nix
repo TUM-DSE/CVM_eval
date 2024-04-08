@@ -10,7 +10,7 @@
     nixpkgs-mic92.url = "github:NixOS/nixpkgs/nixos-23.11";
     flake-utils.url = "github:numtide/flake-utils";
     # debug build inputs
-    kernelSrc.url = "path:/home/moritz/new/CVM_eval/src/linux";
+    kernelSrc.url = "path:/home/moritz/CVM_eval/src/linux";
     kernelSrc.flake = false;
   };
 
@@ -63,10 +63,6 @@
               {
                 source = ./bm/blk-bm.fio;
                 target = "/mnt/blk-bm.fio";
-              }
-              {
-                source = ./bm/phoronix-test-suite;
-                target = "/mnt/phoronix-test-suite";
               }
               {
                 source = ./bm/quick;
