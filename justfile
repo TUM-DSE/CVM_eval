@@ -27,12 +27,14 @@ native_ovmf            := join(vm_build, "native", "OVMF")
 sev_ovmf               := join(vm_build, "sev", "OVMF")
 uefi_bios_code_ro      := join(ovmf_ro_fd, "FV", "OVMF_CODE.fd")
 uefi_bios_vars_ro      := join(ovmf_ro_fd, "FV", "OVMF_VARS.fd")
-uefi_bios_fd           := join(ovmf_ro_fd, "FV", "OVMF.fd")
+# uefi_bios_fd           := join(ovmf_ro_fd, "FV", "OVMF.fd")
+uefi_bios_fd           := "./tmp/ovmf_patch/OVMF.fd"
 native_uefi_bios_code  := join(native_ovmf, "FV", "OVMF_CODE.fd")
 sev_uefi_bios_code     := join(sev_ovmf, "FV", "OVMF_CODE.fd")
 native_uefi_bios_vars  := join(native_ovmf, "FV", "OVMF_VARS.fd")
 sev_uefi_bios_vars     := join(sev_ovmf, "FV", "OVMF_VARS.fd")
 
+ssh_port := "2225"
 
 # nix identifiers
 ## recipes
@@ -245,7 +247,7 @@ start-sev-vm-spdk:
         -nographic \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
         -device virtio-blk-pci,drive=q2,bootindex=0 \
-        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
+        -netdev user,id=net0,hostfwd=tcp::{{ssh_port}}-:22 \
         -device virtio-net-pci,netdev=net0 \
         -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
         -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}} \
@@ -267,12 +269,12 @@ start-snp-vm:
         -nographic \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
         -device virtio-blk-pci,drive=q2,bootindex=0 \
-        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
+        -netdev user,id=net0,hostfwd=tcp::{{ssh_port}}-:22 \
         -device virtio-net-pci,netdev=net0 \
         -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
         -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}}
 
-start-vm-direct:
+start-vm-disk:
     sudo taskset -c 4-7 qemu-system-x86_64 \
         -cpu EPYC-v4,host-phys-bits=true \
         -smp 4 \
@@ -280,19 +282,72 @@ start-vm-direct:
         -machine q35 \
         -enable-kvm \
         -nographic \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
+        -device virtio-blk-pci,drive=q2,bootindex=0 \
+        -netdev user,id=net0,hostfwd=tcp::{{ssh_port}}-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -drive if=pflash,format=raw,unit=0,file={{uefi_bios_fd}},readonly=on
+
+# -kernel ./src/linux/arch/x86_64/boot/bzImage \
+# -append "root=/dev/vda2 console=ttyS0 init={{nixos_init}}" \
+start-vm-direct ovmf="./tmp/ovmf_patch/OVMF.fd" smp="1" mem="8G":
+    sudo taskset -c 0-63 qemu-system-x86_64 \
+        -cpu EPYC-v4,host-phys-bits=true \
+        -smp {{smp}} \
+        -m {{mem}} \
+        -machine q35 \
+        -enable-kvm \
+        -nographic \
+        -kernel ./tmp/bzImage \
+        -initrd ./tmp/initrd \
+        -append "root=/dev/vda2 console=ttyS0 init={{nixos_init}}" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
+        -device virtio-blk-pci,drive=q2 \
+        -netdev user,id=net0,hostfwd=tcp::{{ssh_port}}-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -drive if=pflash,format=raw,unit=0,file={{ovmf}},readonly=on
+
+start-vm-direct-s ovmf="./tmp/ovmf_patch/OVMF.fd" smp="1" mem="8G" log="/tmp/qemu-serial.log":
+    sudo taskset -c 0-63 qemu-system-x86_64 \
+        -cpu EPYC-v4,host-phys-bits=true \
+        -smp {{smp}} \
+        -m {{mem}} \
+        -machine q35 \
+        -enable-kvm \
+        -nographic \
         -kernel ./src/linux/arch/x86_64/boot/bzImage \
         -append "root=/dev/vda2 console=ttyS0 init={{nixos_init}}" \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
         -device virtio-blk-pci,drive=q2 \
-        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
+        -netdev user,id=net0,hostfwd=tcp::{{ssh_port}}-:22 \
         -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{uefi_bios_fd}},readonly=on
+        -drive if=pflash,format=raw,unit=0,file={{ovmf}},readonly=on \
+        -serial file:{{log}}
 
-start-snp-vm-direct:
-    sudo taskset -c 4-7 qemu-system-x86_64 \
+start-snp-direct ovmf="./tmp/ovmf_patch/OVMF.fd" smp="1" mem="8G":
+    sudo taskset -c 0-63 qemu-system-x86_64 \
         -cpu EPYC-v4,host-phys-bits=true \
-        -smp 4 \
-        -m 16G \
+        -smp {{smp}} \
+        -m {{mem}} \
+        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
+        -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
+        -enable-kvm \
+        -nographic \
+        -kernel ./tmp/bzImage \
+        -initrd ./tmp/initrd \
+        -append "root=/dev/vda2 console=ttyS0 init={{nixos_init}}" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
+        -device virtio-blk-pci,drive=q2 \
+        -netdev user,id=net0,hostfwd=tcp::{{ssh_port}}-:22 \
+        -device virtio-net-pci,netdev=net0 \
+        -drive if=pflash,format=raw,unit=0,file={{ovmf}},readonly=on
+
+start-snp-direct-s ovmf="./tmp/ovmf_patch/OVMF.fd" smp="1" mem="8G" log="/tmp/qemu-serial.log":
+    sudo taskset -c 0-63 qemu-system-x86_64 \
+        -cpu EPYC-v4,host-phys-bits=true \
+        -smp {{smp}} \
+        -m {{mem}} \
         -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
         -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
         -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
@@ -302,9 +357,10 @@ start-snp-vm-direct:
         -append "root=/dev/vda2 console=ttyS0 init={{nixos_init}}" \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
         -device virtio-blk-pci,drive=q2 \
-        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
+        -netdev user,id=net0,hostfwd=tcp::{{ssh_port}}-:22 \
         -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{uefi_bios_fd}},readonly=on
+        -drive if=pflash,format=raw,unit=0,file={{ovmf}},readonly=on \
+        -serial file:{{log}}
 
 ## VM BUILD
 
@@ -446,3 +502,6 @@ ssh-into-qemu-native:
 
 ssh-into-qemu-sev:
     ssh -i nix/ssh_key -o "StrictHostKeyChecking no" -p {{ qemu_sev_ssh_port }} root@localhost
+
+ssh port="2225":
+    ssh -i nix/ssh_key -o "StrictHostKeyChecking no" -p {{ port }} root@localhost
