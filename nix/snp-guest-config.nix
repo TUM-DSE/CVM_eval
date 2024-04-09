@@ -55,12 +55,7 @@ in
     fzf
     kernelPackages.perf
     xterm # for `resize`, if vim messes up serial console size
-  ] ++
-  ( with selfpkgs;
-    [
-      bm-cpuid
-    ]
-  );
+  ];
 
   boot.kernelPackages = kernelPackages;
   boot.kernelPatches = [

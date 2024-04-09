@@ -1,5 +1,5 @@
 {
-  description = "CVM-IO - a storage-IO performance enhancing CVM method";
+  description = "CVM-Eval -- Evaluation environment for AMD SEV-SNP and Intel TDX";
 
   inputs =
   {
@@ -40,54 +40,37 @@
       rec {
         packages =
         {
-          # SSD preconditioning
+          # SPDK is for SSD preconditioning
+          # use forked version as the current upstream version has some issues
+          # (TODO: check if the issues are fixed)
           spdk = let pkgs = mic92pkgs; in pkgs.callPackage ./nix/spdk.nix { inherit pkgs; };
 
-          qemu-amd-sev-snp = let pkgs = stablepkgs; in pkgs.callPackage ./nix/qemu-amd-sev-snp.nix { inherit pkgs; };
+          qemu-amd-sev-snp = pkgs.callPackage ./nix/qemu-amd-sev-snp.nix { inherit pkgs; };
           ovmf-amd-sev-snp = pkgs.callPackage ./nix/ovmf-amd-sev-snp.nix { inherit pkgs; };
-          guest-image = make-disk-image
+
+          snp-guest-image = make-disk-image
           {
             # config = self.nixosConfigurations.native-guest.config;
-            config = self.nixosConfigurations.guest.config;
+            config = self.nixosConfigurations.snp-guest.config;
             inherit (pkgs) lib;
             inherit pkgs;
             format = "qcow2";
             partitionTableType = "efi";
             installBootLoader = true;
-            # diskSize = 8192;
             diskSize = 32768;
             OVMF = selfpkgs.ovmf-amd-sev-snp.fd;
             touchEFIVars = true;
-            contents =
-            [
-              {
-                source = ./bm/blk-bm.fio;
-                target = "/mnt/blk-bm.fio";
-              }
-              {
-                source = ./bm/quick;
-                target = "/mnt/quick";
-              }
-            ];
           };
 
-          # debug kernel
-          # inv uilts.py:nixos-image
-          nixos-image = pkgs.callPackage ./nix/nixos-image.nix { };
-          lib.nixpkgsRev = nixpkgs-direct.shortRev;
-          # build config from prebuilt kernel
-
-          # benchmarking tools
-          bm-cpuid = pkgs.callPackage ./benchmarks/vm-benchmarks.nix { inherit pkgs; };
+          normal-guest-image = pkgs.callPackage ./nix/nixos-image.nix { };
         };
 
         devShells = {
           default = pkgs.mkShell
           {
-            name = "benchmark-devshell";
+            name = "devshell";
             buildInputs =
             let
-              count-vm-exits = pkgs.callPackage ./nix/bin/count_vm_exits.nix { inherit pkgs; };
               inv-completion = pkgs.writeScriptBin "inv-completion"
               ''
                 inv --print-completion-script zsh
@@ -117,27 +100,19 @@
               libclang.python
               clang-tools
 
-              # fio-plotters
+              # plot
               python3.pkgs.click
               python3.pkgs.seaborn
               python3.pkgs.pandas
               python3.pkgs.binary
+              python3.pkgs.lxml
             ] ++
             (
-              with self.packages.${system};
               [
-                qemu-amd-sev-snp # patched amd-sev-snp qemu
-                spdk # nvme SSD formatting
-              ]
-            ) ++
-            (
-              [
-                count-vm-exits
                 inv-completion
               ]
             );
           };
-          linux = pkgs-2311.linux.dev;
         };
 
       }
@@ -149,6 +124,7 @@
       selfpkgs = self.packages.x86_64-linux;
     in
     {
+      # a guest configuration with a pre-built kernel
       native-guest = nixpkgs-unstable.lib.nixosSystem
       {
         system = "x86_64-linux";
@@ -166,13 +142,14 @@
           ./nix/nixos-generators-qcow.nix
         ];
       };
-      guest = nixpkgs-unstable.lib.nixosSystem
+      # a guest configuration with SEV-SNP support
+      snp-guest = nixpkgs-unstable.lib.nixosSystem
       {
         system = "x86_64-linux";
         modules =
         [
           (
-            import ./nix/guest-config.nix
+            import ./nix/snp-guest-config.nix
             {
               inherit pkgs;
               inherit selfpkgs;

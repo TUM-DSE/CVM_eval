@@ -1,3 +1,5 @@
+# common nixos guest configuration
+
 { pkgs, lib, modulesPath, ... }:
 
 let
