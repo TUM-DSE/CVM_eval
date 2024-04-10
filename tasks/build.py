@@ -85,6 +85,19 @@ def build_normal_guest_image(c: Any, force: bool = False) -> None:
 
 
 @task
+def build_guest_fs(c: Any, force: bool = False) -> None:
+    """Build a guest fs image (w/o kernel).
+
+    Output path is ./build/guest-fs
+
+    The build result is a read-only. Copy the image to
+    ./build/image/guest-fs.qcow2
+    """
+
+    build_guest_image(c, "guest-fs", force=force)
+
+
+@task
 def build_spdk(c: Any) -> None:
     """Build SPDK
 

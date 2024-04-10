@@ -59,6 +59,18 @@
             diskSize = 32768;
             touchEFIVars = true;
           };
+
+          # file system image w/o kernel
+          guest-fs = make-disk-image {
+            config = self.nixosConfigurations.fs.config;
+            inherit (pkgs) lib;
+            inherit pkgs;
+            format = "qcow2";
+            partitionTableType = "none";
+            # installBootLoader option set up /sbin/init, etc.
+            installBootLoader = true;
+            diskSize = 32768;
+          };
         };
 
         devShells = {
@@ -103,7 +115,7 @@
         };
 
       })) // {
-        # nixOS configurations to create a guest image with kernel
+        # nixOS configurations to create a guest image
         nixosConfigurations = let
           pkgs = nixpkgs-unstable.legacyPackages.x86_64-linux;
           selfpkgs = self.packages.x86_64-linux;
@@ -111,6 +123,14 @@
             boot.kernelPackages = pkgs.linuxPackages_6_6;
           };
         in {
+          # File system image w/o kernel
+          fs = nixpkgs-unstable.lib.nixosSystem {
+            system = "x86_64-linux";
+            modules = [
+              ./nix/guest-config.nix
+            ];
+          };
+
           # Normal Linux guest (mainline)
           normal-guest = nixpkgs-unstable.lib.nixosSystem {
             system = "x86_64-linux";

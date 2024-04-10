@@ -23,8 +23,26 @@ in {
   '';
   nix.package = pkgs.nixFlakes;
 
+  # virtio-console login setting
+  # (somehow udev does not pick up hvc0?)
+  systemd.services."serial-getty" = {
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig.ExecStart = "${pkgs.util-linux}/sbin/agetty  --login-program ${pkgs.shadow}/bin/login --autologin root hvc0 --keep-baud vt100";
+  };
+  systemd.services."serial-getty@hvc0".enable = false;
+
+
   # slows things down
   systemd.services.systemd-networkd-wait-online.enable = false;
+
+  # qemu networking
+  networking.interfaces.eth0.ipv4.addresses = [ {
+    address = "10.0.2.15";
+    prefixLength = 24;
+  } ];
+  networking.defaultGateway = "10.0.2.2";
+  networking.nameservers = ["10.0.2.3"];
+  networking.useDHCP = false;
 
   # override defaults from nixpkgs/modules/virtualization/container-config.nix
   # to enable cryptsetup
