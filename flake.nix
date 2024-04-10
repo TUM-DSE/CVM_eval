@@ -8,13 +8,10 @@
     nixpkgs-2311.url = "github:NixOS/nixpkgs/nixos-23.11";
     nixpkgs-mic92.url = "github:mic92/nixpkgs/spdk";
     flake-utils.url = "github:numtide/flake-utils";
-    # debug build inputs
-    kernelSrc.url = "path:/home/robert/repos/github.com/TUM_DSE/CVM_eval/src/linux";
-    kernelSrc.flake = false;
   };
 
   outputs = { self, nixpkgs-unstable, nixpkgs-stable, nixpkgs-2311
-    , nixpkgs-mic92, flake-utils, kernelSrc }:
+    , nixpkgs-mic92, flake-utils}:
     (flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
       let
         nixpkgs-direct = nixpkgs-unstable;

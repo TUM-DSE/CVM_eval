@@ -18,19 +18,6 @@
         "type": "github"
       }
     },
-    "kernelSrc": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1706595502,
-        "narHash": "sha256-5TQTWdCtXusD4Uj0R1ChX2mQWLstg0iwRu4MCjEi4yY=",
-        "path": "/home/robert/repos/github.com/TUM_DSE/CVM_eval/src/linux",
-        "type": "path"
-      },
-      "original": {
-        "path": "/home/robert/repos/github.com/TUM_DSE/CVM_eval/src/linux",
-        "type": "path"
-      }
-    },
     "nixpkgs-2311": {
       "locked": {
         "lastModified": 1704295289,
@@ -98,7 +85,6 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "kernelSrc": "kernelSrc",
         "nixpkgs-2311": "nixpkgs-2311",
         "nixpkgs-mic92": "nixpkgs-mic92",
         "nixpkgs-stable": "nixpkgs-stable",

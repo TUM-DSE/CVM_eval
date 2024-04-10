@@ -1,3 +1,0 @@
-[submodule "src/linux"]
-	path = src/linux
-	url = git@gitlab.lrz.de:robert/linux.git
