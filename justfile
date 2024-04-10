@@ -19,10 +19,11 @@ start-vm-disk:
         -machine q35 \
         -enable-kvm \
         -nographic \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{SNP_IMAGE}} \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{NORMAL_IMAGE}} \
         -device virtio-blk-pci,drive=q2,bootindex=0 \
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on
 
 start-snp-disk:

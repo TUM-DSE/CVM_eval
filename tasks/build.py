@@ -42,13 +42,13 @@ def build_qemu_snp(c: Any) -> None:
 
 
 def build_guest_image(
-    c: Any, target: str, dst: Path = Path(f"{BUILD_DIR}/image")
+    c: Any, target: str, force: bool = False, dst: Path = Path(f"{BUILD_DIR}/image")
 ) -> None:
     guest_image_name = f"{target}.qcow2"
     if dst:
         dst.mkdir(parents=True, exist_ok=True)
         dst_file = dst / guest_image_name
-        if dst_file.exists():
+        if not force and dst_file.exists():
             print(f"{dst_file} already exists. Skipping build.")
             return
     result = nix_build(f".#{target}")
@@ -59,7 +59,7 @@ def build_guest_image(
 
 
 @task
-def build_snp_guest_image(c: Any) -> None:
+def build_snp_guest_image(c: Any, force: bool = False) -> None:
     """Build a guest image with AMD SEV-SNP support.
 
     Output path is ./build/snp-guest-image
@@ -68,11 +68,11 @@ def build_snp_guest_image(c: Any) -> None:
     ./build/image/snp-guest-image.qcow2
     """
 
-    build_guest_image(c, "snp-guest-image")
+    build_guest_image(c, "snp-guest-image", force=force)
 
 
 @task
-def build_normal_guest_image(c: Any) -> None:
+def build_normal_guest_image(c: Any, force: bool = False) -> None:
     """Build a norma guest image.
 
     Output path is ./build/normal-guest-image
@@ -81,12 +81,12 @@ def build_normal_guest_image(c: Any) -> None:
     ./build/image/normal-guest-image.qcow2
     """
 
-    build_guest_image(c, "normal-guest-image")
+    build_guest_image(c, "normal-guest-image", force=force)
 
 
 @task
 def build_spdk(c: Any) -> None:
-    """Build QEMU with AMD SEV-SNP support.
+    """Build SPDK
 
     Output path is ./build/spdk
     """
