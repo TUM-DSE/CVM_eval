@@ -39,6 +39,7 @@ start-snp-disk:
         -device virtio-blk-pci,drive=q2 \
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on
 
 ssh port="2225":

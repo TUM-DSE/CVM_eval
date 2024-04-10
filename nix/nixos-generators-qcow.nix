@@ -12,6 +12,12 @@
     fsType = "ext4";
   };
 
+  fileSystems."/share" = {
+    device = "share";
+    fsType = "9p";
+    options = [ "trans=virtio" "nofail" "msize=104857600" ];
+  };
+
   boot.growPartition = true;
   boot.kernelParams = [ "console=ttyS0" ];
   boot.loader.grub.device = "nodev"; # if (pkgs.stdenv.system == "x86_64-linux") then
@@ -19,18 +25,8 @@
   # else
    #  (lib.mkDefault "nodev");
 
-  boot.loader.grub.efiSupport = true; #lib.mkIf (pkgs.stdenv.system != "x86_64-linux") (lib.mkDefault true);
-  boot.loader.grub.efiInstallAsRemovable = true; # lib.mkIf (pkgs.stdenv.system != "x86_64-linux") (lib.mkDefault true);
+  boot.loader.grub.efiSupport = true;
+  boot.loader.grub.efiInstallAsRemovable = true;
   boot.loader.timeout = 0;
-
-
-  #system.build.qcow = import "${toString modulesPath}/../lib/make-disk-image.nix" {
-    #inherit lib config pkgs;
-    #diskSize = 8192;
-    #format = "qcow2";
-    #partitionTableType = "hybrid";
-  #};
-
-  #formatAttr = "qcow";
 }
 
