@@ -9,6 +9,7 @@ import config
 
 @task
 def show_config(ctx):
+    """Show script configuration"""
     print(f"SCRIPT_ROOT: {config.SCRIPT_ROOT}")
     print(f"PROJECT_ROOT: {config.PROJECT_ROOT}")
     print(f"BUILD_DIR: {config.BUILD_DIR}")

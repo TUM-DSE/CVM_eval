@@ -94,6 +94,19 @@ start-snp-direct:
         -mon chardev=char0,mode=readline \
         -device virtconsole,chardev=char0,id=vc0,nr=0
 
-ssh port="2225":
-    ssh -i nix/ssh_key -o "StrictHostKeyChecking no" -p {{ port }} root@localhost
+ssh command="":
+    ssh -i nix/ssh_key \
+        -o StrictHostKeyChecking=no \
+        -o NoHostAuthenticationForLocalhost=yes \
+        -p {{ SSH_PORT }} root@localhost -- "{{ command }}"
 
+# e.g.,
+# vm to host: just scp root@localhost:/root/a .
+# host to vm: just scp a root@localhost:/root
+scp src="" dst="":
+    scp -i {{ PROJECT_ROOT }}/nix/ssh_key \
+        -o StrictHostKeyChecking=no \
+        -o NoHostAuthenticationForLocalhost=yes \
+        -o UserKnownHostsFile=/dev/null \
+        -P {{ SSH_PORT }} \
+        {{ src }} {{ dst }}
