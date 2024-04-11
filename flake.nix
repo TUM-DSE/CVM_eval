@@ -62,6 +62,9 @@
             installBootLoader = true;
             diskSize = 32768;
           };
+
+          # shell for linux kernel build
+          kernel-deps = pkgs.callPackage ./nix/kernel-deps.nix { };
         };
 
         devShells = {
