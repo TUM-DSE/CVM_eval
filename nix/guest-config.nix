@@ -14,6 +14,23 @@ let
     yes "" | ${pkgs.cryptsetup}/bin/cryptsetup luksOpen /dev/vda target
     echo "hello" > /dev/mapper/target
   '';
+  pts = pkgs.phoronix-test-suite.overrideAttrs (oldAttrs: {
+    # instead of modifying user-config-defaults.xml, copying modified template
+    # to the /etc/phoronix-test-suite.xml (see flake.nix)
+    /*
+    postBuild = (oldAttrs.postBuild or "") + ''
+      # disable auto update
+      sed -i 's/<AllowResultUploadsToOpenBenchmarking>TRUE<\/AllowResultUploadsToOpenBenchmarking>/<AllowResultUploadsToOpenBenchmarking>FALSE<\/AllowResultUploadsToOpenBenchmarking>/' ./pts-core/static/user-config-defaults.xml
+
+      # config batch mode
+      sed -i 's/<UploadResults>TRUE<\/UploadResults>/<UploadResults>FALSE<\/UploadResults>/' ./pts-core/static/user-config-defaults.xml
+      sed -i 's/<PromptForTestIdentifier>TRUE<\/PromptForTestIdentifier>/<PromptForTestIdentifier>FALSE<\/PromptForTestIdentifier>/' ./pts-core/static/user-config-defaults.xml
+      sed -i 's/<PromptForTestDescription>TRUE<\/PromptForTestDescription>/<PromptForTestDescription>FALSE<\/PromptForTestDescription>/' ./pts-core/static/user-config-defaults.xml
+      sed -i 's/<PromptSaveName>TRUE<\/PromptSaveName>/<PromptSaveName>FALSE<\/PromptSaveNeme>/' ./pts-core/static/user-config-defaults.xml
+      sed -i 's/<Configured>FALSE<\/Configured>/<Configured>TRUE<\/Configured>/' ./pts-core/static/user-config-defaults.xml
+    '';
+    */
+  });
 in {
   imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
 
@@ -97,8 +114,8 @@ in {
     lvm2
     test-dmcrypt
 
-    phoronix-test-suite
-    unzip
+    pts
+    unzip # required by pts to install tests
   ];
 
   boot.loader.grub.enable = false;

@@ -203,42 +203,81 @@ def get_snp_direct_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
-def start_and_attach(qemu_cmd: List[str], pin) -> None:
+def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     qemu: QemuVM
-    with spawn_qemu(qemu_cmd) as qemu:
+    with spawn_qemu(qemu_cmd) as vm:
         if pin:
-            qemu.pin_vcpu()
-        qemu.attach()
+            vm.pin_vcpu()
+        vm.attach()
+
+
+def run_phoronix(identifier: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    qemu: QemuVM
+    with spawn_qemu(qemu_cmd) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        import phoronix
+
+        phoronix.run_phoronix(identifier, "memory", "pts/memory", vm, [])
+
+
+def do_action(action: str, **kwargs: Any) -> None:
+    if action == "attach":
+        start_and_attach(**kwargs)
+    elif action == "run_phoronix":
+        run_phoronix(**kwargs)
+        raise ValueError(f"Unknown action: {action}")
 
 
 @task
 def start_vm_disk(
-    ctx: Any, name: str = "medium", ssh_port: int = SSH_PORT, pin: bool = True
+    ctx: Any,
+    name: str = "medium",
+    action: str = "attach",
+    ssh_port: int = SSH_PORT,
+    pin: bool = True,
 ) -> None:
     qemu_cmd = get_normal_vm_qemu_cmd(name, ssh_port)
-    start_and_attach(qemu_cmd, pin)
+    identifier = f"vm-disk-{name}"
+    do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier)
 
 
 @task
 def start_vm_direct(
-    ctx: Any, name: str = "medium", ssh_port: int = SSH_PORT, pin: bool = True
+    ctx: Any,
+    name: str = "medium",
+    action: str = "attach",
+    ssh_port: int = SSH_PORT,
+    pin: bool = True,
 ) -> None:
     qemu_cmd = get_normal_vm_direct_qemu_cmd(name, ssh_port)
-    start_and_attach(qemu_cmd, pin)
+    identifier = f"vm-direct-{name}"
+    do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier)
 
 
 # XXX: SNP requries sudo
 @task
 def start_snp_disk(
-    ctx: Any, name: str = "medium", ssh_port: int = SSH_PORT, pin: bool = True
+    ctx: Any,
+    name: str = "medium",
+    action: str = "attach",
+    ssh_port: int = SSH_PORT,
+    pin: bool = True,
 ) -> None:
     qemu_cmd = get_snp_qemu_cmd(name, ssh_port)
-    start_and_attach(qemu_cmd, pin)
+    identifier = f"snp-disk-{name}"
+    do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier)
 
 
 @task
 def start_snp_direct(
-    ctx: Any, name: str = "medium", ssh_port: int = SSH_PORT, pin: bool = True
+    ctx: Any,
+    name: str = "medium",
+    action: str = "attach",
+    ssh_port: int = SSH_PORT,
+    pin: bool = True,
 ) -> None:
     qemu_cmd = get_snp_direct_qemu_cmd(name, ssh_port)
-    start_and_attach(qemu_cmd, pin)
+    identifier = f"snp-direct-{name}"
+    do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier)

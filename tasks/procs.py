@@ -44,3 +44,43 @@ def run(
         stdin=stdin,
         cwd=cwd,
     )
+
+
+def systemd_run(
+    cmd: List[str],
+    extra_env: Dict[str, str] = {},
+    stdout: ChildFd = subprocess.PIPE,
+    stderr: ChildFd = None,
+    input: Optional[str] = None,
+    stdin: ChildFd = None,
+    check: bool = True,
+    verbose: bool = True,
+    cwd: Optional[Path] = None,
+    cpus: int = 4,
+    memory_gigabytes: int = 8,
+    env: Dict[str, str] = {},
+) -> List[str]:
+    """Run a command with systemd-run with memory and CPU restrictions."""
+    assert memory_gigabytes >= 1
+    # if 0 this is an empty string, which means no restrictions
+    mask = ",".join(map(str, range(cpus)))
+    high_mem = (memory_gigabytes - 0.5) * 1000
+    systemd_cmd = [
+        "systemd-run",
+        "--pty",
+        "--wait",
+        "--collect",
+        "-p",
+        f"MemoryHigh={high_mem}M",
+        "-p",
+        f"MemoryMax={memory_gigabytes}G",
+        "-p",
+        f"AllowedCPUs={mask}",
+    ]
+    for k, v in env.items():
+        systemd_cmd.append(f"--setenv={k}={v}")
+    systemd_cmd.append("--")
+    systemd_cmd.extend(cmd)
+    return run(
+        systemd_cmd, extra_env, stdout, stderr, input, stdin, check, verbose, cwd
+    )

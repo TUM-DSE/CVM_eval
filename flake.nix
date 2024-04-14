@@ -61,6 +61,12 @@
             # installBootLoader option set up /sbin/init, etc.
             installBootLoader = true;
             diskSize = 32768;
+            contents = [
+              {
+                source = ./config/phoronix/phoronix-test-suite.xml;
+                target = "/etc/phoronix-test-suite.xml";
+              }
+            ];
           };
 
           # shell for linux kernel build

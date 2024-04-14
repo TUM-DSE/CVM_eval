@@ -192,7 +192,9 @@ class QemuVm:
         env_cmd = []
         if len(extra_env):
             env_cmd.append("env")
-            env_cmd.append("-")
+            # "-" option makes phoronix-test-suite to complain about mktemp and sh not found
+            # TODO: check if this is correct way to handle this
+            # env_cmd.append("-")
             for k, v in extra_env.items():
                 env_cmd.append(f"{k}={v}")
         cmd = ssh_cmd(self.ssh_port) + ["--"] + env_cmd + [" ".join(map(quote, argv))]
