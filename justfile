@@ -110,3 +110,10 @@ scp src="" dst="":
         -o UserKnownHostsFile=/dev/null \
         -P {{ SSH_PORT }} \
         {{ src }} {{ dst }}
+
+stop-qemu:
+    just ssh "poweroff"
+
+# dangerous: kill all qemu processes!
+kill-qemu-force:
+    sudo pkill .qemu-system-x8
