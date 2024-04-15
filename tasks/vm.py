@@ -204,7 +204,7 @@ def get_snp_direct_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
 
 
 def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
-    qemu: QemuVM
+    vm: QemuVM
     with spawn_qemu(qemu_cmd) as vm:
         if pin:
             vm.pin_vcpu()
@@ -212,7 +212,7 @@ def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
 
 
 def run_phoronix(identifier: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
-    qemu: QemuVM
+    vm: QemuVM
     with spawn_qemu(qemu_cmd) as vm:
         if pin:
             vm.pin_vcpu()
@@ -227,6 +227,7 @@ def do_action(action: str, **kwargs: Any) -> None:
         start_and_attach(**kwargs)
     elif action == "run_phoronix":
         run_phoronix(**kwargs)
+    else:
         raise ValueError(f"Unknown action: {action}")
 
 
@@ -243,6 +244,7 @@ def start_vm_disk(
     do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier)
 
 
+# XXX: SNP requries sudo
 @task
 def start_vm_direct(
     ctx: Any,
@@ -256,7 +258,6 @@ def start_vm_direct(
     do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier)
 
 
-# XXX: SNP requries sudo
 @task
 def start_snp_disk(
     ctx: Any,
