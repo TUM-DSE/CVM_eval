@@ -1,0 +1,86 @@
+diff --git a/MdeModulePkg/Core/Dxe/DxeMain/DxeMain.c b/MdeModulePkg/Core/Dxe/DxeMain/DxeMain.c
+index 4683016ed7..34342bbd5a 100644
+--- a/MdeModulePkg/Core/Dxe/DxeMain/DxeMain.c
++++ b/MdeModulePkg/Core/Dxe/DxeMain/DxeMain.c
+@@ -8,6 +8,16 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
+ 
+ #include "DxeMain.h"
+ 
++static inline void _outb(UINT16 port, UINT8 val) {
++  asm volatile("outb %0, %1" : : "a"(val), "d"(port));
++}
++#define BENCHMARK_PORT 0xf4
++#define RECORD_EVENT(event) _outb(BENCHMARK_PORT, event)
++#define EVENT_DXE                100
++#define EVENT_DXE_MAIN_START     (EVENT_DXE + 0)
++#define EVENT_DXE_MAIN_END       (EVENT_DXE + 1)
++#define EVENT_EXIT_BOOT_SERVICES (EVENT_DXE + 2)
++
+ //
+ // DXE Core Global Variables for Protocols from PEI
+ //
+@@ -244,6 +254,8 @@ DxeMain (
+   EFI_VECTOR_HANDOFF_INFO       *VectorInfo;
+   VOID                          *EntryPoint;
+ 
++  RECORD_EVENT(EVENT_DXE_MAIN_START);
++
+   //
+   // Setup the default exception handlers
+   //
+@@ -569,6 +581,8 @@ DxeMain (
+     (EFI_SOFTWARE_DXE_CORE | EFI_SW_DXE_CORE_PC_HANDOFF_TO_NEXT)
+     );
+ 
++  RECORD_EVENT(EVENT_DXE_MAIN_END);
++
+   //
+   // Transfer control to the BDS Architectural Protocol
+   //
+@@ -840,6 +854,8 @@ CoreExitBootServices (
+   //
+   gRuntime->AtRuntime = TRUE;
+ 
++  RECORD_EVENT(EVENT_EXIT_BOOT_SERVICES);
++
+   return Status;
+ }
+ 
+diff --git a/MdeModulePkg/Core/Pei/PeiMain/PeiMain.c b/MdeModulePkg/Core/Pei/PeiMain/PeiMain.c
+index bf1719d794..c8bc4a3de0 100644
+--- a/MdeModulePkg/Core/Pei/PeiMain/PeiMain.c
++++ b/MdeModulePkg/Core/Pei/PeiMain/PeiMain.c
+@@ -8,6 +8,15 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
+ 
+ #include "PeiMain.h"
+ 
++static inline void _outb(UINT16 port, UINT8 val) {
++  asm volatile("outb %0, %1" : : "a"(val), "d"(port));
++}
++#define BENCHMARK_PORT 0xf4
++#define RECORD_EVENT(event) _outb(BENCHMARK_PORT, event)
++#define EVENT_PEI                0
++#define EVENT_PEI_CORE_START     (EVENT_PEI + 0)
++#define EVENT_PEI_CORE_END       (EVENT_PEI + 1)
++
+ EFI_PEI_PPI_DESCRIPTOR  mMemoryDiscoveredPpi = {
+   (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
+   &gEfiPeiMemoryDiscoveredPpiGuid,
+@@ -179,6 +188,8 @@ PeiCore (
+   EFI_PEI_TEMPORARY_RAM_DONE_PPI  *TemporaryRamDonePpi;
+   UINTN                           Index;
+ 
++  RECORD_EVENT(EVENT_PEI_CORE_START);
++
+   //
+   // Retrieve context passed into PEI Core
+   //
+@@ -522,6 +533,8 @@ PeiCore (
+     CpuDeadLoop ();
+   }
+ 
++  RECORD_EVENT(EVENT_PEI_CORE_END);
++
+   //
+   // Enter DxeIpl to load Dxe core.
+   //
