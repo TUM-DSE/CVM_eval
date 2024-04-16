@@ -7,7 +7,14 @@ This repository contains configurations to create a development environment as w
 - [x] AMD SEV-SNP
 - [ ] Intel TDX
 
-## Development environment
-- Install [nix](https://nixos.org/)
-- `nix develop` (or `direnv allow`)
+## Host machines in doctor-cluster-config
+Currently the followings hosts of the [doctor-cluster-config](https://github.com/TUM-DSE/doctor-cluster-config/) support this
+
+- AMD SEV-SNP
+    - vislor, rose
+
+See [./docs/software_version.md](./docs/software_version.md) for the detail of the software version.
+
+## Development
+See [./docs/development.md](./docs/development.md)
 

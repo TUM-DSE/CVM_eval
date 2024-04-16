@@ -225,60 +225,40 @@ def run_phoronix(identifier: str, qemu_cmd: List[str], pin: bool, **kargs: Any) 
 def do_action(action: str, **kwargs: Any) -> None:
     if action == "attach":
         start_and_attach(**kwargs)
-    elif action == "run_phoronix":
+    elif action == "run-phoronix":
         run_phoronix(**kwargs)
     else:
         raise ValueError(f"Unknown action: {action}")
 
 
+# examples:
+# inv vm.start --type snp --size small
+# inv vm.start --type normal --no-direct
+# inv vm.start --type snp --action run-phoronix
 @task
-def start_vm_disk(
+def start(
     ctx: Any,
-    name: str = "medium",
+    type: str = "normal",  # normal, snp
+    size: str = "medium",  # small, medium, large, large-numa
+    direct: bool = True,  # if True, do direct boot. otherwise boot from the disk
     action: str = "attach",
     ssh_port: int = SSH_PORT,
-    pin: bool = True,
+    pin: bool = True,  # if True, pin vCPUs
 ) -> None:
-    qemu_cmd = get_normal_vm_qemu_cmd(name, ssh_port)
-    identifier = f"vm-disk-{name}"
-    do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier)
+    qemu_cmd: str
+    if type == "normal":
+        if direct:
+            qemu_cmd = get_normal_vm_direct_qemu_cmd(size, ssh_port)
+        else:
+            qemu_cmd = get_normal_vm_qemu_cmd(size, ssh_port)
+    elif type == "snp":
+        if direct:
+            qemu_cmd = get_snp_direct_qemu_cmd(size, ssh_port)
+        else:
+            qemu_cmd = get_snp_qemu_cmd(size, ssh_port)
+    else:
+        raise ValueError(f"Unknown VM type: {type}")
 
-
-# XXX: SNP requries sudo
-@task
-def start_vm_direct(
-    ctx: Any,
-    name: str = "medium",
-    action: str = "attach",
-    ssh_port: int = SSH_PORT,
-    pin: bool = True,
-) -> None:
-    qemu_cmd = get_normal_vm_direct_qemu_cmd(name, ssh_port)
-    identifier = f"vm-direct-{name}"
-    do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier)
-
-
-@task
-def start_snp_disk(
-    ctx: Any,
-    name: str = "medium",
-    action: str = "attach",
-    ssh_port: int = SSH_PORT,
-    pin: bool = True,
-) -> None:
-    qemu_cmd = get_snp_qemu_cmd(name, ssh_port)
-    identifier = f"snp-disk-{name}"
-    do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier)
-
-
-@task
-def start_snp_direct(
-    ctx: Any,
-    name: str = "medium",
-    action: str = "attach",
-    ssh_port: int = SSH_PORT,
-    pin: bool = True,
-) -> None:
-    qemu_cmd = get_snp_direct_qemu_cmd(name, ssh_port)
-    identifier = f"snp-direct-{name}"
+    identifier = f"{type}-{'direct' if direct else 'disk'}-{size}"
+    print(f"Starting VM: {identifier}")
     do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier)
