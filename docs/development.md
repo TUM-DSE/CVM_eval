@@ -24,13 +24,13 @@ just setup-linux
 - Disk boot
     - This uses ./build/image/normal-guest-image.qcow2 or ./build/images/snp-guest-image.qcow2. These image contains the guest kernel.
     - See `just start-vm-disk` for the detailed command line.
-    - Pros: Easy to build with nix.
+    - Pros: Easy to build with nix. Easy to manage kernel modules.
     - Cons: Slow to boot. Difficult to modify the guest kernel.
 - Direct boot (recommended)
     - This uses ./build/image/guest-image.qcow2. This image only contains NixOS file systems. Direct boot uses vmlinux in the (project_root)/../linux for the kernel. (see justfile for the detail).
     - See `just start-vm-direct` for the detailed command line.
     - Pros: Fast to boot. Easy to modify the guest kernel.
-    - Cons: For now the kernel for the direct boot is not managed by Nix.
+    - Cons: Using kernel modules requires additional care. For now the kernel for the direct boot is not managed by Nix.
 
 ### Launch VM
 - [justfile](../justfile) defines qemu commands for quick tests.

@@ -159,7 +159,7 @@ clone-linux:
     patch -d {{ LINUX_DIR }} -p1 < {{ PROJECT_ROOT }}/nix/patches/linux_event_record.patch
 
 # kernel configuration for SEV-SNP guest
-configure-linux:
+configure-linux-old:
     #!/usr/bin/env bash
     set -xeuo pipefail
     if [[ ! -f {{ LINUX_DIR }}/.config ]]; then
@@ -205,12 +205,29 @@ configure-linux:
          --enable AMD_MEM_ENCRYPT \
          --disable AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT \
          --enable KVM_AMD_SEV \
+         --enable CRYPTO_DEV_CCP \
          --enable CRYPTO_DEV_CCP_DD \
          --enable SEV_GUEST \
          --enable X86_CPUID"
     fi
 
-build-linux: configure-linux
+# kernel configuration tested with v6.7
+configure-linux:
+    #!/usr/bin/env bash
+    set -xeuo pipefail
+    if [[ ! -f {{ LINUX_DIR }}/.config ]]; then
+      cd {{ LINUX_DIR }}
+      {{ KERNEL_SHELL }} "make defconfig kvm_guest.config"
+      {{ KERNEL_SHELL }} "scripts/config \
+         --enable CONFIG_IKCONFIG \
+         --enable CONFIG_IKCONFIG_PROC \
+         --enable AMD_MEM_ENCRYPT \
+         --disable AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT \
+         --enable VIRT_DRIVERS \
+         --enable SEV_GUEST"
+    fi
+
+build-linux:
     #!/usr/bin/env bash
     set -xeu
     cd {{ LINUX_DIR }}
@@ -218,4 +235,5 @@ build-linux: configure-linux
 
 setup-linux:
     just clone-linux
+    just configure-linux
     just build-linux
