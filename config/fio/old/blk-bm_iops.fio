@@ -1,0 +1,49 @@
+# for quick testing
+
+[global]
+direct=1 # non-buffered IO
+# SPDK BM guidelines
+thread=1
+ioengine=libaio # linux native async-io engine
+norandommap=1 # generate random offset for IO (independent of previous offsets)
+randrepeat=0 # RNG for generating offset is seeded in random manner
+filename=/dev/mapper/target
+
+time_based=1
+runtime=30 # from Intel SPDK BM guidelines
+ramp_time=20 # from Intel SPDK BM guidelines
+# runtime=120 # PerChar CHEOPS '23
+# ramp_time=20 # PerChar CHEOPS '23
+
+group_reporting=1
+
+[iops rwmixread]
+stonewall
+blocksize=4k
+rw=randrw
+rwmixread=70
+iodepth=32
+numjobs=4
+
+[iops rwmixwrite]
+stonewall
+blocksize=4k
+rw=randrw
+rwmixread=30
+iodepth=32
+numjobs=4
+
+[iops randread]
+stonewall
+blocksize=4k
+rw=randread
+iodepth=32
+numjobs=4
+
+[iops randwrite]
+stonewall
+blocksize=4k
+rw=randwrite
+iodepth=32
+numjobs=4 # this with writes probably makes things fail
+
