@@ -256,7 +256,7 @@ class QemuVm:
         for i, cpu in enumerate(iothreads_info):
             tid = cpu["thread-id"]
             try:
-                cmd = ["taskset", "-pc", str(cpu_base + num_cpus + i), str(tid)]
+                cmd = ["taskset", "-pc", str(pcpu_base + num_cpus + i), str(tid)]
                 run(cmd)
             except OSError as e:
                 print("Failed to pin vCPU{}: {}".format(cpuidx, e))
