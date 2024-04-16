@@ -103,6 +103,7 @@ ssh command="":
 # e.g.,
 # vm to host: just scp root@localhost:/root/a .
 # host to vm: just scp a root@localhost:/root
+# NOTE: this assumes that the command is run from the project root
 scp src="" dst="":
     scp -i {{ PROJECT_ROOT }}/nix/ssh_key \
         -o StrictHostKeyChecking=no \

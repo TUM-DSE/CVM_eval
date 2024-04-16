@@ -34,6 +34,7 @@ The scripts records the events in the following ways:
 
 - Host side (QEMU): Use uprobe to trace functions. No QEMU modification is needed.
 - Guest side (OVMF/Linux): Modify guest software so that it executes `outb(0xf4, val)`. bpftrace monitor this outb events by tracing the `kvm_pio` tracepoint event.
+    - (This is a similar way of [qboot benchmark](https://github.com/bonzini/qboot/blob/master/benchmark.h))
 
 Especially, we modify the following part of the guest software:
 - OVMF: We modify PXE main and DXE main.
