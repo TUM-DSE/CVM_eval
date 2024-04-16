@@ -203,6 +203,41 @@ def get_snp_direct_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
+def qemu_option_virtio_blk(
+    file: Path,
+    aio: str = "native",  # threads, native, io_uring
+) -> List[str]:
+    # QEMU options (https://www.qemu.org/docs/master/system/qemu-manpage.html)
+    # -drive cache=
+    #
+    # |              | cache.writeback | cache.direct | cache.no-flush |
+    # |--------------|-----------------|--------------|----------------|
+    # | writeback    | on              | off          | off            |
+    # | none         | on              | on           | off            |
+    # | writethrough | off             | off          | off            |
+    # | directsync   | off             | on           | off            |
+    # | unsafe       | on              | off          | on             |
+    #
+    # NOTE:
+    # - cache.writeback=on by default
+    # - aio=native (posix AIO) requires cache.direct=on (open file with O_DIRECT)
+
+    if file.is_block_device():
+        driver = "host_device"
+    else:
+        driver = "file"
+
+    # add virtio-blk with iothread backed by a host device
+    # - file.aio specifies the QEMU's aio backend
+    option = f"""
+        -blockdev node-name=q1,driver=raw,file.driver={driver},file.filename={file},file.aio={aio},cache.direct=on,cache.no-flush=off
+        -device virtio-blk-pci,drive=q1,iothread=iothread0
+        -object iothread,id=iothread0
+    """
+
+    return shlex.split(option)
+
+
 def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     vm: QemuVM
     with spawn_qemu(qemu_cmd) as vm:
@@ -244,6 +279,10 @@ def start(
     action: str = "attach",
     ssh_port: int = SSH_PORT,
     pin: bool = True,  # if True, pin vCPUs
+    virtio_blk: Optional[
+        str
+    ] = None,  # create a virtio-blk backed by a specified file (or drive)
+    warn: bool = True,
 ) -> None:
     qemu_cmd: str
     if type == "normal":
@@ -258,6 +297,22 @@ def start(
             qemu_cmd = get_snp_qemu_cmd(size, ssh_port)
     else:
         raise ValueError(f"Unknown VM type: {type}")
+
+    if virtio_blk:
+        virtio_blk = Path(virtio_blk)
+        print(f"Use virtio-blk: {virtio_blk}")
+        if virtio_blk.is_block_device():
+            if warn:
+                print(
+                    f"WARN: use {virtio_blk} as a virtio-blk. This overrides the existing disk image. Ok? [y/N]"
+                )
+                ok = input()
+                if ok != "y":
+                    return
+        elif not virtio_blk.is_file():
+            print(f"{virtio_blk} is not a file nor a block device")
+            return
+        qemu_cmd += qemu_option_virtio_blk(virtio_blk)
 
     identifier = f"{type}-{'direct' if direct else 'disk'}-{size}"
     print(f"Starting VM: {identifier}")
