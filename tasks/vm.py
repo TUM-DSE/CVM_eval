@@ -204,8 +204,10 @@ def get_snp_direct_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
 
 
 def qemu_option_virtio_blk(
-    file: Path,
-    aio: str = "native",  # threads, native, io_uring
+    file: Path,  # file or block device to be used as a backend of virtio-blk
+    aio: str = "native",  # either of threads, native (POSIX AIO), io_uring
+    direct: bool = True,  # if True, QEMU uses O_DIRECT to open the file
+    iothread: bool = True,  # if True, use QEMU iothread
 ) -> List[str]:
     # QEMU options (https://www.qemu.org/docs/master/system/qemu-manpage.html)
     # -drive cache=
@@ -220,20 +222,37 @@ def qemu_option_virtio_blk(
     #
     # NOTE:
     # - cache.writeback=on by default
-    # - aio=native (posix AIO) requires cache.direct=on (open file with O_DIRECT)
+    # - aio=native requires cache.direct=on (open file with O_DIRECT)
+    # - by default, we use the same configuration as the "cache=none"
+    #
+    # - aio=threads vs native: https://bugzilla.redhat.com/show_bug.cgi?id=1545721
+    # > With aio=native, IO submissions on the host by Qemu are limited to 1
+    # > cpu, where as io=threads is multi-cpu.  io=native provides higher
+    # > efficiency (less cpu overhead), but cannot scale to the levels io=threads
+    # > does.  However, io=threads can consume more cpu as similar IO levels.  If
+    # > there is ample CPU on the host, then io=threads will scale better.
 
     if file.is_block_device():
         driver = "host_device"
     else:
         driver = "file"
 
-    # add virtio-blk with iothread backed by a host device
-    # - file.aio specifies the QEMU's aio backend
-    option = f"""
-        -blockdev node-name=q1,driver=raw,file.driver={driver},file.filename={file},file.aio={aio},cache.direct=on,cache.no-flush=off
-        -device virtio-blk-pci,drive=q1,iothread=iothread0
-        -object iothread,id=iothread0
-    """
+    if direct:
+        cache_direct = "on"
+    else:
+        cache_direct = "off"
+
+    if iothread:
+        option = f"""
+            -blockdev node-name=q1,driver=raw,file.driver={driver},file.filename={file},file.aio={aio},cache.direct={cache_direct},cache.no-flush=off
+            -device virtio-blk-pci,drive=q1,iothread=iothread0
+            -object iothread,id=iothread0
+        """
+    else:
+        option = f"""
+            -blockdev node-name=q1,driver=raw,file.driver={driver},file.filename={file},file.aio={aio},cache.direct={cache_direct},cache.no-flush=off
+            -device virtio-blk-pci,drive=q1
+        """
 
     return shlex.split(option)
 
@@ -257,11 +276,30 @@ def run_phoronix(identifier: str, qemu_cmd: List[str], pin: bool, **kargs: Any) 
         phoronix.run_phoronix(identifier, "memory", "pts/memory", vm, [])
 
 
+def run_fio(identifier: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    vm: QemuVM
+    with spawn_qemu(qemu_cmd) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        import storage
+
+        identifier += f"-{kargs['config']['virtio_blk_aio']}"
+        if not kargs["config"]["virtio_blk_direct"]:
+            identifier += f"-nodirect"
+        if not kargs["config"]["virtio_blk_iothread"]:
+            identifier += f"-noiothread"
+        fio_job = kargs["config"]["fio_job"]
+        storage.run_fio(identifier, vm, fio_job)
+
+
 def do_action(action: str, **kwargs: Any) -> None:
     if action == "attach":
         start_and_attach(**kwargs)
     elif action == "run-phoronix":
         run_phoronix(**kwargs)
+    elif action == "run-fio":
+        run_fio(**kwargs)
     else:
         raise ValueError(f"Unknown action: {action}")
 
@@ -282,8 +320,14 @@ def start(
     virtio_blk: Optional[
         str
     ] = None,  # create a virtio-blk backed by a specified file (or drive)
+    virtio_blk_aio: str = "native",
+    virtio_blk_direct: bool = True,
+    virtio_blk_iothread: bool = True,
+    fio_job: str = "test",
     warn: bool = True,
 ) -> None:
+    config: dict = locals()
+
     qemu_cmd: str
     if type == "normal":
         if direct:
@@ -312,8 +356,10 @@ def start(
         elif not virtio_blk.is_file():
             print(f"{virtio_blk} is not a file nor a block device")
             return
-        qemu_cmd += qemu_option_virtio_blk(virtio_blk)
+        qemu_cmd += qemu_option_virtio_blk(
+            virtio_blk, virtio_blk_aio, virtio_blk_direct, virtio_blk_iothread
+        )
 
     identifier = f"{type}-{'direct' if direct else 'disk'}-{size}"
     print(f"Starting VM: {identifier}")
-    do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier)
+    do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier, config=config)

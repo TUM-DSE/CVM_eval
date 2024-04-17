@@ -1,0 +1,19 @@
+[global]
+direct=1
+thread=1
+ioengine=libaio
+norandommap=1
+randrepeat=0
+time_based=1
+runtime=30
+ramp_time=20
+
+group_reporting=1
+
+[alat randread]
+stonewall
+blocksize=4k
+rw=randread
+iodepth=1
+numjobs=1
+
