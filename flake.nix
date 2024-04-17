@@ -84,34 +84,27 @@
               '';
             in with pkgs;
             [
-              # tasks
               python3
               python3.pkgs.invoke
               python3.pkgs.colorama
-              just
-              fzf
-              # add again once upstreamed
-              # spdk # for nvme_mange -> SSD precondition
-              fio
-              cryptsetup
-              bpftrace
-              linux.dev
-              gdb
-              # trace-cmd
-              jq
-
-              gfortran
-
-              # clang-format
-              libclang.python
-              clang-tools
-
-              # plot
               python3.pkgs.click
               python3.pkgs.seaborn
               python3.pkgs.pandas
               python3.pkgs.binary
               python3.pkgs.lxml
+
+              just
+              fzf
+              bpftrace
+              gdb
+              jq
+
+              fio
+              cryptsetup
+
+              # clang-format
+              libclang.python
+              clang-tools
             ] ++ ([ inv-completion ]);
           };
         };
