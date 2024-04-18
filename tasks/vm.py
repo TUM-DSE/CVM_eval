@@ -265,7 +265,14 @@ def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         vm.attach()
 
 
-def run_phoronix(identifier: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    bench_name = kargs["config"]["phoronix_bench_name"]
+    if not bench_name:
+        print(
+            "Please specify the benchmark name using --phoronix-bench-name (e.g., --phoronix-bench-name memory)"
+        )
+        return
+
     vm: QemuVM
     with spawn_qemu(qemu_cmd) as vm:
         if pin:
@@ -273,10 +280,10 @@ def run_phoronix(identifier: str, qemu_cmd: List[str], pin: bool, **kargs: Any) 
         vm.wait_for_ssh()
         import phoronix
 
-        phoronix.run_phoronix(identifier, "memory", "pts/memory", vm, [])
+        phoronix.run_phoronix(name, f"{bench_name}", f"pts/{bench_name}", vm)
 
 
-def run_fio(identifier: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     vm: QemuVM
     with spawn_qemu(qemu_cmd) as vm:
         if pin:
@@ -284,13 +291,13 @@ def run_fio(identifier: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> No
         vm.wait_for_ssh()
         import storage
 
-        identifier += f"-{kargs['config']['virtio_blk_aio']}"
+        name += f"-{kargs['config']['virtio_blk_aio']}"
         if not kargs["config"]["virtio_blk_direct"]:
-            identifier += f"-nodirect"
+            name += f"-nodirect"
         if not kargs["config"]["virtio_blk_iothread"]:
-            identifier += f"-noiothread"
+            name += f"-noiothread"
         fio_job = kargs["config"]["fio_job"]
-        storage.run_fio(identifier, vm, fio_job)
+        storage.run_fio(name, vm, fio_job)
 
 
 def do_action(action: str, **kwargs: Any) -> None:
@@ -317,6 +324,9 @@ def start(
     action: str = "attach",
     ssh_port: int = SSH_PORT,
     pin: bool = True,  # if True, pin vCPUs
+    # phoronix options
+    phoronix_bench_name: Optional[str] = None,
+    # virtio-blk options
     virtio_blk: Optional[
         str
     ] = None,  # create a virtio-blk backed by a specified file (or drive)
@@ -360,6 +370,6 @@ def start(
             virtio_blk, virtio_blk_aio, virtio_blk_direct, virtio_blk_iothread
         )
 
-    identifier = f"{type}-{'direct' if direct else 'disk'}-{size}"
-    print(f"Starting VM: {identifier}")
-    do_action(action, qemu_cmd=qemu_cmd, pin=pin, identifier=identifier, config=config)
+    name = f"{type}-{'direct' if direct else 'disk'}-{size}"
+    print(f"Starting VM: {name}")
+    do_action(action, qemu_cmd=qemu_cmd, pin=pin, name=name, config=config)
