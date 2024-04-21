@@ -1,3 +1,5 @@
+# common nixos guest configuration
+
 { pkgs, lib, modulesPath, ... }:
 
 let
@@ -30,10 +32,23 @@ in
   services.udev.enable = lib.mkForce true;
   services.lvm.enable = lib.mkForce true;
 
-  boot.loader.grub.enable = false;
-  boot.initrd.enable = false;
-  boot.isContainer = true;
-  boot.loader.initScript.enable = true;
+  fileSystems."/" = {
+    device = "/dev/disk/by-label/nixos";
+    autoResize = true;
+    fsType = "ext4";
+  };
+
+  boot.kernelPackages = pkgs.linuxPackages_6_6;
+  boot.kernelParams = [ "console=ttyS0" ];
+  boot.loader.grub.device = "nodev";
+  boot.loader.grub.efiSupport = true;
+  boot.loader.grub.efiInstallAsRemovable = true;
+  boot.loader.timeout = 0;
+  #boot.loader.grub.enable = false;
+  #boot.initrd.enable = false;
+  #boot.isContainer = true;
+  #boot.loader.initScript.enable = true;
+
   ## login with empty password
   users.extraUsers.root.initialHashedPassword = "";
   services.openssh.enable = true;
@@ -41,17 +56,9 @@ in
   users.users.root.openssh.authorizedKeys.keyFiles = lib.filter builtins.pathExists keys;
   networking.firewall.enable = false;
 
-  fileSystems."/mnt" = {
-    device = "home";
+  fileSystems."/share" = {
+    device = "share";
     fsType = "9p";
-    # skip mount in nested qemu
-    options = [ "trans=virtio" "nofail" "msize=104857600" ];
-  };
-
-  fileSystems."/linux" = {
-    device = "linux";
-    fsType = "9p";
-    # skip mount in nested qemu
     options = [ "trans=virtio" "nofail" "msize=104857600" ];
   };
 

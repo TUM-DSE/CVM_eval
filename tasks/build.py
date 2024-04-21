@@ -1,71 +1,106 @@
 #!/usr/bin/env python3
-# contains common build tasks
-import os
-from typing import Any
+# -*- coding: utf-8 -*-
+
+import functools
+import json
+from pathlib import Path
+from typing import Any, Optional
+import shutil
 
 from invoke import task
 
-from common import print_and_run, REPO_DIR, KERNEL_SRC_DIR, KERNEL_PATH, NIX_RESULTS_DIR, VM_BUILD_DIR, BUILD_DIR
-# warning: dependency
-from kernel import build_kernel, configure_debug_kernel, configure_sev_kernel, build_kernel
-from tasks.utils import notify_terminal_after_completion
+from config import PROJECT_ROOT, BUILD_DIR
+from procs import run
 
 
-# constants
-# NOTE: if we want to run VMs in parallel, we need separate 
-QCOW2_NAME = "nixos.qcow2"
-IMG_RO_DIR = os.path.join(VM_BUILD_DIR, "img-ro")
-IMG_RO_PATH = os.path.join(IMG_RO_DIR, QCOW2_NAME)
-IMG_RW_DIR = os.path.join(VM_BUILD_DIR, "img-rw")
-IMG_RW_PATH = os.path.join(IMG_RW_DIR, QCOW2_NAME)
+@functools.lru_cache(maxsize=None)
+def nix_build(what: str, build_dir: Path = BUILD_DIR) -> Any:
+    """Run nix build and return the result as json."""
+    build_dir.mkdir(parents=True, exist_ok=True)
+    outpath = build_dir / what.lstrip(".#")
+    cmd = ["nix", "build", "--out-link", str(outpath), "--json", what]
+    result = run(cmd, cwd=PROJECT_ROOT)
+    return json.loads(result.stdout)
 
-NIX_DEBUG_IMG_RECIPE = os.path.join(REPO_DIR, "#nixos-image")
-NIX_BENCHMARK_IMG_RECIPE = os.path.join(REPO_DIR, "#guest-image")
 
 @task
-def make_build_dirs(c: Any):
-    """
-    Creates build directories.
-    """
-    os.makedirs(VM_BUILD_DIR, exist_ok=True)
+def build_omvf_snp(c: Any) -> None:
+    """Build OVMF with AMD SEV-SNP support.
 
+    Output path is ./build/ovmf-amd-sev-snp-fd
+    """
+    nix_build(".#ovmf-amd-sev-snp")
 
-@task(pre=[configure_debug_kernel])
-def build_nixos_debug_image(c: Any) -> None:
-    """
-    Builds a kernel-less NixOS image.
-    Can be configured in {REPO_DIR}/nix/modules/configuration.nix.
-    """
-    print_and_run(c, f"nix build --out-link {NIX_RESULTS_DIR}/nixos-image/ --builders '' {NIX_DEBUG_IMG_RECIPE}")
-    print_and_run(c, f"install -D -m600 '{NIX_RESULTS_DIR}/nixos-image/nixos.img' {KERNEL_SRC_DIR}/nixos.ext4")
-
-
-@task(pre=[make_build_dirs],
-      help={"no_cvm_io": "disable CVM_IO",
-            "notify": "notify terminal after completion"})
-def build_nixos_bechmark_image(
-        c: Any,
-        no_cvm_io: bool = False,
-        notify: bool = False
-        ) -> None:
-    """
-    Builds NixOS image w/ SEV Kernel.
-    Configurable in {REPO_DIR}/nix/native-guest-config.nix.
-    """
-    # configure sev kernel ( not as pretask as we pass param )
-    # configure_sev_kernel, build_kernel
-    configure_sev_kernel(c, no_cvm_io=no_cvm_io)
-    build_kernel(c)
-    # update kernel src to allow cached builds (vs building from scratch)
-    print_and_run(c, "nix flake lock --update-input kernelSrc")
-    print_and_run(c, f"nix build --out-link {IMG_RO_DIR} --builders '' {NIX_BENCHMARK_IMG_RECIPE}")
-    print_and_run(c, f"install -D -m600 {IMG_RO_PATH} {IMG_RW_PATH}")
-    if notify:
-        notify_terminal_after_completion()
 
 @task
-def make_clean(c: Any) -> None:
+def build_qemu_snp(c: Any) -> None:
+    """Build QEMU with AMD SEV-SNP support.
+
+    Output path is ./build/qemu-amd-sev-snp
     """
-    Cleans build artefacts.
+    nix_build(".#qemu-amd-sev-snp")
+
+
+def build_guest_image(
+    c: Any, target: str, force: bool = False, dst: Path = Path(f"{BUILD_DIR}/image")
+) -> None:
+    guest_image_name = f"{target}.qcow2"
+    if dst:
+        dst.mkdir(parents=True, exist_ok=True)
+        dst_file = dst / guest_image_name
+        if not force and dst_file.exists():
+            print(f"{dst_file} already exists. Skipping build.")
+            return
+    result = nix_build(f".#{target}")
+    if dst:
+        qcow2 = Path(result[0]["outputs"]["out"]) / "nixos.qcow2"
+        cmd = ["install", "-D", "-m666", str(qcow2), str(dst_file)]
+        run(cmd)
+
+
+@task
+def build_snp_guest_image(c: Any, force: bool = False) -> None:
+    """Build a guest image with AMD SEV-SNP support.
+
+    Output path is ./build/snp-guest-image
+
+    The build result is a read-only. Copy the image to
+    ./build/image/snp-guest-image.qcow2
     """
-    print_and_run(c, f"rm -rf {BUILD_DIR}")
+
+    build_guest_image(c, "snp-guest-image", force=force)
+
+
+@task
+def build_normal_guest_image(c: Any, force: bool = False) -> None:
+    """Build a norma guest image.
+
+    Output path is ./build/normal-guest-image
+
+    The build result is a read-only. Copy the image to
+    ./build/image/normal-guest-image.qcow2
+    """
+
+    build_guest_image(c, "normal-guest-image", force=force)
+
+
+@task
+def build_guest_fs(c: Any, force: bool = False) -> None:
+    """Build a guest fs image (w/o kernel).
+
+    Output path is ./build/guest-fs
+
+    The build result is a read-only. Copy the image to
+    ./build/image/guest-fs.qcow2
+    """
+
+    build_guest_image(c, "guest-fs", force=force)
+
+
+@task
+def build_spdk(c: Any) -> None:
+    """Build SPDK
+
+    Output path is ./build/spdk
+    """
+    nix_build(".#spdk")

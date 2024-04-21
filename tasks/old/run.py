@@ -12,7 +12,7 @@ from common import RAMDISK_PATH, info_print, warn_nvm_use, print_and_run, print_
 
 from invoke import task
 # warning: dependency
-from ovmf import OVMF_CODE_NAME, OVMF_RW_DIR, OVMF_VARS_NAME, UEFI_BIOS_CODE_RW_PATH, UEFI_BIOS_VARS_RW_PATH, make_ovmf
+from ovmf import OVMF_CODE_NAME, OVMF_RW_DIR, OVMF_VARS_NAME, OVMF_CODE_RW_PATH, OVMF_VARS_RW_PATH, make_ovmf
 from build import IMG_RW_PATH, build_nixos_bechmark_image
 from utils import exec_fio_in_vm, ssh_vm, DEFAULT_SSH_FORWARD_PORT, cryptsetup_open_ssd_in_vm, VM_BENCHMARK_SSD_PATH, VM_BENCHMARK_SCSI_PATH, CRYPTSETUP_TARGET_PATH, stop_qemu, await_vm_fio, NVME_VM_BENCHMARK_SSD_PATH
 from utils import FIO_VM_JOB_PATH, FIO_QUICK_VM_JOB_PATH
@@ -93,10 +93,10 @@ def build_benchmark_qemu_cmd(
     if rebuild_image or not os.path.exists(IMG_RW_PATH):
         build_nixos_bechmark_image(c)
 
-    if rebuild_ovmf or not (os.path.exists(UEFI_BIOS_CODE_RW_PATH) and os.path.exists(UEFI_BIOS_VARS_RW_PATH)):
+    if rebuild_ovmf or not (os.path.exists(OVMF_CODE_RW_PATH) and os.path.exists(OVMF_VARS_RW_PATH)):
         make_ovmf(c)
     # no need to rebuild ovmf if already exist
-    if not (os.path.exists(UEFI_BIOS_CODE_RW_PATH) and os.path.exists(UEFI_BIOS_VARS_RW_PATH)):
+    if not (os.path.exists(OVMF_CODE_RW_PATH) and os.path.exists(OVMF_VARS_RW_PATH)):
         make_ovmf(c)
 
     return f"{base_cmd} " \

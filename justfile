@@ -1,413 +1,269 @@
-# TODO: transform to python
-# SSD set up and preconditioning as in:
-# https://ci.spdk.io/download/events/2017-summit/08_-_Day_2_-_Kariuki_Verma_and_Sudarikov_-_SPDK_Performance_Testing_and_Tuning_rev5_0.pdf
+# vim: set ft=make et :
 
-# resource locations
-## dirs
-proot     := justfile_directory()
-build     := join(proot, "build")
-vm_build  := join(build, "vm")
+PROJECT_ROOT := justfile_directory()
+BUILD_DIR := join(PROJECT_ROOT, "build")
+QEMU_SNP := join(BUILD_DIR, "qemu-amd-sev-snp/bin/qemu-system-x86_64")
+OVMF_SNP := join(BUILD_DIR, "ovmf-amd-sev-snp-fd/FV/OVMF.fd")
+# qemu and ovmf for normal guest (use SNP version for now)
+QEMU := QEMU_SNP
+OVMF := OVMF_SNP
+SNP_IMAGE := join(BUILD_DIR, "image/snp-guest-image.qcow2")
+NORMAL_IMAGE := join(BUILD_DIR, "image/normal-guest-image.qcow2")
+GUEST_FS := join(BUILD_DIR, "image/guest-fs.qcow2")
+SSH_PORT := "2225"
 
-## build resources
-# img same for native as SEV
-# SEV changes already merged upstream
-# different qcow2 images
-qcow2                  := "nixos.qcow2"
-img_native_dir_ro      := join(vm_build, "img-native-ro")
-img_amd_sev_snp_dir_ro := join(vm_build, "img-sev-ro")
-img_native_ro          := join(img_native_dir_ro, qcow2)
-img_amd_sev_snp_ro     := join(img_amd_sev_snp_dir_ro, qcow2)
-img_native_dir         := join(vm_build, "img-native")
-img_amd_sev_snp_dir    := join(vm_build, "img-sev")
-img_native             := join(img_native_dir, qcow2)
-img_amd_sev_snp        := join(img_amd_sev_snp_dir, qcow2)
-ovmf_ro                := join(vm_build, "OVMF-ro")
-ovmf_ro_fd             := join(vm_build, "OVMF-ro-fd")
-native_ovmf            := join(vm_build, "native", "OVMF")
-sev_ovmf               := join(vm_build, "sev", "OVMF")
-uefi_bios_code_ro      := join(ovmf_ro_fd, "FV", "OVMF_CODE.fd")
-uefi_bios_vars_ro      := join(ovmf_ro_fd, "FV", "OVMF_VARS.fd")
-native_uefi_bios_code  := join(native_ovmf, "FV", "OVMF_CODE.fd")
-sev_uefi_bios_code     := join(sev_ovmf, "FV", "OVMF_CODE.fd")
-native_uefi_bios_vars  := join(native_ovmf, "FV", "OVMF_VARS.fd")
-sev_uefi_bios_vars     := join(sev_ovmf, "FV", "OVMF_VARS.fd")
-# uefi_bios              := join(ovmf, "FV", "OVMF.fd")
-
-
-# nix identifiers
-## recipes
-this_dir             := "."
-nix_img              := join(this_dir, "#guest-image")
-nix_ovmf_amd_sev_snp := join(this_dir, "#ovmf-amd-sev-snp")
-
-# commands
-update_nix_kernel_src := "nix flake lock --update-input kernelSrc"
-
+REV := `nix eval --raw .#lib.nixpkgsRev`
+NIX_RESULTS := justfile_directory() + "/.git/nix-results/" + REV
+KERNEL_SHELL := "$(nix build --out-link " + NIX_RESULTS + "/kernel-fhs --json " + justfile_directory() + "#kernel-deps | jq -r '.[] | .outputs | .out')/bin/linux-kernel-build"
+# we use ../linux as linux kernel source directory for development
+LINUX_DIR := join(PROJECT_ROOT, "../linux")
+LINUX_REPO := "https://github.com/torvalds/linux"
+LINUX_COMMIT := "0dd3ee31125508cd67f7e7172247f05b7fd1753a" # v6.7
 
 default:
     @just --choose
 
+# ------------------------------
+# QEMU commands
 
-help:
-    just --list
-
-poll-benchmark port="2222" filename="native-result.log" sleep="1200": numa-warning
-    echo "polling {{port}} ; saving to {{filename}} ; waiting {{sleep}} before polling"
-    # waiting for 10 jobs * 120 secs
-    sleep {{sleep}}
-    while ! scp -P {{port}} -q  -o StrictHostKeyChecking=no -i ./nix/ssh_key root@localhost:/mnt/bm-result.log ./logs/{{filename}} &>/dev/null ; do \
-        echo "polling for completed log..." ; \
-        sleep 10 ; \
-    done
-
-
-start-native-vm-virtio-blk EXTRA_CMDLINE="virtio_blk.cvm_io_driver_name=virtio2" nvme="/dev/nvme1n1":
-    # sudo for disk access
-    # device: /dev/nvme1n1 ( Samsung SSD PM173X )
-    # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
-    # vislor: NVMe SSD PM173X: 64:00.0
-    # vislor: NUMA node0: CPU(s): 0-31
-    # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
-    # --> 4-8 on same node as NVMe SSD
-    sudo taskset -c 4-7 qemu-system-x86_64 \
+start-vm-disk:
+    sudo {{QEMU}} \
         -cpu host \
         -smp 4 \
         -m 16G \
         -machine q35 \
         -enable-kvm \
         -nographic \
-        -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-        -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{native_uefi_bios_code}},readonly=on \
-        -drive if=pflash,format=raw,unit=1,file={{native_uefi_bios_vars}} \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
-        -device virtio-blk-pci,drive=q2 \
-        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
-        -device virtio-blk,drive=q1
-
-
-start-native-vm-virtio-blk-poll nvme="/dev/nvme1n1":
-    # sudo for disk access
-    # device: /dev/nvme1n1 ( Samsung SSD PM173X )
-    # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
-    # vislor: NVMe SSD PM173X: 64:00.0
-    # vislor: NUMA node0: CPU(s): 0-31
-    # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
-    # --> 4-8 on same node as NVMe SSD
-    # TODO: do we need to use iothread? `iothread=iothread0`
-    # see https://www.linux-kvm.org/images/a/a7/02x04-MultithreadedDevices.pdf
-    # for iothread -> probably not relevant when using SPDK
-    sudo taskset -c 4-7 qemu-system-x86_64 \
-        -cpu host \
-        -smp 4 \
-        -m 16G \
-        -machine q35 \
-        -enable-kvm \
-        -nographic \
-        -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-        -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{native_uefi_bios_code}},readonly=on \
-        -drive if=pflash,format=raw,unit=1,file={{native_uefi_bios_vars}} \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
-        -device virtio-blk-pci,drive=q2 \
-        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
-        -device virtio-blk,drive=q1
-
-
-start-native-vm-io_uring nvme="/dev/nvme1n1":
-    # sudo for disk access
-    # device: /dev/nvme1n1 ( Samsung SSD PM173X )
-    # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
-    # vislor: NVMe SSD PM173X: 64:00.0
-    # vislor: NUMA node0: CPU(s): 0-31
-    # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
-    # --> 4-8 on same node as NVMe SSD
-    sudo taskset -c 4-7 qemu-system-x86_64 \
-        -cpu host \
-        -smp 4 \
-        -m 16G \
-        -machine q35 \
-        -enable-kvm \
-        -nographic \
-        -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-        -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{native_uefi_bios_code}},readonly=on \
-        -drive if=pflash,format=raw,unit=1,file={{native_uefi_bios_vars}} \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
-        -device virtio-blk-pci,drive=q2 \
-        -drive aio=io_uring,format=raw,file.driver=host_device,cache=none,file.filename={{nvme}}
-
-
-
-start-native-vm-spdk-vhost-user-blk:
-    # sudo for disk access
-    # device: /dev/nvme1n1 ( Samsung SSD PM173X )
-    # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
-    # vislor: NVMe SSD PM173X: 64:00.0
-    # vislor: NUMA node0: CPU(s): 0-31
-    # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
-    # --> 4-8 on same node as NVMe SSD
-    sudo taskset -c 4-7 qemu-system-x86_64 \
-        -cpu host \
-        -smp 4 \
-        -m 16G \
-        -machine q35 \
-        -enable-kvm \
-        -nographic \
-        -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-        -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{native_uefi_bios_code}},readonly=on \
-        -drive if=pflash,format=raw,unit=1,file={{native_uefi_bios_vars}} \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{NORMAL_IMAGE}} \
         -device virtio-blk-pci,drive=q2,bootindex=0 \
-        -object memory-backend-file,id=mem,size=16G,mem-path=/dev/hugepages,share=on \
-        -numa node,memdev=mem \
-        -chardev socket,id=char1,path=/var/tmp/vhost.1 \
-        -device vhost-user-blk-pci,id=blk0,chardev=char1
+        -device virtio-net-pci,netdev=net0 \
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -netdev bridge,id=en0,br=virbr0 \
+        -device virtio-net-pci,netdev=en0 \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on
 
-start-native-vm-spdk-vfio-user-nvme:
-    # sudo for disk access
-    # device: /dev/nvme1n1 ( Samsung SSD PM173X )
-    # taskset: Liu and Liu - Virtio Devices Emulation in SPDK Based On VFIO-USE
-    # vislor: NVMe SSD PM173X: 64:00.0
-    # vislor: NUMA node0: CPU(s): 0-31
-    # cat nvme1n1 /sys/class/nvme/nvme1/device/numa_node : 0
-    # --> 4-8 on same node as NVMe SSD
-    sudo taskset -c 4-7 qemu-system-x86_64 \
+start-vm-direct:
+    sudo {{QEMU}} \
         -cpu host \
         -smp 4 \
         -m 16G \
         -machine q35 \
         -enable-kvm \
         -nographic \
-        -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS}} \
+        -device virtio-blk-pci,drive=q2 \
         -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{native_uefi_bios_code}},readonly=on \
-        -drive if=pflash,format=raw,unit=1,file={{native_uefi_bios_vars}} \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_native}} \
-        -device virtio-blk-pci,drive=q2,bootindex=0 \
-        -object memory-backend-file,id=mem,size=4G,mem-path=/dev/hugepages,share=on,prealloc=yes \
-        -numa node,memdev=mem \
-        -device vfio-user-pci,socket=/var/run/cntrl
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
+        -netdev bridge,id=en0,br=virbr0 \
+        -device virtio-net-pci,netdev=en0 \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device virtconsole,chardev=char0,id=vc0,nr=0
 
-
-
-start-sev-vm-virtio-blk nvme="/dev/nvme1n1":
-    sudo taskset -c 4-8 qemu-system-x86_64 \
+start-snp-disk:
+    sudo {{QEMU_SNP}} \
         -cpu EPYC-v4,host-phys-bits=true \
         -smp 4 \
         -m 16G \
         -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
-        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
         -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
         -enable-kvm \
         -nographic \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{SNP_IMAGE}} \
         -device virtio-blk-pci,drive=q2 \
-        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
         -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
-        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}} \
-        -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
-        -device virtio-blk,drive=q1
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -netdev bridge,id=en0,br=virbr0 \
+        -device virtio-net-pci,netdev=en0 \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on
 
-
-start-sev-vm-io_uring nvme="/dev/nvme1n1":
-    sudo taskset -c 4-7 qemu-system-x86_64 \
+start-snp-direct:
+    sudo {{QEMU_SNP}} \
         -cpu EPYC-v4,host-phys-bits=true \
         -smp 4 \
         -m 16G \
         -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
-        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
         -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
         -enable-kvm \
         -nographic \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
-        -device virtio-blk-pci,drive=q2,bootindex=0 \
-        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS}} \
+        -device virtio-blk-pci,drive=q2 \
         -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
-        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}} \
-        -drive aio=io_uring,format=raw,file.driver=host_device,cache=none,file.filename={{nvme}}
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on \
+        -netdev bridge,id=en0,br=virbr0 \
+        -device virtio-net-pci,netdev=en0 \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device virtconsole,chardev=char0,id=vc0,nr=0
 
+# ------------------------------
+# Utility commands
 
-start-sev-vm-spdk:
-    {{ error("doesn't work out-of-the-box") }}
-    sudo taskset -c 4-7 qemu-system-x86_64 \
-        -cpu EPYC-v4,host-phys-bits=true \
-        -smp 4 \
-        -m 16G \
-        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
-        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA \
-        -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
-        -enable-kvm \
-        -nographic \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
-        -device virtio-blk-pci,drive=q2,bootindex=0 \
-        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
-        -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
-        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}} \
-        -object memory-backend-file,id=mem,size=16G,mem-path=/dev/hugepages,share=on \
-        -numa node,memdev=mem \
-        -chardev socket,id=char1,path=/var/tmp/vhost.1 \
-        -device vhost-user-blk-pci,id=blk0,chardev=char1
+ssh command="":
+    ssh -i nix/ssh_key \
+        -o StrictHostKeyChecking=no \
+        -o NoHostAuthenticationForLocalhost=yes \
+        -p {{ SSH_PORT }} root@localhost -- "{{ command }}"
 
+# e.g.,
+# vm to host: just scp root@localhost:/root/a .
+# host to vm: just scp a root@localhost:/root
+# NOTE: this assumes that the command is run from the project root
+scp src="" dst="":
+    scp -i {{ PROJECT_ROOT }}/nix/ssh_key \
+        -o StrictHostKeyChecking=no \
+        -o NoHostAuthenticationForLocalhost=yes \
+        -o UserKnownHostsFile=/dev/null \
+        -P {{ SSH_PORT }} \
+        {{ src }} {{ dst }}
 
-start-sev-vm:
-    sudo taskset -c 4-7 qemu-system-x86_64 \
-        -cpu EPYC-v4,host-phys-bits=true \
-        -smp 4 \
-        -m 16G \
-        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
-        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0,host-data=b2l3bmNvd3FuY21wbXA \
-        -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
-        -enable-kvm \
-        -nographic \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{img_amd_sev_snp}} \
-        -device virtio-blk-pci,drive=q2,bootindex=0 \
-        -netdev user,id=net0,hostfwd=tcp::2223-:22 \
-        -device virtio-net-pci,netdev=net0 \
-        -drive if=pflash,format=raw,unit=0,file={{sev_uefi_bios_code}},readonly=on \
-        -drive if=pflash,format=raw,unit=1,file={{sev_uefi_bios_vars}}
+stop-qemu:
+    just ssh "poweroff"
 
-## VM BUILD
+# dangerous: kill all qemu processes!
+kill-qemu-force:
+    sudo pkill .qemu-system-x8
 
-img-build:
-    # TODO: differentiate between prebuilt and nixbuilt
-    {{update_nix_kernel_src}}
-    mkdir -p {{vm_build}}
-    # vm images
-    nix build -L -o {{img_native_dir_ro}} {{nix_img}}
-    nix build -L -o {{img_amd_sev_snp_dir_ro}} {{nix_img}}
-    install -D -m644 {{img_native_ro}} {{img_native}}
-    install -D -m644 {{img_amd_sev_snp_ro}} {{img_amd_sev_snp}}
+# ------------------------------
+# Clone and build guest linux kernel for development (the built vmilnux is used for direct boot)
+# (based on VMSH)
 
-ovmf-build:
-    mkdir -p {{vm_build}}
-    nix build -L -o {{ovmf_ro}} {{nix_ovmf_amd_sev_snp}}
-    install -D -m644 {{uefi_bios_vars_ro}} {{native_uefi_bios_vars}}
-    install -D -m644 {{uefi_bios_code_ro}} {{native_uefi_bios_code}}
-    install -D -m644 {{uefi_bios_vars_ro}} {{sev_uefi_bios_vars}}
-    install -D -m644 {{uefi_bios_code_ro}} {{sev_uefi_bios_code}}
+build-linux-shell:
+    {{ KERNEL_SHELL }} bash
 
-
-vm-build: img-build ovmf-build
-    # resize
-    qemu-img resize {{img_native}} +2g
-    # qemu-img resize {{img_amd_sev_snp}} +2g
-    # ovmf
-
-## SSD setup
-init-spdk: 
-    sudo HUGEMEM=32768 spdk-setup.sh
-
-precondition-ssd-standard:
-    echo "NOTE: preconditioning only required when a. inconsistent results b. SSD is new / not yet reached steady state"
-    # NOTE: when to perform:
-    # 1. new SSD -> reach steady state
-    # 2. inconsistent results
-    # source: https://www.youtube.com/watch?v=tkGE3pq5eIU&list=PLj-81kG3zG5ZIE-4CvqsvlFEHoOoWRIHZ&index=9
-    # hugepages required to run any spdk applications
-    # regardless of whether we need hugepages
-    # sudo spdk-setup.sh
-    # Vislor SSD already formatted;
-    # to format own SSD, use `nvme_manage` ; follow steps in:
-    # https://ci.spdk.io/download/events/2017-summit/08_-_Day_2_-_Kariuki_Verma_and_Sudarikov_-_SPDK_Performance_Testing_and_Tuning_rev5_0.pdf
-    #
-    # ensure LBA has been written to by filling up span of drive 2 times w/
-    # sequential writes (1.6TB -> 1600000000000B ; 1.6TB*2 -> 3200000000000
-    # if fails: you may need to init hugepages via `just init-spdk`
-    sudo perf -q 32 -s 32768 -o 3200000000000 -t 1200 -w write -c 0x1 -r 'trtype:PCIe traddr:0000:64:00.00'
-
-
-precondition-ssd-randwrite:
-    # if 4KB rand writes ( which we do ):
-    # in talk: 90 min writes ; they needed 10min / 800 GB -> 90min / 7200GB (factor 9)
-    # our case: 9*1.6TB -> 14.4TB -> 14400000000000B (per doesn't use time anymore; only size
-    # if fails: you may need to init hugepages via `just init-spdk`
-    sudo perf -q 32 -s 4096 -w randwrite -o 14400000000000 -t 5400 -c 0x1 -r 'trtype:PCIe traddr:0000:64:00.00'
-
-
-numa-warning:
-    echo "Please ensure your NUMA config is correct; else, inconsistent results"
-    echo "Displaying lspci bus addr + NUMA nodes; please check manually"
-    # or look manually via e.g. cat /sys/class/nvme/nvme1/device/numa_node
-    lspci | grep -i Non
-    lscpu | grep NUMA
-
-
-spdk-setup:
-    sudo nix develop
-    # bind ssd to vfio driver
-    spdk-setup.sh
-    vhost -S /var/tmp -m0x3 2>&1 | tee logs/vhost.log &
-    rpc.py bdev_nvme_attach_controller -b NVMe1 -t PCIe -a 64:00.0
-    rpc.py vhost_create_blk_controller --cpumask 0x1 vhost.1 NVMe1n1
-
-
-clean:
-    rm -rf {{vm_build}}
-
-
-
-## DEBUG UTILS
-kernel_shell := "nix-shell '<nixpkgs>' -A linux.dev --run"
-linux_dir := proot + "/src/linux"
-nixconfig := linux_dir + "/nixconfig"
-nix_results := justfile_directory() + "/.git/nix-results/" + rev
-rev := `nix eval --raw .#lib.nixpkgsRev`
-qemu_ssh_port := "2222"
-qemu_sev_ssh_port := "2223"
-
-# Build a disk image
-image NAME="nixos" PATH="/nixos.img":
+clone-linux:
     #!/usr/bin/env bash
-    set -eux -o pipefail
-    if [[ nix/{{ NAME }}-image.nix -nt {{ linux_dir }}/{{ NAME }}.ext4 ]] \
-       || [[ flake.lock -nt {{ linux_dir }}/{{ NAME }}.ext4 ]]; then
-       nix build --out-link {{ nix_results }}/{{ NAME }}-image/ --builders '' .#{{ NAME }}-image
-       install -D -m600 "{{ nix_results }}/{{ NAME }}-image{{ PATH }}" {{ linux_dir }}/{{ NAME }}.ext4
+    set -euo pipefail
+
+    if [[ -d {{ LINUX_DIR }} ]]; then
+      echo " {{ LINUX_DIR }} already exists, skipping clone"
+      exit 0
     fi
 
-# Build kernel-less disk image for NixOS
-nixos-image: image
+    git clone {{ LINUX_REPO }} {{ LINUX_DIR }}
 
-# execute this command to config kernel for sev img-build
-nix-configure-linux:
-    cp {{ nixconfig }} {{ linux_dir }}/.config
+    set -x
+    if [[ $(git -C {{ LINUX_DIR }} rev-parse HEAD) != "{{ LINUX_COMMIT }}" ]]; then
+       git -C {{ LINUX_DIR }} fetch {{ LINUX_REPO }} {{ LINUX_COMMIT }}
+       git -C {{ LINUX_DIR }} checkout "{{ LINUX_COMMIT }}"
+    fi
+
+    patch -d {{ LINUX_DIR }} -p1 < {{ PROJECT_ROOT }}/nix/patches/linux_event_record.patch
+
+# kernel configuration for SEV-SNP guest
+configure-linux-old:
+    #!/usr/bin/env bash
+    set -xeuo pipefail
+    if [[ ! -f {{ LINUX_DIR }}/.config ]]; then
+      cd {{ LINUX_DIR }}
+      {{ KERNEL_SHELL }} "make defconfig kvm_guest.config"
+      {{ KERNEL_SHELL }} "scripts/config \
+         --disable DRM \
+         --disable USB \
+         --disable WIRELESS \
+         --disable WLAN \
+         --disable SOUND \
+         --disable SND \
+         --disable HID \
+         --disable INPUT \
+         --disable NFS_FS \
+         --disable ETHERNET \
+         --disable NETFILTER \
+         --enable DEBUG \
+         --enable GDB_SCRIPTS \
+         --enable DEBUG_DRIVER \
+         --enable KVM \
+         --enable KVM_INTEL \
+         --enable KVM_AMD \
+         --enable KVM_IOREGION \
+         --enable BPF_SYSCALL \
+         --enable CONFIG_MODVERSIONS \
+         --enable IKHEADERS \
+         --enable IKCONFIG_PROC \
+         --enable VIRTIO_MMIO \
+         --enable VIRTIO_MMIO_CMDLINE_DEVICES \
+         --enable PTDUMP_CORE \
+         --enable PTDUMP_DEBUGFS \
+         --enable OVERLAY_FS \
+         --enable SQUASHFS \
+         --enable SQUASHFS_XZ \
+         --enable SQUASHFS_FILE_DIRECT \
+         --enable PVH \
+         --disable SQUASHFS_FILE_CACHE \
+         --enable SQUASHFS_DECOMP_MULTI \
+         --disable SQUASHFS_DECOMP_SINGLE \
+         --disable SQUASHFS_DECOMP_MULTI_PERCPU \
+         --enable EXPERT \
+         --enable AMD_MEM_ENCRYPT \
+         --disable AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT \
+         --enable KVM_AMD_SEV \
+         --enable CRYPTO_DEV_CCP \
+         --enable CRYPTO_DEV_CCP_DD \
+         --enable SEV_GUEST \
+         --enable X86_CPUID"
+    fi
+
+# kernel configuration tested with v6.7
+configure-linux:
+    #!/usr/bin/env bash
+    set -xeuo pipefail
+    if [[ ! -f {{ LINUX_DIR }}/.config ]]; then
+      cd {{ LINUX_DIR }}
+      {{ KERNEL_SHELL }} "make defconfig kvm_guest.config"
+      {{ KERNEL_SHELL }} "scripts/config \
+         --enable CONFIG_IKCONFIG \
+         --enable CONFIG_IKCONFIG_PROC \
+         --enable AMD_MEM_ENCRYPT \
+         --disable AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT \
+         --enable VIRT_DRIVERS \
+         --enable SEV_GUEST"
+    fi
+
+build-linux:
+    #!/usr/bin/env bash
+    set -xeu
+    cd {{ LINUX_DIR }}
+    yes "" | {{ KERNEL_SHELL }} "make -C {{ LINUX_DIR }} -j$(nproc)"
+
+setup-linux:
+    just clone-linux
+    just configure-linux
+    just build-linux
 
 
-qemu-debug EXTRA_CMDLINE="virtio_blk.cvm_io_driver_name=virtio4" nvme="/dev/nvme1n1": # nixos-image
-    sudo qemu-system-x86_64 \
-      -kernel {{ linux_dir }}/arch/x86/boot/bzImage \
-      -drive format=raw,file={{ linux_dir }}/nixos.ext4,id=mydrive,if=virtio \
-      -append "root=/dev/vdb console=hvc0 nokaslr {{ EXTRA_CMDLINE }}" \
-      -net nic,netdev=user.0,model=virtio \
-      -netdev user,id=user.0,hostfwd=tcp:127.0.0.1:{{ qemu_ssh_port }}-:22 \
-      -smp 4 \
-      -m 16G \
-      -cpu host \
-      -virtfs local,path={{ justfile_directory() }}/..,security_model=none,mount_tag=home \
-      -virtfs local,path={{ linux_dir }},security_model=none,mount_tag=linux \
-      -nographic -serial null -enable-kvm \
-      -device virtio-serial \
-      -chardev stdio,mux=on,id=char0,signal=off \
-      -mon chardev=char0,mode=readline \
-      -device virtconsole,chardev=char0,id=vmsh,nr=0 \
-      -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename={{nvme}} \
-      -device virtio-blk,drive=q1
-    # -s
+# ------------------------------
+# network settings
 
+setup_bridge:
+    #!/usr/bin/env bash
+    ip a s virbr0 >/dev/null 2>&1
+    if [ $? ]; then
+        sudo brctl addbr virbr0
+        sudo ip a a 172.44.0.1/24 dev virbr0
+        sudo ip l set dev virbr0 up
+    fi
 
-attach-debug-qemu:
-    # https://www.kernel.org/doc/html/latest/dev-tools/gdb-kernel-debugging.html
-    # https://www.starlab.io/blog/using-gdb-to-debug-the-linux-kernel
-    cd {{ linux_dir }} && {{ kernel_shell }} 'make scripts_gdb'
-    cd {{ linux_dir }} && {{ kernel_shell }} 'gdb ./vmlinux -tui' # target remote :1234
+# These commands should show info on virbr0
+show_bridge_status:
+    #!/usr/bin/env bash
+    set -x
+    ip a show dev virbr0
+    brctl show
+    networkctl
 
-ssh-into-qemu-native:
-    ssh -i nix/ssh_key -o "StrictHostKeyChecking no" -p {{ qemu_ssh_port }} root@localhost
-
-ssh-into-qemu-sev:
-    ssh -i nix/ssh_key -o "StrictHostKeyChecking no" -p {{ qemu_sev_ssh_port }} root@localhost

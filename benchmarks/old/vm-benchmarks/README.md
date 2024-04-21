@@ -1,3 +1,7 @@
+Deprecated, use kernel module to measure vmexit latencies.
+
+-----
+
 ## CPUID
 - `cpuid.c`
    - Measure CPUID latency

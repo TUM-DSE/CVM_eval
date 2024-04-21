@@ -9,8 +9,10 @@ import (pkgs.path + "/nixos/lib/make-disk-image.nix") {
   }).config;
   inherit pkgs;
   inherit (pkgs) lib;
-  diskSize = 8192;
-  partitionTableType = "none";
-  # for a different format
-  #format = "qcow2";
+  diskSize = 32768;
+  format = "qcow2";
+  partitionTableType = "efi";
+  installBootLoader = true;
+  OVMF = pkgs.OVMF.fd;
+  touchEFIVars = true;
 }

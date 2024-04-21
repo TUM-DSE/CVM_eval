@@ -5,6 +5,8 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.swp
+*.swo
 
 *.luks
 
@@ -12,3 +14,12 @@ __pycache__/
 build/
 result
 result-fd
+
+*.cmd
+*.ko
+*.o
+*.mod
+*.mod.c
+*.mod.o
+Module.symvers
+modules.order
