@@ -257,6 +257,20 @@ def qemu_option_virtio_blk(
     return shlex.split(option)
 
 
+def qemu_option_virtio_nic():
+    """Qreate a virtio-nic with a bridge network (virbr0)
+
+    See justfile for the bridge configuration.
+    """
+
+    option = """
+        -netdev bridge,id=en0,br=virbr0
+        -device virtio-net-pci,netdev=en0
+    """
+
+    return shlex.split(option)
+
+
 def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     vm: QemuVM
     with spawn_qemu(qemu_cmd) as vm:
@@ -326,6 +340,8 @@ def start(
     pin: bool = True,  # if True, pin vCPUs
     # phoronix options
     phoronix_bench_name: Optional[str] = None,
+    # virtio-nic options
+    virtio_nic: bool = True,
     # virtio-blk options
     virtio_blk: Optional[
         str
@@ -351,6 +367,9 @@ def start(
             qemu_cmd = get_snp_qemu_cmd(size, ssh_port)
     else:
         raise ValueError(f"Unknown VM type: {type}")
+
+    if virtio_nic:
+        qemu_cmd += qemu_option_virtio_nic()
 
     if virtio_blk:
         virtio_blk = Path(virtio_blk)

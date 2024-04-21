@@ -98,6 +98,7 @@
               bpftrace
               gdb
               jq
+              bridge-utils
 
               fio
               cryptsetup

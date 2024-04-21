@@ -54,6 +54,12 @@ in {
   networking.nameservers = ["10.0.2.3"];
   networking.useDHCP = false;
 
+  # vitio-net
+  networking.interfaces.eth1.ipv4.addresses = [ {
+    address = "172.44.0.2";
+    prefixLength = 24;
+  } ];
+
   # override defaults from nixpkgs/modules/virtualization/container-config.nix
   # to enable cryptsetup
   services.udev.enable = lib.mkForce true;

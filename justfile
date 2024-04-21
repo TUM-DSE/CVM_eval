@@ -39,6 +39,8 @@ start-vm-disk:
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -netdev bridge,id=en0,br=virbr0 \
+        -device virtio-net-pci,netdev=en0 \
         -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on
 
 start-vm-direct:
@@ -57,6 +59,8 @@ start-vm-direct:
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
+        -netdev bridge,id=en0,br=virbr0 \
+        -device virtio-net-pci,netdev=en0 \
         -serial null \
         -device virtio-serial \
         -chardev stdio,mux=on,id=char0,signal=off \
@@ -78,6 +82,8 @@ start-snp-disk:
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -netdev bridge,id=en0,br=virbr0 \
+        -device virtio-net-pci,netdev=en0 \
         -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on
 
 start-snp-direct:
@@ -98,6 +104,8 @@ start-snp-direct:
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on \
+        -netdev bridge,id=en0,br=virbr0 \
+        -device virtio-net-pci,netdev=en0 \
         -serial null \
         -device virtio-serial \
         -chardev stdio,mux=on,id=char0,signal=off \
@@ -237,3 +245,25 @@ setup-linux:
     just clone-linux
     just configure-linux
     just build-linux
+
+
+# ------------------------------
+# network settings
+
+setup_bridge:
+    #!/usr/bin/env bash
+    ip a s virbr0 >/dev/null 2>&1
+    if [ $? ]; then
+        sudo brctl addbr virbr0
+        sudo ip a a 172.44.0.1/24 dev virbr0
+        sudo ip l set dev virbr0 up
+    fi
+
+# These commands should show info on virbr0
+show_bridge_status:
+    #!/usr/bin/env bash
+    set -x
+    ip a show dev virbr0
+    brctl show
+    networkctl
+
