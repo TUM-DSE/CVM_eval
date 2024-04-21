@@ -27,7 +27,7 @@ The result is saved as `{PROJECT_ROOT}/bench-result/phoronix/{vmname}/{bench-nam
     - install time dependency: pkg-config, autotool, autoconf, libaio, libtool
 - `pts/compression`: ~1hr (8cores)
     - install time dependency: cmake, p7zip
-- `pts/npb`: ~1hr (32cores)
+- `pts/npb`: ~1hr (32cores), ~3hr (8cores)
     - install time dependency: gfortran
     - runtime dependency: mpi, bc
 

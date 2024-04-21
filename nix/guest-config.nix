@@ -108,7 +108,28 @@ in {
 
     # phoronix test suite and dependencies to install tests
     phoronix-test-suite
+    # pts/memory
     unzip
+    # pts/sysbench
+    libaio
+    libtool
+    autoconf
+    automake
+    pkg-config
+    # pts/npb => use OpenMPI version of NPB
+    gfortran
+    mpi
+    bc
+    # pts/compression
+    cmake
+    p7zip
+    ## pts/llm => requires ~100GB disk
+    ## blas
+    ## pts/build-linux-kernel => requires FHS env
+    ## bc
+    ## bison
+    ## flex
+    ## openssl
 
     # custom tools
     outb
