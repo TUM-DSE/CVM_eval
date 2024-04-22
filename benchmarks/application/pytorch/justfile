@@ -1,0 +1,8 @@
+# vim: set ft=make et :
+
+run threads="8" label="vm":
+    python3 ./pytorchexample.py {{threads}} {{label}}
+
+prepare:
+    python3 ./download-pretrained-model.py
+
