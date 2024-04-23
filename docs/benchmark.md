@@ -35,6 +35,8 @@ The result is saved as `{PROJECT_ROOT}/bench-result/phoronix/{vmname}/{bench-nam
 - Check logs: `/var/lib/phoronix-test-suite/test-results/{name}/test-logs/`
 - Directly run tests: `/var/lib/phoronix-test-suite/installed-tests/`
 - Check env: `phoronix-test-suite diagnostics`
+- If `inv` command fails, maybe the benchmark suite is not properly installed.
+  Try to `ssh` to the vm and install and run the benchmark manually.
 
 ## FIO (storage)
 ### Example

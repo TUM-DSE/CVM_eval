@@ -66,3 +66,10 @@ The repository directory is mounted in `/share` in the guest using vritio-9p.
 - `inv vm.start --virtio-nic` command create a virtio-nic backed by a host bridge.
 - See [network.md](./network.md) for the detail.
 
+## QA
+### `sudo inv ...` fails
+- While some inv commands needs root, sometimes `sudo inv ...` does not work due to missing python libraries
+- You can first become root (`sudo su`) then `nix develop`. Then the shell has all dependencies.
+
+### nix-shell env does not work for some reason
+- Try `nix-shell --repair`
