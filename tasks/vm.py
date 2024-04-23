@@ -277,6 +277,34 @@ def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         vm.attach()
 
 
+def ipython(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    """Start a VM and then start an ipython shell
+
+    Example usage:
+    ```
+    # Check QEMU's PID
+    In [1]: vm.pid
+    Out[1]: 823611
+
+    # Send a command to the VM
+    In [2]: vm.ssh_cmd(["echo", "ok"])
+    $ ssh -i /scratch/masa/CVM_eval/nix/ssh_key -p 2225 -oBatchMode=yes -oStrictHostKeyChecking=no -oConnectTimeout=5 -oUserKnownHostsFile=/dev/null root@localhost -- echo ok
+    Warning: Permanently added '[localhost]:2225' (ED25519) to the list of known hosts.
+    Out[2]: CompletedProcess(args=['ssh', '-i', '/scratch/masa/CVM_eval/nix/ssh_key', '-p', '2225', '-oBatchMode=yes', '-oStrictHostKeyChecking=no', '-oConnectTimeout=5', '-oUserKnownHostsFile=/dev/null', 'root@localhost', '--', 'echo ok'], returncode=0, stdout='ok\n')
+    ```
+
+    Note that the VM automatically terminates when the ipython session is closed.
+    """
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(qemu_cmd, numa_node=resource.numa_node) as vm:
+        if pin:
+            vm.pin_vcpu()
+        from IPython import embed
+
+        embed()
+
+
 def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     bench_name = kargs["config"]["phoronix_bench_name"]
     if not bench_name:
@@ -317,6 +345,8 @@ def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
 def do_action(action: str, **kwargs: Any) -> None:
     if action == "attach":
         start_and_attach(**kwargs)
+    elif action == "ipython":
+        ipython(**kwargs)
     elif action == "run-phoronix":
         run_phoronix(**kwargs)
     elif action == "run-fio":

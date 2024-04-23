@@ -92,6 +92,7 @@
               python3.pkgs.pandas
               python3.pkgs.binary
               python3.pkgs.lxml
+              python3.pkgs.ipython
 
               just
               fzf
