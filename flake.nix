@@ -4,22 +4,30 @@
 
   inputs = {
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-23.05";
     nixpkgs-2311.url = "github:NixOS/nixpkgs/nixos-23.11";
     flake-utils.url = "github:numtide/flake-utils";
+    pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
   };
 
-  outputs = { self, nixpkgs-unstable, nixpkgs-stable, nixpkgs-2311, flake-utils}:
+  outputs = { self, nixpkgs-unstable, nixpkgs-2311, flake-utils, pre-commit-hooks }:
     (flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
       let
         nixpkgs-direct = nixpkgs-unstable;
         pkgs = nixpkgs-unstable.legacyPackages.${system};
-        stablepkgs = nixpkgs-stable.legacyPackages.${system};
         pkgs-2311 = nixpkgs-2311.legacyPackages.${system};
         make-disk-image = import (pkgs.path + "/nixos/lib/make-disk-image.nix");
         selfpkgs = self.packages.x86_64-linux;
         python3 = nixpkgs-unstable.legacyPackages.${system}.python3;
-      in rec {
+        pre-commit-check = pre-commit-hooks.lib.${system}.run {
+          src = ./.;
+          hooks = {
+            nixpkgs-fmt.enable = true;
+            black.enable = true;
+            clang-format.enable = true;
+          };
+        };
+      in
+      rec {
         packages = {
           # SPDK is for SSD preconditioning
           spdk = pkgs.callPackage ./nix/spdk.nix { inherit pkgs; };
@@ -78,49 +86,51 @@
         devShells = {
           default = pkgs.mkShell {
             name = "devshell";
-            buildInputs = let
-              inv-completion = pkgs.writeScriptBin "inv-completion" ''
-                inv --print-completion-script zsh
-              '';
-            in with pkgs;
-            [
-              python3
-              python3.pkgs.invoke
-              python3.pkgs.colorama
-              python3.pkgs.click
-              python3.pkgs.seaborn
-              python3.pkgs.pandas
-              python3.pkgs.binary
-              python3.pkgs.lxml
-              python3.pkgs.ipython
+            buildInputs =
+              let
+                inv-completion = pkgs.writeScriptBin "inv-completion" ''
+                  inv --print-completion-script zsh
+                '';
+              in
+              with pkgs;
+              [
+                python3
+                python3.pkgs.invoke
+                python3.pkgs.colorama
+                python3.pkgs.click
+                python3.pkgs.seaborn
+                python3.pkgs.pandas
+                python3.pkgs.binary
+                python3.pkgs.lxml
+                python3.pkgs.ipython
 
-              just
-              fzf
-              bpftrace
-              gdb
-              jq
-              bridge-utils
-              numactl
+                just
+                fzf
+                bpftrace
+                gdb
+                jq
+                bridge-utils
+                numactl
 
-              fio
-              cryptsetup
-
-              # clang-format
-              libclang.python
-              clang-tools
-            ] ++ ([ inv-completion ]);
+                fio
+                cryptsetup
+              ] ++ [ inv-completion ]
+              ++ pre-commit-check.enabledPackages;
+            inherit (pre-commit-check) shellHook;
           };
         };
 
       })) // {
-        # nixOS configurations to create a guest image
-        nixosConfigurations = let
+      # nixOS configurations to create a guest image
+      nixosConfigurations =
+        let
           pkgs = nixpkgs-unstable.legacyPackages.x86_64-linux;
           selfpkgs = self.packages.x86_64-linux;
           kernelConfig = { config, lib, pkgs, ... }: {
             boot.kernelPackages = pkgs.linuxPackages_6_6;
           };
-        in {
+        in
+        {
           # File system image w/o kernel
           fs = nixpkgs-unstable.lib.nixosSystem {
             system = "x86_64-linux";
@@ -150,5 +160,5 @@
             ];
           };
         };
-      };
+    };
 }
