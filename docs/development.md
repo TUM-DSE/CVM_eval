@@ -4,9 +4,9 @@
 - Install [nix](https://nixos.org/)
 - `nix develop` (or `direnv allow`)
 
-## AMD SEV-SNP
-### Build software
+## Build software
 ```
+# build software
 inv build.build-qemu-snp
 inv build.build-omvf-snp
 
@@ -19,8 +19,9 @@ inv build.build-guest-fs
 # build linux kernel for direct boot
 just setup-linux
 ```
+- Also see [how_to_build.md](./how_to_build.md)
 
-### How to boot
+## How to boot
 - Disk boot
     - This uses ./build/image/normal-guest-image.qcow2 or ./build/images/snp-guest-image.qcow2. These image contains the guest kernel.
     - See `just start-vm-disk` for the detailed command line.
@@ -32,7 +33,7 @@ just setup-linux
     - Pros: Fast to boot. Easy to modify the guest kernel.
     - Cons: Using kernel modules requires additional care. For now the kernel for the direct boot is not managed by Nix.
 
-### Launch VM
+## Launch VM
 - [justfile](../justfile) defines qemu commands for quick tests.
 ```
 just start-vm-disk    # boot vm using the disk image
@@ -54,6 +55,14 @@ sudo inv vm.start --type snp
 sudo inv vm.start --type snp --action run-phoronix
 ```
 
-### File sharing
+## File sharing
 The repository directory is mounted in `/share` in the guest using vritio-9p.
+
+## Storage (virtio-blk)
+- `inv vm.start --virtio-blk <path>` command create a virtio-blk backed by the file `<path>`.
+- See the fio section in the [benchmark.md](./benchmark.md) for the detail.
+
+## Netowrk (virito-nic)
+- `inv vm.start --virtio-nic` command create a virtio-nic backed by a host bridge.
+- See [network.md](./network.md) for the detail.
 

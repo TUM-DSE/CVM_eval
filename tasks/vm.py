@@ -341,7 +341,7 @@ def start(
     # phoronix options
     phoronix_bench_name: Optional[str] = None,
     # virtio-nic options
-    virtio_nic: bool = True,
+    virtio_nic: bool = False,
     # virtio-blk options
     virtio_blk: Optional[
         str
