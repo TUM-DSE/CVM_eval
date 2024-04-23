@@ -35,81 +35,78 @@ FONTSIZE = 9
 palette = sns.color_palette("pastel")
 hatches = ["", "//"]
 
+"""
+NOTE:
+
+Information on what Memory Test Suite executes: https://openbenchmarking.org/suite/pts/memory
+Note that if we execute an individual test (e.g., `pts/mbw`), then the test
+might run with different configuratioin than the one used by Memory Test Suite (`pts/memory`).
+For example, pts/mbw runs MBW with different options: https://openbenchmarking.org/innhold/0a063ad51b563eec53a6c34d37806366ce52e7f6
+
+t-test1 measures performance of memory allocation (malloc), not memory
+accesses; thus we exclude it from the plot.
+"""
+
 BENCHMARK_ID = [
+    "MBW: Test: Memory Copy - Array Size: 1024 MiB [MiB/s]",
+    "MBW: Test: Memory Copy, Fixed Block Size - Array Size: 1024 MiB [MiB/s]",
+    "Tinymembench: Standard Memcpy [MB/s]",
+    "Tinymembench: Standard Memset [MB/s]",
     "Stream: Type: Copy [MB/s]",
     "Stream: Type: Scale [MB/s]",
     "Stream: Type: Triad [MB/s]",
     "Stream: Type: Add [MB/s]",
-    "RAMspeed SMP: Type: Add - Benchmark: Integer [MB/s]",
     "RAMspeed SMP: Type: Copy - Benchmark: Integer [MB/s]",
     "RAMspeed SMP: Type: Scale - Benchmark: Integer [MB/s]",
+    "RAMspeed SMP: Type: Add - Benchmark: Integer [MB/s]",
     "RAMspeed SMP: Type: Triad - Benchmark: Integer [MB/s]",
     "RAMspeed SMP: Type: Average - Benchmark: Integer [MB/s]",
-    "RAMspeed SMP: Type: Add - Benchmark: Floating Point [MB/s]",
     "RAMspeed SMP: Type: Copy - Benchmark: Floating Point [MB/s]",
     "RAMspeed SMP: Type: Scale - Benchmark: Floating Point [MB/s]",
+    "RAMspeed SMP: Type: Add - Benchmark: Floating Point [MB/s]",
     "RAMspeed SMP: Type: Triad - Benchmark: Floating Point [MB/s]",
     "RAMspeed SMP: Type: Average - Benchmark: Floating Point [MB/s]",
-    # "MBW: Test: Memory Copy - Array Size: 128 MiB [MiB/s]",
-    # "MBW: Test: Memory Copy - Array Size: 512 MiB [MiB/s]",
-    "MBW: Test: Memory Copy - Array Size: 1024 MiB [MiB/s]",
-    # "MBW: Test: Memory Copy - Array Size: 4096 MiB [MiB/s]",
-    # "MBW: Test: Memory Copy, Fixed Block Size - Array Size: 128 MiB [MiB/s]",
-    # "MBW: Test: Memory Copy, Fixed Block Size - Array Size: 512 MiB [MiB/s]",
-    "MBW: Test: Memory Copy, Fixed Block Size - Array Size: 1024 MiB [MiB/s]",
-    # "MBW: Test: Memory Copy, Fixed Block Size - Array Size: 4096 MiB [MiB/s]",
-    "Tinymembench: Standard Memcpy [MB/s]",
-    "Tinymembench: Standard Memset [MB/s]",
-    "t-test1: Threads: 1 [Seconds]",
-    "t-test1: Threads: 2 [Seconds]",
     "CacheBench: Read Cache [MB/s]",
     "CacheBench: Write Cache [MB/s]",
+    # "t-test1: Threads: 1 [Seconds]",
+    # "t-test1: Threads: 2 [Seconds]",
 ]
 
-# "CacheBench: Test: Read [MB/s]",
-# "CacheBench: Test: Write [MB/s]",
-# "CacheBench: Test: Read / Modify / Write [MB/s]",
 
 LABELS = [
-    "Stream (Copy)",
-    "Stream (Scale)",
-    "Stream (Triad)",
-    "Stream (Add)",
-    "RAMspeed (Add Int)",
-    "RAMspeed (Copy Int)",
-    "RAMspeed (Scale Int)",
-    "RAMspeed (Triad Int)",
-    "RAMspeed (Average Int)",
-    "RAMspeed (Add FP)",
-    "RAMspeed (Copy FP)",
-    "RAMspeed (Scale FP)",
-    "RAMspeed (Triad FP)",
-    "RAMspeed (Average FP)",
-    # "MBW (Copy 128MB)",
-    # "MBW (Copy 512 MiB)",
-    "MBW (Copy 1024 MiB)",
-    # "MBW (Copy 4096 MiB)",
-    # "MBW (Copy Fix 128MB)",
-    # "MBW (Copy Fixed 512 MiB)",
-    "MBW (Copy Fixed 1024 MiB)",
-    # "MBW (Copy Fixed 4096 MiB)",
+    "MBW (Memcpy)",
+    "MBW (Memcpy Fixed)",
     "Tinymembench (Memcpy)",
     "Tinymembench (Memset)",
-    "t-test1 Threads: 1",
-    "t-test1 Threads: 2",
+    "Stream (Copy)",
+    "Stream (Scale)",
+    "Stream (Add)",
+    "Stream (Triad)",
+    "RAMspeed (Copy Int)",
+    "RAMspeed (Scale Int)",
+    "RAMspeed (Add Int)",
+    "RAMspeed (Triad Int)",
+    "RAMspeed (Average Int)",
+    "RAMspeed (Copy FP)",
+    "RAMspeed (Scale FP)",
+    "RAMspeed (Add FP)",
+    "RAMspeed (Triad FP)",
+    "RAMspeed (Average FP)",
     "CacheBench (R)",
     "CacheBench (W)",
+    # "t-test1 Threads: 1",
+    # "t-test1 Threads: 2",
 ]
 
 assert len(BENCHMARK_ID) == len(LABELS)
 
 palette = [
-    *(palette[0] for _ in list(range(4))),  # stream
-    *(palette[1] for _ in list(range(10))),  # ramspeed
-    *(palette[2] for _ in list(range(2))),  # mbw
-    *(palette[3] for _ in list(range(2))),  # tinymembench
-    *(palette[4] for _ in list(range(2))),  # t-test1
-    *(palette[5] for _ in list(range(2))),  # cachebench
+    *(palette[0] for _ in list(range(2))),  # mbw
+    *(palette[1] for _ in list(range(2))),  # tinymembench
+    *(palette[2] for _ in list(range(4))),  # stream
+    *(palette[3] for _ in list(range(10))),  # ramspeed
+    *(palette[4] for _ in list(range(2))),  # cachebench
+    # *(palette[5] for _ in list(range(2))),  # t-test1
 ]
 
 
@@ -120,6 +117,9 @@ def load_data(vmfile: Path, snpfile: Path) -> pd.DataFrame:
     # merge two using identifier and benchmark_id as a key
     data = pd.merge(vm, snp, on="benchmark_id", suffixes=("_vm", "_snp"))
     data["relative"] = data["value_snp"] / data["value_vm"]
+
+    # drop rows if its benchmark_id is not in BENCHMARK_ID
+    data = data[data["benchmark_id"].isin(BENCHMARK_ID)]
 
     data.sort_values(
         by="benchmark_id",
