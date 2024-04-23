@@ -17,6 +17,7 @@ class VMResource:
     name: str
     cpu: int
     memory: int  # GB
+    numa_node: [int] = None
 
 
 @dataclass
@@ -31,13 +32,13 @@ class VMConfig:
 
 def get_vm_resource(name: str) -> VMResource:
     if name == "small":
-        return VMResource(name=name, cpu=1, memory=8)
+        return VMResource(name=name, cpu=1, memory=8, numa_node=[0])
     if name == "medium":
-        return VMResource(name=name, cpu=8, memory=64)
+        return VMResource(name=name, cpu=8, memory=64, numa_node=[0])
     if name == "large":
-        return VMResource(name=name, cpu=32, memory=256)
+        return VMResource(name=name, cpu=32, memory=256, numa_node=[0])
     if name == "large-numa":
-        return VMResource(name=name, cpu=64, memory=512)
+        return VMResource(name=name, cpu=64, memory=512, numa_node=[0, 1])
     raise ValueError(f"Unknown VM config: {name}")
 
 
@@ -81,8 +82,7 @@ def get_vm_config(name: str) -> VMConfig:
     raise ValueError(f"Unknown VM image: {name}")
 
 
-def get_normal_vm_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
-    resource: VMResource = get_vm_resource(resource_name)
+def get_normal_vm_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     config: VMConfig = get_vm_config("normal")
 
     qemu_cmd = f"""
@@ -106,8 +106,7 @@ def get_normal_vm_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
-def get_normal_vm_direct_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
-    resource: VMResource = get_vm_resource(resource_name)
+def get_normal_vm_direct_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     config: VMConfig = get_vm_config("normal-direct")
 
     qemu_cmd = f"""
@@ -139,8 +138,7 @@ def get_normal_vm_direct_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
-def get_snp_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
-    resource: VMResource = get_vm_resource(resource_name)
+def get_snp_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     config: VMConfig = get_vm_config("snp")
 
     qemu_cmd = f"""
@@ -167,8 +165,7 @@ def get_snp_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
-def get_snp_direct_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
-    resource: VMResource = get_vm_resource(resource_name)
+def get_snp_direct_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     config: VMConfig = get_vm_config("normal-direct")
 
     qemu_cmd = f"""
@@ -272,8 +269,9 @@ def qemu_option_virtio_nic():
 
 
 def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
-    with spawn_qemu(qemu_cmd) as vm:
+    with spawn_qemu(qemu_cmd, numa_node=resource.numa_node) as vm:
         if pin:
             vm.pin_vcpu()
         vm.attach()
@@ -287,8 +285,9 @@ def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> Non
         )
         return
 
+    resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
-    with spawn_qemu(qemu_cmd) as vm:
+    with spawn_qemu(qemu_cmd, numa_node=resource.numa_node) as vm:
         if pin:
             vm.pin_vcpu()
         vm.wait_for_ssh()
@@ -298,8 +297,9 @@ def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> Non
 
 
 def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
-    with spawn_qemu(qemu_cmd) as vm:
+    with spawn_qemu(qemu_cmd, numa_node=numa_node) as vm:
         if pin:
             vm.pin_vcpu()
         vm.wait_for_ssh()
@@ -353,18 +353,20 @@ def start(
     warn: bool = True,
 ) -> None:
     config: dict = locals()
+    resource: VMResource = get_vm_resource(size)
+    config["resource"] = resource
 
     qemu_cmd: str
     if type == "normal":
         if direct:
-            qemu_cmd = get_normal_vm_direct_qemu_cmd(size, ssh_port)
+            qemu_cmd = get_normal_vm_direct_qemu_cmd(resource, ssh_port)
         else:
-            qemu_cmd = get_normal_vm_qemu_cmd(size, ssh_port)
+            qemu_cmd = get_normal_vm_qemu_cmd(resource, ssh_port)
     elif type == "snp":
         if direct:
-            qemu_cmd = get_snp_direct_qemu_cmd(size, ssh_port)
+            qemu_cmd = get_snp_direct_qemu_cmd(resource, ssh_port)
         else:
-            qemu_cmd = get_snp_qemu_cmd(size, ssh_port)
+            qemu_cmd = get_snp_qemu_cmd(resource, ssh_port)
     else:
         raise ValueError(f"Unknown VM type: {type}")
 

@@ -99,6 +99,7 @@
               gdb
               jq
               bridge-utils
+              numactl
 
               fio
               cryptsetup

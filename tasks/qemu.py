@@ -15,7 +15,7 @@ from pathlib import Path
 from queue import Queue
 from shlex import quote
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Iterator, List, Text
+from typing import Any, Dict, Iterator, List, Text, Optional
 
 from procs import ChildFd, pprint_cmd, run
 from config import PROJECT_ROOT
@@ -235,6 +235,7 @@ class QemuVm:
         return self.qmp_session.send(cmd, args)
 
     def pin_vcpu(self, pcpu_base: int = 0) -> None:
+        """Pin vCPUs to physical CPUs"""
         cpu_info = self.send("query-cpus-fast")["return"]
         num_cpus = len(cpu_info)
         for cpu in cpu_info:
@@ -265,11 +266,22 @@ class QemuVm:
 
 @contextmanager
 def spawn_qemu(
-    qemu_command: List[str], extra_args: List[str] = [], extra_args_pre: List[str] = []
+    qemu_command: List[str],
+    extra_args: List[str] = [],
+    extra_args_pre: List[str] = [],
+    numa_node: Optional[List[int]] = None,
 ) -> Iterator[QemuVm]:
     with TemporaryDirectory() as tempdir:
         qmp_socket = Path(tempdir).joinpath("qmp.sock")
         cmd = extra_args_pre.copy()
+
+        if numa_node is not None:
+            cmd += [
+                "numactl",
+                f"--cpunodebind={','.join(map(str, numa_node))}",
+                f"--membind={','.join(map(str, numa_node))}",
+            ]
+
         qemu_command += [
             "-qmp",
             f"unix:{str(qmp_socket)},server,nowait",
