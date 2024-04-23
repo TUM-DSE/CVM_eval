@@ -135,11 +135,14 @@ def ssh_cmd(port: int) -> List[str]:
 
 
 class QemuVm:
-    def __init__(self, qmp_session: QmpSession, tmux_session: str, pid: int) -> None:
+    def __init__(
+        self, qmp_session: QmpSession, tmux_session: str, pid: int, config: dict = {}
+    ) -> None:
         self.qmp_session = qmp_session
         self.tmux_session = tmux_session
         self.pid = pid
         self.ssh_port = get_ssh_port(qmp_session)
+        self.config = config
 
     def events(self) -> Iterator[Dict[str, Any]]:
         return self.qmp_session.events()
@@ -270,6 +273,7 @@ def spawn_qemu(
     extra_args: List[str] = [],
     extra_args_pre: List[str] = [],
     numa_node: Optional[List[int]] = None,
+    config: dict = {},
 ) -> Iterator[QemuVm]:
     with TemporaryDirectory() as tempdir:
         qmp_socket = Path(tempdir).joinpath("qmp.sock")
@@ -326,7 +330,7 @@ def spawn_qemu(
                 except ProcessLookupError:
                     raise Exception("qemu vm was terminated")
             with connect_qmp(qmp_socket) as session:
-                yield QemuVm(session, tmux_session, qemu_pid)
+                yield QemuVm(session, tmux_session, qemu_pid, config)
         finally:
             subprocess.run(["tmux", "-L", tmux_session, "kill-server"])
             while True:
