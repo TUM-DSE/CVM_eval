@@ -269,6 +269,9 @@ def qemu_option_virtio_nic():
 
 
 def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    """Start a VM and attach to the console (tmux session) to interact with the VM.
+    Note that the VM automatically terminates when the tmux session is closed.
+    """
     resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
     with spawn_qemu(qemu_cmd, numa_node=resource.numa_node) as vm:
@@ -324,6 +327,19 @@ def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> Non
         phoronix.run_phoronix(name, f"{bench_name}", f"pts/{bench_name}", vm)
 
 
+def run_blender(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    repeat: int = kargs["config"].get("repeat", 1)
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(qemu_cmd, numa_node=resource.numa_node) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from application import run_blender
+
+        run_blender(name, vm, repeat=repeat)
+
+
 def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
@@ -349,10 +365,15 @@ def do_action(action: str, **kwargs: Any) -> None:
         ipython(**kwargs)
     elif action == "run-phoronix":
         run_phoronix(**kwargs)
+    elif action == "run-blender":
+        run_blender(**kwargs)
     elif action == "run-fio":
         run_fio(**kwargs)
     else:
         raise ValueError(f"Unknown action: {action}")
+
+
+# ------------------------------------------------------------
 
 
 # examples:
@@ -370,6 +391,8 @@ def start(
     pin: bool = True,  # if True, pin vCPUs
     # phoronix options
     phoronix_bench_name: Optional[str] = None,
+    # application bench options
+    repeat: int = 1,
     # virtio-nic options
     virtio_nic: bool = False,
     # virtio-blk options
