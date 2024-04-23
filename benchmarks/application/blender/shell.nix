@@ -10,4 +10,6 @@ in pkgs.mkShell {
     pkgs.git
     pkgs.numactl
   ];
+  # nix-shell ./path/to/shell.nix automatically cd's into the directory
+  shellHook = ''cd "${toString ./.}"'';
 }

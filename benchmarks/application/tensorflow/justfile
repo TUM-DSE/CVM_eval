@@ -2,12 +2,11 @@
 
 MODELS_REV := "02a1c5317a74782ff23d39473e31f6bd2024bf81"
 
-run thread_cnt='8' :
+run thread_cnt='8':
     #!/usr/bin/env bash
     set -x
-    OMP_NUM_THREADS={{thread_cnt}} KMP_AFFINITY=granularity=fine,verbose,compact,1,0 \
-    numactl --cpunodebind=0 --membind=0 \
-    taskset -a -c 0-$(({{thread_cnt}}-1)) chrt -f 1 \
+    OMP_NUM_THREADS={{thread_cnt}} \
+    KMP_AFFINITY=granularity=fine,verbose,compact,1,0 \
     python3 \
     models/models/language_modeling/tensorflow/bert_large/inference/run_squad.py \
     --init_checkpoint=data/bert_large_checkpoints/model.ckpt-3649 \
@@ -23,6 +22,11 @@ run thread_cnt='8' :
     --mode=benchmark \
     --inter_op_parallelism_threads=1 \
     --intra_op_parallelism_threads={{thread_cnt}}
+
+run_bind thread_cnt='8':
+    numactl --cpunodebind=0 --membind=0 \
+    taskset -a -c 0-$(({{thread_cnt}}-1)) chrt -f 1 \
+    just run {{thread_cnt}}
 
 models:
     #!/usr/bin/env bash

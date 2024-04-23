@@ -1,8 +1,12 @@
 # vim: set ft=make et :
 
 run thread_cnt='8':
+  blender -b ./data/simple_scene.blend -t {{thread_cnt}} -F PNG -o ./output/ -f 1
+
+run_bind thread_cnt='8':
   #!/usr/bin/env bash
   set -x
   numactl --cpunodebind=0 --membind=0 \
   taskset -a -c 0-$(({{thread_cnt}}-1)) chrt -f 1 \
-  blender -b ./data/simple_scene.blend -t {{thread_cnt}} -F PNG -o ./output/ -f 1
+  just run {{thread_cnt}}
+

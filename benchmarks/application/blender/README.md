@@ -7,3 +7,7 @@
 nix-shell
 just run
 ```
+or
+```
+nix-shell --run "just run"
+```

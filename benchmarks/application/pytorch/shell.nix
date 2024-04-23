@@ -14,4 +14,5 @@ in pkgs.mkShell {
     pkgs.git
     pkgs.numactl
   ];
+  shellHook = ''cd "${toString ./.}"'';
 }
