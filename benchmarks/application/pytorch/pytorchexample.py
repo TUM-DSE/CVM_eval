@@ -28,8 +28,8 @@ transform = transforms.Compose([
 from PIL import Image
 img = Image.open("input.jpg")
 
-if len(sys.argv) != 3:
-    print("Usage: ptyhon pytorchexample.py <cpu_count> <experiment_label>")
+if len(sys.argv) != 2:
+    print("Usage: ptyhon pytorchexample.py <cpu_count>")
     sys.exit(1)
 
 try:
@@ -38,7 +38,6 @@ except ValueError:
     print("Error: CPU count must be an int!")
     sys.exit(1)
 
-experiment_label = sys.argv[2]
 
 # set OMP_NUM_THREADS to the cpu count for the parallel execution
 os.environ["OMP_NUM_THREADS"] = str(cpu_count)
@@ -64,24 +63,25 @@ for i in range(0, 1000):
     # Convert into percentages.
     percentage = torch.nn.functional.softmax(out, dim=1)[0] * 100
 
-print("--- %.2f seconds ---" % (time.time() - start_time), flush=True)
+print("Time: %.2f seconds" % (time.time() - start_time), flush=True)
 
-# Print the exec time.
-result_path = Path("results")
-result_path.mkdir(parents=True, exist_ok=True)
-with open("results/"+experiment_label+"_"+str(cpu_count)+"_threads.txt", "w") as outfile:
-    outfile.write(str(time.time() - start_time) + " seconds\n")
-    outfile.flush()
-    os.fsync(outfile.fileno())
-print("The execution time result was written to results/"+experiment_label+"_"+str(cpu_count)+"_threads.txt` .")
+# Save the exec time.
+# experiment_label = sys.argv[2]
+#result_path = Path("results")
+#result_path.mkdir(parents=True, exist_ok=True)
+#with open("results/"+experiment_label+"_"+str(cpu_count)+"_threads.txt", "w") as outfile:
+#    outfile.write(str(time.time() - start_time) + " seconds\n")
+#    outfile.flush()
+#    os.fsync(outfile.fileno())
+#print("The execution time result was written to results/"+experiment_label+"_"+str(cpu_count)+"_threads.txt` .")
 
 # Load the classes from disk.
-with open('classes.txt') as f:
-    classes = [line.strip() for line in f.readlines()]
+#with open('classes.txt') as f:
+#    classes = [line.strip() for line in f.readlines()]
 
 # Print the 5 most likely predictions.
-with open("result.txt", "w") as outfile:
-    outfile.write(str([(classes[idx], percentage[idx].item()) for idx in indices[0][:5]]))
-    outfile.flush()
-    os.fsync(outfile.fileno())
-print("Done. The result was written to `result.txt`.")
+# with open("result.txt", "w") as outfile:
+#     outfile.write(str([(classes[idx], percentage[idx].item()) for idx in indices[0][:5]]))
+#     outfile.flush()
+#     os.fsync(outfile.fileno())
+# print("Done. The result was written to `result.txt`.")
