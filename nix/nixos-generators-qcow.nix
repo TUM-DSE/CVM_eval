@@ -22,6 +22,7 @@
   boot.loader.initScript.enable = lib.mkForce false;
   boot.isContainer = lib.mkForce false;
   boot.initrd.enable = lib.mkForce true;
+  boot.initrd.systemd.network.wait-online.enable = false;
   boot.loader.grub.efiSupport = true;
   boot.loader.grub.efiInstallAsRemovable = true;
   boot.loader.timeout = 0;
