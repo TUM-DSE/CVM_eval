@@ -59,7 +59,6 @@ nice build -q --cmd-len=64436 -DDEBUG_ON_SERIAL_PORT=TRUE -n $(getconf _NPROCESS
 Enable the following options.
 ```
 AMD_MEM_ENCRYPT y
-AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT n
 VIRT_DRIVERS y
 SEV_GUEST m
 X86_CPUID m

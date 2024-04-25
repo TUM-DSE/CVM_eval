@@ -2,6 +2,8 @@
 
 ## General setup
 - Install [nix](https://nixos.org/)
+    - Note: you do not need to use NixOS on the host. You need the Nix package manager.
+    - There are several ways to install nix, but [nix-installer](https://github.com/DeterminateSystems/nix-installer) would be handy.
 - `nix develop` (or `direnv allow`)
 
 ## Build software
@@ -73,3 +75,6 @@ The repository directory is mounted in `/share` in the guest using vritio-9p.
 
 ### nix-shell env does not work for some reason
 - Try `nix-shell --repair`
+
+### nix-shell env rebuilds packages every day
+- See: https://discourse.nixos.org/t/why-is-my-nix-shell-rebuilding-every-day-solved/15528/5
