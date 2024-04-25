@@ -46,6 +46,8 @@ def parse_blender_result(name: str, date: Optional[str] = None) -> float:
         print(f"XXX: No result found in {path}")
         return 0
 
+    print(f"{path}")
+
     # iterate over the files in the directory
     times = []
     for file in os.listdir(path):
@@ -82,6 +84,8 @@ def parse_pytorch_result(name: str, date: Optional[str] = None) -> float:
         print(f"XXX: No result found in {path}")
         return 0
 
+    print(f"{path}")
+
     # iterate over the files in the directory
     times = []
     for file in os.listdir(path):
@@ -115,6 +119,8 @@ def parse_tensorflow_result(name: str, date: Optional[str] = None) -> float:
     if not os.path.exists(path):
         print(f"XXX: No result found in {path}")
         return 0
+
+    print(f"{path}")
 
     # iterate over the files in the directory
     times = []
@@ -177,7 +183,7 @@ def plot_application(ctx):
     df = pd.DataFrame(data)
     print(df)
 
-    fig, ax = plt.subplots(1, 3, figsize=(figwidth_full, 2.5), sharey=False)
+    fig, ax = plt.subplots(1, 3, figsize=(figwidth_full, 2.0), sharey=False)
     sns.barplot(
         data=df[df["Application"] == "Blender"],
         x="Size",
