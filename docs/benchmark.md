@@ -34,8 +34,8 @@ The result is saved as `{PROJECT_ROOT}/bench-result/phoronix/{vmname}/{bench-nam
 ### Information on benchmarks
 - [OpenBenchmarking.org](https://openbenchmarking.org/) lists the information on the Phoronix Test Suite
 - For exmple, [information on Memory Test Suite (pts/memory)](https://openbenchmarking.org/suite/pts/memory)
-- Also, there is a page for each benchmark (e.g., [pts/mbw](https://openbenchmarking.org/test/pts/mbw)
-- You can check how actually the benchmark is executed by consulting definition file (e.g., [pts/mbw](https://openbenchmarking.org/innhold/0a063ad51b563eec53a6c34d37806366ce52e7f6)
+- Also, there is a page for each benchmark (e.g., [pts/mbw](https://openbenchmarking.org/test/pts/mbw))
+- You can check how actually the benchmark is executed by consulting definition file (e.g., [pts/mbw](https://openbenchmarking.org/innhold/0a063ad51b563eec53a6c34d37806366ce52e7f6))
     - Especitlly, `test-definition.xml` defines runtime parameters.
 - Also see: http://perf.mvermeulen.com/phoronix-overview/
 

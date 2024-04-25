@@ -23,9 +23,9 @@
 % nix-shell -p cargo rustc
 % cargo build
 # request attestation using random data
-% ./target/debugs/snpguest attestation-report.bin random-request-file.txt --random
+% ./target/debug/snpguest report attestation-report.bin random-request-file.txt --random
 # show attestation measurement
-% ./target/debugs/snpguest display attestation-report.bin
+% ./target/debug/snpguest display report attestation-report.bin
 # -> measurement should match with the value calculated with the sev-snp-measure
 [...]
 
