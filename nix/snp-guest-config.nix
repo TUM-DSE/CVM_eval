@@ -4,7 +4,6 @@
     patch = null;
     extraConfig = ''
       AMD_MEM_ENCRYPT y
-      KVM_AMD_SEV y
       VIRT_DRIVERS y
       SEV_GUEST m
       X86_CPUID m
