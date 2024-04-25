@@ -171,7 +171,7 @@ def get_snp_direct_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     qemu_cmd = f"""
     {config.qemu}
     -enable-kvm
-    -cpu EPYC-v4,host-phys-bits=true
+    -cpu EPYC-v4,host-phys-bits=true,+avx512f,+avx512dq,+avx512cd,+avx512bw,+avx512vl,+avx512ifma,+avx512vbmi,+avx512vbmi2,+avx512vnni,+avx512bitalg
     -smp {resource.cpu}
     -m {resource.memory}G
 
