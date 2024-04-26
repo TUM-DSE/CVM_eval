@@ -33,6 +33,12 @@ default:
 # bzImage: `nix build.#nixosConfigurations.normal-guest.config.boot.kernelPackages`
 # initrd: `nix build .#nixosConfigurations.normal-guest.config.system.build.initialRamdisk --out-link result-initrd`
 # initpath: obtained in the guest (`cat /proc/cmdline`)
+
+prepare-direct-boot:
+    #!/usr/bin/env bash
+    nix build .#nixosConfigurations.normal-guest.config.boot.kernelPackages.kernel --out-link result
+    nix build .#nixosConfigurations.normal-guest.config.system.build.initialRamdisk --out-link result-initrd
+
 start-vm:
     sudo {{QEMU}} \
         -cpu host \
