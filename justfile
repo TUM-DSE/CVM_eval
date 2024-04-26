@@ -30,6 +30,29 @@ default:
 # e.g., just smp=16 start-vm-disk
 # note: setting values (`smp=16`) needs to come before the command
 
+# bzImage: `nix build.#nixosConfigurations.normal-guest.config.boot.kernelPackages`
+# initrd: copied from the guest
+# initpath: obtained in the guest (`cat /proc/cmdline`)
+start-vm:
+    sudo {{QEMU}} \
+        -cpu host \
+        -smp {{smp}} \
+        -m {{mem}} \
+        -machine q35 \
+        -enable-kvm \
+        -nographic \
+        -kernel ./result/bzImage \
+        -initrd ./initrd \
+        -append "root=/dev/vda2 console=ttyS0 init=/nix/store/019clg7m4frsp790lyj8lrsy6x666paa-nixos-system-nixos-24.05.20240412.cfd6b5f/init" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{NORMAL_IMAGE}} \
+        -device virtio-blk-pci,drive=q2 \
+        -device virtio-net-pci,netdev=net0 \
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -netdev bridge,id=en0,br=virbr0 \
+        -device virtio-net-pci,netdev=en0 \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on
+
 start-vm-disk:
     sudo {{QEMU}} \
         -cpu host \
