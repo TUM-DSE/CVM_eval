@@ -31,7 +31,7 @@ default:
 # note: setting values (`smp=16`) needs to come before the command
 
 # bzImage: `nix build.#nixosConfigurations.normal-guest.config.boot.kernelPackages`
-# initrd: copied from the guest
+# initrd: `nix build .#nixosConfigurations.normal-guest.config.system.build.initialRamdisk --out-link result-initrd`
 # initpath: obtained in the guest (`cat /proc/cmdline`)
 start-vm:
     sudo {{QEMU}} \
@@ -42,7 +42,7 @@ start-vm:
         -enable-kvm \
         -nographic \
         -kernel ./result/bzImage \
-        -initrd ./initrd \
+        -initrd ./result-initrd/initrd \
         -append "root=/dev/vda2 console=ttyS0 init=/nix/store/019clg7m4frsp790lyj8lrsy6x666paa-nixos-system-nixos-24.05.20240412.cfd6b5f/init" \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{NORMAL_IMAGE}} \
         -device virtio-blk-pci,drive=q2 \
