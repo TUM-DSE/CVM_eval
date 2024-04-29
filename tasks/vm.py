@@ -270,7 +270,8 @@ def qemu_option_virtio_nic():
 
 def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     """Start a VM and attach to the console (tmux session) to interact with the VM.
-    Note that the VM automatically terminates when the tmux session is closed.
+    Note 1: The VM automatically terminates when the tmux session is closed.
+    Note 2: Ctrl-C goes to the tmux session, not the VM, killing the entier session with the VM.
     """
     resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
