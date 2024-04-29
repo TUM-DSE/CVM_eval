@@ -114,6 +114,7 @@
 
                 fio
                 cryptsetup
+                iperf # iperf3
               ] ++ [ inv-completion ]
               ++ pre-commit-check.enabledPackages;
             inherit (pre-commit-check) shellHook;

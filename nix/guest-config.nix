@@ -132,6 +132,7 @@ in
     tmux
     vim
     fio
+    iperf
     cryptsetup
     lvm2
 
