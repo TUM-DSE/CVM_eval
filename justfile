@@ -11,6 +11,8 @@ SNP_IMAGE := join(BUILD_DIR, "image/snp-guest-image.qcow2")
 NORMAL_IMAGE := join(BUILD_DIR, "image/normal-guest-image.qcow2")
 GUEST_FS := join(BUILD_DIR, "image/guest-fs.qcow2")
 SSH_PORT := "2225"
+smp := "4"
+mem := "16G"
 
 REV := `nix eval --raw .#lib.nixpkgsRev`
 NIX_RESULTS := justfile_directory() + "/.git/nix-results/" + REV
@@ -25,12 +27,14 @@ default:
 
 # ------------------------------
 # QEMU commands
+# e.g., just smp=16 start-vm-disk
+# note: setting values (`smp=16`) needs to come before the command
 
 start-vm-disk:
     sudo {{QEMU}} \
         -cpu host \
-        -smp 4 \
-        -m 16G \
+        -smp {{smp}} \
+        -m {{mem}} \
         -machine q35 \
         -enable-kvm \
         -nographic \
@@ -46,8 +50,8 @@ start-vm-disk:
 start-vm-direct:
     sudo {{QEMU}} \
         -cpu host \
-        -smp 4 \
-        -m 16G \
+        -smp {{smp}} \
+        -m {{mem}} \
         -machine q35 \
         -enable-kvm \
         -nographic \
@@ -70,11 +74,11 @@ start-vm-direct:
 start-snp-disk:
     sudo {{QEMU_SNP}} \
         -cpu EPYC-v4,host-phys-bits=true \
-        -smp 4 \
-        -m 16G \
+        -smp {{smp}} \
+        -m {{mem}} \
         -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
         -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
-        -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
+        -object memory-backend-memfd-private,id=ram1,size={{mem}},share=true \
         -enable-kvm \
         -nographic \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{SNP_IMAGE}} \
@@ -89,11 +93,11 @@ start-snp-disk:
 start-snp-direct:
     sudo {{QEMU_SNP}} \
         -cpu EPYC-v4,host-phys-bits=true \
-        -smp 4 \
-        -m 16G \
+        -smp {{smp}} \
+        -m {{mem}} \
         -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
         -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
-        -object memory-backend-memfd-private,id=ram1,size=16G,share=true \
+        -object memory-backend-memfd-private,id=ram1,size={{mem}},share=true \
         -enable-kvm \
         -nographic \
         -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
@@ -240,6 +244,9 @@ build-linux:
     set -xeu
     cd {{ LINUX_DIR }}
     yes "" | {{ KERNEL_SHELL }} "make -C {{ LINUX_DIR }} -j$(nproc)"
+
+clean-linux:
+    {{ KERNEL_SHELL }} "make -C {{ LINUX_DIR }} clean"
 
 setup-linux:
     just clone-linux

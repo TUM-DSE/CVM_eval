@@ -15,7 +15,7 @@ from pathlib import Path
 from queue import Queue
 from shlex import quote
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Iterator, List, Text
+from typing import Any, Dict, Iterator, List, Text, Optional
 
 from procs import ChildFd, pprint_cmd, run
 from config import PROJECT_ROOT
@@ -135,11 +135,14 @@ def ssh_cmd(port: int) -> List[str]:
 
 
 class QemuVm:
-    def __init__(self, qmp_session: QmpSession, tmux_session: str, pid: int) -> None:
+    def __init__(
+        self, qmp_session: QmpSession, tmux_session: str, pid: int, config: dict = {}
+    ) -> None:
         self.qmp_session = qmp_session
         self.tmux_session = tmux_session
         self.pid = pid
         self.ssh_port = get_ssh_port(qmp_session)
+        self.config = config
 
     def events(self) -> Iterator[Dict[str, Any]]:
         return self.qmp_session.events()
@@ -235,6 +238,7 @@ class QemuVm:
         return self.qmp_session.send(cmd, args)
 
     def pin_vcpu(self, pcpu_base: int = 0) -> None:
+        """Pin vCPUs to physical CPUs"""
         cpu_info = self.send("query-cpus-fast")["return"]
         num_cpus = len(cpu_info)
         for cpu in cpu_info:
@@ -265,11 +269,23 @@ class QemuVm:
 
 @contextmanager
 def spawn_qemu(
-    qemu_command: List[str], extra_args: List[str] = [], extra_args_pre: List[str] = []
+    qemu_command: List[str],
+    extra_args: List[str] = [],
+    extra_args_pre: List[str] = [],
+    numa_node: Optional[List[int]] = None,
+    config: dict = {},
 ) -> Iterator[QemuVm]:
     with TemporaryDirectory() as tempdir:
         qmp_socket = Path(tempdir).joinpath("qmp.sock")
         cmd = extra_args_pre.copy()
+
+        if numa_node is not None:
+            cmd += [
+                "numactl",
+                f"--cpunodebind={','.join(map(str, numa_node))}",
+                f"--membind={','.join(map(str, numa_node))}",
+            ]
+
         qemu_command += [
             "-qmp",
             f"unix:{str(qmp_socket)},server,nowait",
@@ -314,7 +330,7 @@ def spawn_qemu(
                 except ProcessLookupError:
                     raise Exception("qemu vm was terminated")
             with connect_qmp(qmp_socket) as session:
-                yield QemuVm(session, tmux_session, qemu_pid)
+                yield QemuVm(session, tmux_session, qemu_pid, config)
         finally:
             subprocess.run(["tmux", "-L", tmux_session, "kill-server"])
             while True:

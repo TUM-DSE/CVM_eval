@@ -17,6 +17,7 @@ class VMResource:
     name: str
     cpu: int
     memory: int  # GB
+    numa_node: [int] = None
 
 
 @dataclass
@@ -31,13 +32,13 @@ class VMConfig:
 
 def get_vm_resource(name: str) -> VMResource:
     if name == "small":
-        return VMResource(name=name, cpu=1, memory=8)
+        return VMResource(name=name, cpu=1, memory=8, numa_node=[0])
     if name == "medium":
-        return VMResource(name=name, cpu=8, memory=64)
+        return VMResource(name=name, cpu=8, memory=64, numa_node=[0])
     if name == "large":
-        return VMResource(name=name, cpu=32, memory=256)
+        return VMResource(name=name, cpu=32, memory=256, numa_node=[0])
     if name == "large-numa":
-        return VMResource(name=name, cpu=64, memory=512)
+        return VMResource(name=name, cpu=64, memory=512, numa_node=[0, 1])
     raise ValueError(f"Unknown VM config: {name}")
 
 
@@ -81,8 +82,7 @@ def get_vm_config(name: str) -> VMConfig:
     raise ValueError(f"Unknown VM image: {name}")
 
 
-def get_normal_vm_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
-    resource: VMResource = get_vm_resource(resource_name)
+def get_normal_vm_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     config: VMConfig = get_vm_config("normal")
 
     qemu_cmd = f"""
@@ -106,8 +106,7 @@ def get_normal_vm_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
-def get_normal_vm_direct_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
-    resource: VMResource = get_vm_resource(resource_name)
+def get_normal_vm_direct_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     config: VMConfig = get_vm_config("normal-direct")
 
     qemu_cmd = f"""
@@ -139,8 +138,7 @@ def get_normal_vm_direct_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
-def get_snp_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
-    resource: VMResource = get_vm_resource(resource_name)
+def get_snp_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     config: VMConfig = get_vm_config("snp")
 
     qemu_cmd = f"""
@@ -167,14 +165,13 @@ def get_snp_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
-def get_snp_direct_qemu_cmd(resource_name: str, ssh_port) -> List[str]:
-    resource: VMResource = get_vm_resource(resource_name)
+def get_snp_direct_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     config: VMConfig = get_vm_config("normal-direct")
 
     qemu_cmd = f"""
     {config.qemu}
     -enable-kvm
-    -cpu EPYC-v4,host-phys-bits=true
+    -cpu EPYC-v4,host-phys-bits=true,+avx512f,+avx512dq,+avx512cd,+avx512bw,+avx512vl,+avx512ifma,+avx512vbmi,+avx512vbmi2,+avx512vnni,+avx512bitalg
     -smp {resource.cpu}
     -m {resource.memory}G
 
@@ -272,11 +269,45 @@ def qemu_option_virtio_nic():
 
 
 def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    """Start a VM and attach to the console (tmux session) to interact with the VM.
+    Note that the VM automatically terminates when the tmux session is closed.
+    """
+    resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
-    with spawn_qemu(qemu_cmd) as vm:
+    with spawn_qemu(qemu_cmd, numa_node=resource.numa_node) as vm:
         if pin:
             vm.pin_vcpu()
         vm.attach()
+
+
+def ipython(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    """Start a VM and then start an ipython shell
+
+    Example usage:
+    ```
+    # Check QEMU's PID
+    In [1]: vm.pid
+    Out[1]: 823611
+
+    # Send a command to the VM
+    In [2]: vm.ssh_cmd(["echo", "ok"])
+    $ ssh -i /scratch/masa/CVM_eval/nix/ssh_key -p 2225 -oBatchMode=yes -oStrictHostKeyChecking=no -oConnectTimeout=5 -oUserKnownHostsFile=/dev/null root@localhost -- echo ok
+    Warning: Permanently added '[localhost]:2225' (ED25519) to the list of known hosts.
+    Out[2]: CompletedProcess(args=['ssh', '-i', '/scratch/masa/CVM_eval/nix/ssh_key', '-p', '2225', '-oBatchMode=yes', '-oStrictHostKeyChecking=no', '-oConnectTimeout=5', '-oUserKnownHostsFile=/dev/null', 'root@localhost', '--', 'echo ok'], returncode=0, stdout='ok\n')
+    ```
+
+    Note that the VM automatically terminates when the ipython session is closed.
+    """
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        from IPython import embed
+
+        embed()
 
 
 def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -287,8 +318,11 @@ def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> Non
         )
         return
 
+    resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
-    with spawn_qemu(qemu_cmd) as vm:
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
         if pin:
             vm.pin_vcpu()
         vm.wait_for_ssh()
@@ -297,9 +331,55 @@ def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> Non
         phoronix.run_phoronix(name, f"{bench_name}", f"pts/{bench_name}", vm)
 
 
-def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+def run_blender(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    repeat: int = kargs["config"].get("repeat", 1)
+    resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
-    with spawn_qemu(qemu_cmd) as vm:
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from application import run_blender
+
+        run_blender(name, vm, repeat=repeat)
+
+
+def run_tensorflow(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    repeat: int = kargs["config"].get("repeat", 1)
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from application import run_tensorflow
+
+        run_tensorflow(name, vm, repeat=repeat)
+
+
+def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    repeat: int = kargs["config"].get("repeat", 1)
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from application import run_pytorch
+
+        run_pytorch(name, vm, repeat=repeat)
+
+
+def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(qemu_cmd, numa_node=numa_node, config=kargs["config"]) as vm:
         if pin:
             vm.pin_vcpu()
         vm.wait_for_ssh()
@@ -317,12 +397,23 @@ def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
 def do_action(action: str, **kwargs: Any) -> None:
     if action == "attach":
         start_and_attach(**kwargs)
+    elif action == "ipython":
+        ipython(**kwargs)
     elif action == "run-phoronix":
         run_phoronix(**kwargs)
+    elif action == "run-blender":
+        run_blender(**kwargs)
+    elif action == "run-tensorflow":
+        run_tensorflow(**kwargs)
+    elif action == "run-pytorch":
+        run_pytorch(**kwargs)
     elif action == "run-fio":
         run_fio(**kwargs)
     else:
         raise ValueError(f"Unknown action: {action}")
+
+
+# ------------------------------------------------------------
 
 
 # examples:
@@ -340,8 +431,10 @@ def start(
     pin: bool = True,  # if True, pin vCPUs
     # phoronix options
     phoronix_bench_name: Optional[str] = None,
+    # application bench options
+    repeat: int = 1,
     # virtio-nic options
-    virtio_nic: bool = True,
+    virtio_nic: bool = False,
     # virtio-blk options
     virtio_blk: Optional[
         str
@@ -353,18 +446,20 @@ def start(
     warn: bool = True,
 ) -> None:
     config: dict = locals()
+    resource: VMResource = get_vm_resource(size)
+    config["resource"] = resource
 
     qemu_cmd: str
     if type == "normal":
         if direct:
-            qemu_cmd = get_normal_vm_direct_qemu_cmd(size, ssh_port)
+            qemu_cmd = get_normal_vm_direct_qemu_cmd(resource, ssh_port)
         else:
-            qemu_cmd = get_normal_vm_qemu_cmd(size, ssh_port)
+            qemu_cmd = get_normal_vm_qemu_cmd(resource, ssh_port)
     elif type == "snp":
         if direct:
-            qemu_cmd = get_snp_direct_qemu_cmd(size, ssh_port)
+            qemu_cmd = get_snp_direct_qemu_cmd(resource, ssh_port)
         else:
-            qemu_cmd = get_snp_qemu_cmd(size, ssh_port)
+            qemu_cmd = get_snp_qemu_cmd(resource, ssh_port)
     else:
         raise ValueError(f"Unknown VM type: {type}")
 

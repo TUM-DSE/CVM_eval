@@ -1,0 +1,47 @@
+# vim: set ft=make et :
+
+MODELS_REV := "02a1c5317a74782ff23d39473e31f6bd2024bf81"
+
+run thread_cnt='8':
+    #!/usr/bin/env bash
+    set -x
+    OMP_NUM_THREADS={{thread_cnt}} \
+    KMP_AFFINITY=granularity=fine,verbose,compact,1,0 \
+    python3 \
+    models/models/language_modeling/tensorflow/bert_large/inference/run_squad.py \
+    --init_checkpoint=data/bert_large_checkpoints/model.ckpt-3649 \
+    --vocab_file=data/wwm_uncased_L-24_H-1024_A-16/vocab.txt \
+    --bert_config_file=data/wwm_uncased_L-24_H-1024_A-16/bert_config.json \
+    --predict_file=data/wwm_uncased_L-24_H-1024_A-16/dev-v1.1.json \
+    --precision=int8 --output_dir=output/bert-squad-output \
+    --predict_batch_size=32 \
+    --experimental_gelu=True \
+    --optimized_softmax=True \
+    --input_graph=data/fp32_bert_squad.pb \
+    --do_predict=True \
+    --mode=benchmark \
+    --inter_op_parallelism_threads=1 \
+    --intra_op_parallelism_threads={{thread_cnt}}
+
+run_bind thread_cnt='8':
+    numactl --cpunodebind=0 --membind=0 \
+    taskset -a -c 0-$(({{thread_cnt}}-1)) chrt -f 1 \
+    just run {{thread_cnt}}
+
+models:
+    #!/usr/bin/env bash
+    if [ ! -d models ]; then
+        git clone https://github.com/IntelAI/models.git
+    fi
+    cd models
+    git switch {{MODELS_REV}}
+
+data:
+    mkdir -p ./data
+    wget https://storage.googleapis.com/bert_models/2019_05_30/wwm_uncased_L-24_H-1024_A-16.zip -P data/
+    unzip data/wwm_uncased_L-24_H-1024_A-16.zip -d data
+    wget https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v1.1.json -P data/wwm_uncased_L-24_H-1024_A-16
+    wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v1_8/bert_large_checkpoints.zip -P data/
+    unzip data/bert_large_checkpoints.zip -d data
+    wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_4_0/fp32_bert_squad.pb -P data/
+    wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v1_8/resnet50v1_5_int8_pretrained_model.pb -P data/
