@@ -254,22 +254,39 @@ def qemu_option_virtio_blk(
     return shlex.split(option)
 
 
-def qemu_option_virtio_nic(bridge="virbr0", tap="tap0", vhost=False) -> List[str]:
-    """Qreate a virtio-nic with a bridge network (virbr0)
+def qemu_option_virtio_nic(tap=None, vhost=False, mq=False, config={}) -> List[str]:
+    """Qreate a virtio-nic with a tap interface.
+    If mq is True, then create multiple queues as many as the number of CPUs.
 
     See justfile for the bridge configuration.
     """
 
+    resource: VMResource = config["resource"]
+    num_cpus = resource.cpu
     if vhost:
+        vhost_option = "on"
+    else:
+        vhost_option = "off"
+    if tap is None:
+        if mq:
+            tap = "mtap0"
+        else:
+            tap = "tap0"
+
+    if mq:
         option = f"""
-        -netdev tap,id=en0,ifname={tap},script=no,downscript=no,vhost=on \
-        -device virtio-net-pci,netdev=en0 \
+        -netdev tap,id=en0,ifname={tap},script=no,downscript=no,vhost={vhost_option},queues={num_cpus}
+        -device virtio-net-pci,netdev=en0,mq=on,vectors=18
         """
     else:
         option = f"""
-            -netdev bridge,id=en0,br={bridge}
-            -device virtio-net-pci,netdev=en0
+        -netdev tap,id=en0,ifname={tap},script=no,downscript=no,vhost={vhost_option}
+        -device virtio-net-pci,netdev=en0,mq=off,vectors=18
         """
+        # option = f"""
+        #     -netdev bridge,id=en0,br={bridge}
+        #     -device virtio-net-pci,netdev=en0
+        # """
 
     return shlex.split(option)
 
@@ -443,6 +460,7 @@ def start(
     # virtio-nic options
     virtio_nic: bool = False,
     virtio_nic_vhost: bool = False,
+    virtio_nic_mq: bool = False,
     # virtio-blk options
     virtio_blk: Optional[
         str
@@ -472,7 +490,9 @@ def start(
         raise ValueError(f"Unknown VM type: {type}")
 
     if virtio_nic:
-        qemu_cmd += qemu_option_virtio_nic(vhost=virtio_nic_vhost)
+        qemu_cmd += qemu_option_virtio_nic(
+            vhost=virtio_nic_vhost, mq=virtio_nic_mq, config=config
+        )
 
     if virtio_blk:
         virtio_blk = Path(virtio_blk)
