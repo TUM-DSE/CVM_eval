@@ -43,23 +43,38 @@ in
     enable = true;
   };
 
-  systemd.network.enable = false;
-  # qemu network (for ssh)
-  systemd.network.networks."10-eth0.network" = {
-    matchConfig.name = "eth0";
-    address = [ "10.0.2.15/24" ];
-    routes = [
-      { routeConfig.Gateway = "10.0.2.2"; }
-    ];
-    networkConfig.DHCP = "no";
-  };
+  # XXX: this systemd-networkd configuration seems not work, why?
+  # systemd.network.enable = true;
+  # # qemu network (for ssh)
+  # systemd.network.networks."10-eth0" = {
+  #   matchConfig.Name = "eth0";
+  #   address = [ "10.0.2.15/24" ];
+  #   routes = [
+  #     { routeConfig.Gateway = "10.0.2.2"; }
+  #   ];
+  #   networkConfig.DHCP = "no";
+  #   linkConfig.RequiredForOnline = "routable";
+  # };
+  # # virtio-net
+  # systemd.network.networks."20-eth1" = {
+  #   matchConfig.Name = "eth1";
+  #   address = [ "172.44.0.2/24" ];
+  #   networkConfig.DHCP = "no";
+  # };
+  # services.resolved.enable = false;
+  # networking.useNetworkd = true;
+
+  networking.interfaces.eth0.ipv4.addresses = [{
+    address = "10.0.2.15";
+    prefixLength = 24;
+  }];
+  networking.interfaces.eth1.ipv4.addresses = [{
+    address = "172.44.0.2";
+    prefixLength = 24;
+  }];
+  networking.useDHCP = false;
+  networking.defaultGateway = "10.0.2.2";
   networking.nameservers = [ "10.0.2.3" ];
-  # virtio-net
-  systemd.network.networks."20-eth1.network" = {
-    matchConfig.name = "eth1";
-    address = [ "172.44.0.2/24" ];
-    networkConfig.DHCP = "no";
-  };
   networking.firewall.enable = false;
 
   # don't wait for network to be online
@@ -117,6 +132,7 @@ in
     tmux
     vim
     fio
+    iperf
     cryptsetup
     lvm2
 

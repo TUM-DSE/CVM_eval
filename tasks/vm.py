@@ -254,23 +254,30 @@ def qemu_option_virtio_blk(
     return shlex.split(option)
 
 
-def qemu_option_virtio_nic():
+def qemu_option_virtio_nic(bridge="virbr0", tap="tap0", vhost=False) -> List[str]:
     """Qreate a virtio-nic with a bridge network (virbr0)
 
     See justfile for the bridge configuration.
     """
 
-    option = """
-        -netdev bridge,id=en0,br=virbr0
-        -device virtio-net-pci,netdev=en0
-    """
+    if vhost:
+        option = f"""
+        -netdev tap,id=en0,ifname={tap},script=no,downscript=no,vhost=on \
+        -device virtio-net-pci,netdev=en0 \
+        """
+    else:
+        option = f"""
+            -netdev bridge,id=en0,br={bridge}
+            -device virtio-net-pci,netdev=en0
+        """
 
     return shlex.split(option)
 
 
 def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     """Start a VM and attach to the console (tmux session) to interact with the VM.
-    Note that the VM automatically terminates when the tmux session is closed.
+    Note 1: The VM automatically terminates when the tmux session is closed.
+    Note 2: Ctrl-C goes to the tmux session, not the VM, killing the entier session with the VM.
     """
     resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
@@ -435,6 +442,7 @@ def start(
     repeat: int = 1,
     # virtio-nic options
     virtio_nic: bool = False,
+    virtio_nic_vhost: bool = False,
     # virtio-blk options
     virtio_blk: Optional[
         str
@@ -464,7 +472,7 @@ def start(
         raise ValueError(f"Unknown VM type: {type}")
 
     if virtio_nic:
-        qemu_cmd += qemu_option_virtio_nic()
+        qemu_cmd += qemu_option_virtio_nic(vhost=virtio_nic_vhost)
 
     if virtio_blk:
         virtio_blk = Path(virtio_blk)
