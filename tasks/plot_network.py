@@ -36,12 +36,17 @@ BENCH_RESULT_DIR = Path("./bench-result/network")
 
 # bench mark path:
 # ./bench-result/network/iperf/{name}/{date}
-def parse_iperf_result(name: str, label: str, date=None) -> pd.DataFrame:
+def parse_iperf_result(name: str, label: str, mode: str, date=None) -> pd.DataFrame:
     # create df like the following
     # | VM | pkt size | throughput |
     # |----|----------|------------|
     # |    |          |            |
-    pktsize = [64, 128, 256, 512, 1024, 1470]
+    if mode == "udp":
+        pktsize = [64, 128, 256, 512, 1024, 1460]
+    elif mode == "tcp":
+        pktsize = [64, 128, 256, 512, "1K", "32K", "128K"]
+    else:
+        raise ValueError(f"Invalid mode: {mode}")
     ths = []
 
     if date is None:
@@ -51,7 +56,9 @@ def parse_iperf_result(name: str, label: str, date=None) -> pd.DataFrame:
     print(f"date: {date}")
 
     for size in pktsize:
-        path = Path(f"./bench-result/network/iperf/{name}/{date}/iperf-{size}.txt")
+        path = Path(
+            f"./bench-result/network/iperf/{name}/{date}/iperf-{mode}-{size}.txt"
+        )
         if not path.exists():
             print(f"XXX: {path} not found!")
             continue
@@ -77,8 +84,9 @@ def parse_iperf_result(name: str, label: str, date=None) -> pd.DataFrame:
 
 
 def parse_ping_result(name: str, label: str, date=None) -> pd.DataFrame:
-    pktsize = [64, 128, 256, 512, 1024, 1470]
-    pktsize_actual = [56, 120, 248, 504, 1016, 1462]
+    pktsize = [64, 128, 256, 512, 1024, 1460]
+    # pktsize_actual = [56, 120, 248, 504, 1016, 1462]
+    pktsize_actual = [64, 128, 256, 512, 1024, 1460]
     pktsize_ = []
     lats = []
 
@@ -158,7 +166,7 @@ def plot_iperf(ctx):
     for container in ax.containers:
         ax.bar_label(container, fmt="%.2f")
 
-    save_path = Path("./plot/iperf_throughput.pdf")
+    save_path = Path(f"./plot/iperf_{mode}_throughput.pdf")
     plt.tight_layout()
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
