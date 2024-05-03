@@ -261,6 +261,19 @@ configure-linux:
          --disable AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT \
          --enable VIRT_DRIVERS \
          --enable SEV_GUEST"
+      # for debug
+      {{ KERNEL_SHELL }} "scripts/config \
+         --enable KPROBES \
+         --enable KPROBES_ON_FTRACE \
+         --enable BPF \
+         --enable BPF_SYSCALL \
+         --enable BPF_EVENTS \
+         --enable BPF_JIT \
+         --enable TRACEPOINTS \
+         --enable DEBUG_INFO_BTF \
+         --enable IKCONFIG \
+         --enable IKCONFIG_PROC \
+         --enable IKHEADERS"
     fi
 
 build-linux:
