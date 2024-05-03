@@ -82,23 +82,24 @@ def get_vm_config(name: str) -> VMConfig:
     raise ValueError(f"Unknown VM image: {name}")
 
 
-def get_normal_vm_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
-    config: VMConfig = get_vm_config("normal")
+def get_normal_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("normal")
+    ssh_port = config["ssh_port"]
 
     qemu_cmd = f"""
-    {config.qemu}
+    {vmconfig.qemu}
     -enable-kvm
     -cpu host
     -smp {resource.cpu}
     -m {resource.memory}G
     -machine q35
 
-    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={config.image}
+    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
     -device virtio-blk-pci,drive=q2,bootindex=0
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
-    -drive if=pflash,format=raw,unit=0,file={config.ovmf},readonly=on
+    -drive if=pflash,format=raw,unit=0,file={vmconfig.ovmf},readonly=on
 
     -nographic
     """
@@ -106,26 +107,28 @@ def get_normal_vm_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
-def get_normal_vm_direct_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
-    config: VMConfig = get_vm_config("normal-direct")
+def get_normal_vm_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("normal-direct")
+    ssh_port = config.get("ssh_port", SSH_PORT)
+    extra_cmdline = config.get("extra_cmdline", "")
 
     qemu_cmd = f"""
-    {config.qemu}
+    {vmconfig.qemu}
     -cpu host
     -enable-kvm
     -smp {resource.cpu}
     -m {resource.memory}G
     -machine q35
 
-    -kernel {config.kernel}
-    -append "{config.cmdline}"
+    -kernel {vmconfig.kernel}
+    -append "{vmconfig.cmdline} {extra_cmdline}"
 
-    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={config.image}
+    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
     -device virtio-blk-pci,drive=q2,
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
-    -drive if=pflash,format=raw,unit=0,file={config.ovmf},readonly=on
+    -drive if=pflash,format=raw,unit=0,file={vmconfig.ovmf},readonly=on
 
     -nographic
     -serial null
@@ -138,11 +141,12 @@ def get_normal_vm_direct_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
-def get_snp_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
-    config: VMConfig = get_vm_config("snp")
+def get_snp_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("snp")
+    ssh_port = config["ssh_port"]
 
     qemu_cmd = f"""
-    {config.qemu}
+    {vmconfig.qemu}
     -enable-kvm
     -cpu EPYC-v4,host-phys-bits=true
     -smp {resource.cpu}
@@ -152,12 +156,12 @@ def get_snp_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
     -object memory-backend-memfd-private,id=ram1,size={resource.memory}G,share=true \
 
-    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={config.image}
+    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
     -device virtio-blk-pci,drive=q2,bootindex=0
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
-    -drive if=pflash,format=raw,unit=0,file={config.ovmf},readonly=on
+    -drive if=pflash,format=raw,unit=0,file={vmconfig.ovmf},readonly=on
 
     -nographic
     """
@@ -165,11 +169,13 @@ def get_snp_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
-def get_snp_direct_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
-    config: VMConfig = get_vm_config("normal-direct")
+def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("normal-direct")
+    ssh_port = config.get("ssh_port", SSH_PORT)
+    extra_cmdline = config.get("extra_cmdline", "")
 
     qemu_cmd = f"""
-    {config.qemu}
+    {vmconfig.qemu}
     -enable-kvm
     -cpu EPYC-v4,host-phys-bits=true,+avx512f,+avx512dq,+avx512cd,+avx512bw,+avx512vl,+avx512ifma,+avx512vbmi,+avx512vbmi2,+avx512vnni,+avx512bitalg
     -smp {resource.cpu}
@@ -179,15 +185,15 @@ def get_snp_direct_qemu_cmd(resource: VMResource, ssh_port) -> List[str]:
     -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0
     -object memory-backend-memfd-private,id=ram1,size={resource.memory}G,share=true
 
-    -kernel {config.kernel}
-    -append "{config.cmdline}"
+    -kernel {vmconfig.kernel}
+    -append "{vmconfig.cmdline} {extra_cmdline}"
 
-    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={config.image}
+    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
     -device virtio-blk-pci,drive=q2,
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
-    -drive if=pflash,format=raw,unit=0,file={config.ovmf},readonly=on
+    -drive if=pflash,format=raw,unit=0,file={vmconfig.ovmf},readonly=on
 
     -nographic
     -serial null
@@ -453,6 +459,7 @@ def start(
     action: str = "attach",
     ssh_port: int = SSH_PORT,
     pin: bool = True,  # if True, pin vCPUs
+    extra_cmdline: str = "",  # extra kernel cmdline (only for direct boot)
     # phoronix options
     phoronix_bench_name: Optional[str] = None,
     # application bench options
@@ -478,14 +485,14 @@ def start(
     qemu_cmd: str
     if type == "normal":
         if direct:
-            qemu_cmd = get_normal_vm_direct_qemu_cmd(resource, ssh_port)
+            qemu_cmd = get_normal_vm_direct_qemu_cmd(resource, config)
         else:
-            qemu_cmd = get_normal_vm_qemu_cmd(resource, ssh_port)
+            qemu_cmd = get_normal_vm_qemu_cmd(resource, config)
     elif type == "snp":
         if direct:
-            qemu_cmd = get_snp_direct_qemu_cmd(resource, ssh_port)
+            qemu_cmd = get_snp_direct_qemu_cmd(resource, config)
         else:
-            qemu_cmd = get_snp_qemu_cmd(resource, ssh_port)
+            qemu_cmd = get_snp_qemu_cmd(resource, config)
     else:
         raise ValueError(f"Unknown VM type: {type}")
 
