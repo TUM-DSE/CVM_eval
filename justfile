@@ -87,8 +87,8 @@ start-vm-direct-vhost:
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
-        -netdev tap,id=en0,ifname=tap0,script=no,downscript=no,vhost=on \
-        -device virtio-net-pci,netdev=en0 \
+        -netdev tap,id=en0,ifname=tap0,script=no,downscript=no,vhost=on,queues=2 \
+        -device virtio-net-pci,netdev=en0,mq=on,vectors=18 \
         -serial null \
         -device virtio-serial \
         -chardev stdio,mux=on,id=char0,signal=off \
@@ -261,6 +261,19 @@ configure-linux:
          --disable AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT \
          --enable VIRT_DRIVERS \
          --enable SEV_GUEST"
+      # for debug
+      {{ KERNEL_SHELL }} "scripts/config \
+         --enable KPROBES \
+         --enable KPROBES_ON_FTRACE \
+         --enable BPF \
+         --enable BPF_SYSCALL \
+         --enable BPF_EVENTS \
+         --enable BPF_JIT \
+         --enable TRACEPOINTS \
+         --enable DEBUG_INFO_BTF \
+         --enable IKCONFIG \
+         --enable IKCONFIG_PROC \
+         --enable IKHEADERS"
     fi
 
 build-linux:
@@ -288,11 +301,24 @@ setup_bridge:
         sudo brctl addbr virbr0
         sudo ip a a 172.44.0.1/24 dev virbr0
         sudo ip l set dev virbr0 up
-
-        sudo ip tuntap add tap0 mode tap
-        sudo ip link set tap0 master virbr0
-        sudo ip link set tap0 up
     fi
+
+setup_tap:
+    sudo ip tuntap add tap0 mode tap
+    sudo ip link set tap0 master virbr0
+    sudo ip link set tap0 up
+    sudo ip tuntap add mtap0 mode tap multi_queue
+    sudo ip link set mtap0 master virbr0
+    sudo ip link set mtap0 up
+
+remove_bridge:
+    #!/usr/bin/env bash
+    sudo ip link set dev tap0 down
+    sudo ip link del tap0
+    sudo ip link set dev mtap0 down
+    sudo ip link del mtap0
+    sudo ip link set dev virbr0 down
+    sudo brctl delbr virbr0
 
 # These commands should show info on virbr0
 show_bridge_status:
