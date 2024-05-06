@@ -167,6 +167,31 @@ start-tdx-vm:
         -device virtio-blk-pci,drive=virtio-disk0 \
         {{QUOTE_ARGS}}
 
+start-tdx-direct:
+    qemu-system-x86_64 \
+        -cpu host \
+        -smp {{smp}} \
+        -m {{mem}} \
+        -machine q35,hpet=off,kernel_irqchip=split,memory-encryption=tdx,memory-backend=ram1 \
+        -enable-kvm \
+        -object tdx-guest,id=tdx \
+        -object memory-backend-ram,id=ram1,size={{mem}},private=on \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0" \
+        -bios {{TDVF_FIRMWARE}} \
+        -nographic \
+        -nodefaults \
+        -device virtio-net-pci,netdev=nic0_td \
+        -netdev user,id=nic0_td,hostfwd=tcp::{{SSH_PORT}}-:22 \
+        -drive file={{GUEST_FS}},if=none,id=virtio-disk0 \
+        -device virtio-blk-pci,drive=virtio-disk0 \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device virtconsole,chardev=char0,id=vc0,nr=0 \
+        {{QUOTE_ARGS}}
+
 # ------------------------------
 # Utility commands
 
@@ -302,6 +327,40 @@ configure-linux:
          --enable IKCONFIG_PROC \
          --enable IKHEADERS"
     fi
+
+# kernel configuration tested with v6.7
+configure-linux-tdx:
+    #!/usr/bin/env bash
+    set -xeuo pipefail
+    if [[ ! -f {{ LINUX_DIR }}/.config ]]; then
+      cd {{ LINUX_DIR }}
+      {{ KERNEL_SHELL }} "make defconfig kvm_guest.config"
+      {{ KERNEL_SHELL }} "scripts/config \
+         --enable X86_X2APIC \
+         --enable INTEL_TDX_GUEST \
+         --enable VIRT_DRIVERS \
+         --enable CONFIGFS_FS \
+         --enable TSM_REPORTS \
+         --enable TDX_GUEST_DRIVER" \
+      # for debug
+      {{ KERNEL_SHELL }} "scripts/config \
+         --enable KPROBES \
+         --enable KPROBES_ON_FTRACE \
+         --enable BPF \
+         --enable BPF_SYSCALL \
+         --enable BPF_EVENTS \
+         --enable BPF_JIT \
+         --enable TRACEPOINTS \
+         --enable DEBUG_INFO_BTF \
+         --enable IKCONFIG \
+         --enable IKCONFIG_PROC \
+         --enable IKHEADERS"
+    fi
+
+menuconfig:
+    #!/usr/bin/env bash
+    cd {{ LINUX_DIR }}
+    {{ KERNEL_SHELL }} "make menuconfig"
 
 build-linux:
     #!/usr/bin/env bash
