@@ -82,6 +82,15 @@ def get_vm_config(name: str) -> VMConfig:
     if name == "intel":
         return VMConfig(
             qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/normal-guest-image.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
+    if name == "intel-ubuntu":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
             image=BUILD_DIR / "image/tdx-guest-ubuntu-23.10.qcow2",
             ovmf="/usr/share/ovmf/OVMF.fd",
             kernel=None,
@@ -89,6 +98,15 @@ def get_vm_config(name: str) -> VMConfig:
             cmdline=None,
         )
     if name == "tdx":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/tdx-guest-image.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
+    if name == "tdx-ubuntu":
         return VMConfig(
             qemu="/usr/bin/qemu-system-x86_64",
             image=BUILD_DIR / "image/tdx-guest-ubuntu-23.10.qcow2",
@@ -568,9 +586,9 @@ def start(
             qemu_cmd = get_snp_direct_qemu_cmd(resource, config)
         else:
             qemu_cmd = get_snp_qemu_cmd(resource, config)
-    elif type == "intel":
+    elif type == "intel" or type == "intel-ubuntu":
         qemu_cmd = get_intel_qemu_cmd(resource, config)
-    elif type == "tdx":
+    elif type == "tdx" or type == "tdx-ubuntu":
         qemu_cmd = get_tdx_qemu_cmd(resource, config)
     else:
         raise ValueError(f"Unknown VM type: {type}")

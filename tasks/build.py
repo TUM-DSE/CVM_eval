@@ -72,6 +72,19 @@ def build_snp_guest_image(c: Any, force: bool = False) -> None:
 
 
 @task
+def build_tdx_guest_image(c: Any, force: bool = False) -> None:
+    """Build a guest image with Intel TDX support.
+
+    Output path is ./build/tdx-guest-image
+
+    The build result is a read-only. Copy the image to
+    ./build/image/tdx-guest-image.qcow2
+    """
+
+    build_guest_image(c, "tdx-guest-image", force=force)
+
+
+@task
 def build_normal_guest_image(c: Any, force: bool = False) -> None:
     """Build a norma guest image.
 

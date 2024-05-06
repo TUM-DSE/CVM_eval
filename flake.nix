@@ -37,6 +37,7 @@
           ovmf-amd-sev-snp =
             pkgs.callPackage ./nix/ovmf-amd-sev-snp.nix { inherit pkgs; };
 
+          # qcow image with Linux kernel
           normal-guest-image = make-disk-image {
             config = self.nixosConfigurations.normal-guest.config;
             inherit (pkgs) lib;
@@ -48,8 +49,21 @@
             touchEFIVars = true;
           };
 
+          # qcow image with Linux kernel with snp support
           snp-guest-image = make-disk-image {
             config = self.nixosConfigurations.snp-guest.config;
+            inherit (pkgs) lib;
+            inherit pkgs;
+            format = "qcow2";
+            partitionTableType = "efi";
+            installBootLoader = true;
+            diskSize = 32768;
+            touchEFIVars = true;
+          };
+
+          # qcow image with Linux kernel with tdx support
+          tdx-guest-image = make-disk-image {
+            config = self.nixosConfigurations.tdx-guest.config;
             inherit (pkgs) lib;
             inherit pkgs;
             format = "qcow2";
@@ -159,6 +173,17 @@
               ./nix/guest-config.nix
               kernelConfig
               ./nix/snp-guest-config.nix
+              ./nix/nixos-generators-qcow.nix
+            ];
+          };
+
+          # TDX guest
+          tdx-guest = nixpkgs-unstable.lib.nixosSystem {
+            system = "x86_64-linux";
+            modules = [
+              ./nix/guest-config.nix
+              kernelConfig
+              ./nix/tdx-guest-config.nix
               ./nix/nixos-generators-qcow.nix
             ];
           };
