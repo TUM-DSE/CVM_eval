@@ -141,6 +141,33 @@ start-snp-direct:
         -device virtconsole,chardev=char0,id=vc0,nr=0
 
 # ------------------------------
+# TDX machine
+#
+
+TDVF_FIRMWARE := "/usr/share/ovmf/OVMF.fd"
+TD_IMG := join(BUILD_DIR, "image/tdx-guest-ubuntu-23.10.qcow2")
+QUOTE_ARGS := "-device vhost-vsock-pci,guest-cid=3"
+
+start-tdx-vm:
+    qemu-system-x86_64 \
+        -cpu host \
+        -smp {{smp}} \
+        -m {{mem}} \
+        -machine q35,hpet=off,kernel_irqchip=split,memory-encryption=tdx,memory-backend=ram1 \
+        -enable-kvm \
+        -object tdx-guest,id=tdx \
+        -object memory-backend-ram,id=ram1,size={{mem}},private=on \
+        -bios {{TDVF_FIRMWARE}} \
+        -nographic \
+        -nodefaults \
+        -serial stdio \
+        -device virtio-net-pci,netdev=nic0_td \
+        -netdev user,id=nic0_td,hostfwd=tcp::{{SSH_PORT}}-:22 \
+        -drive file={{TD_IMG}},if=none,id=virtio-disk0 \
+        -device virtio-blk-pci,drive=virtio-disk0 \
+        {{QUOTE_ARGS}}
+
+# ------------------------------
 # Utility commands
 
 ssh command="":
