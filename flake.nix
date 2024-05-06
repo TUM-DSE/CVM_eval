@@ -105,6 +105,8 @@
                 python3.pkgs.ipython
 
                 just
+                git
+                tig
                 fzf
                 bpftrace
                 gdb
