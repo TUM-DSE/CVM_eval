@@ -265,11 +265,18 @@ configure-linux:
       {{ KERNEL_SHELL }} "scripts/config \
          --enable KPROBES \
          --enable KPROBES_ON_FTRACE \
+         --enable KPROBE_EVENTS \
+         --enable DYNAMIC_FTRACE \
+         --enable DYNAMIC_FTRACE_WITH_REGS \
+         --enable DYNAMIC_FTRACE_WITH_ARGS \
+         --enable DYNAMIC_EVENTS \
          --enable BPF \
          --enable BPF_SYSCALL \
          --enable BPF_EVENTS \
          --enable BPF_JIT \
          --enable TRACEPOINTS \
+         --enable FUNCTION_TRACER \
+         --enable DEBUG_INFO \
          --enable DEBUG_INFO_BTF \
          --enable IKCONFIG \
          --enable IKCONFIG_PROC \

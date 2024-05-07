@@ -15,6 +15,7 @@
 , hostname
 , cpio
 , pkg-config
+, pahole
 , runScript ? ''bash -c''
 }:
 buildFHSUserEnv {
@@ -31,6 +32,7 @@ buildFHSUserEnv {
     hostname
     cpio
     pkg-config
+    pahole # BTF
   ] ++ map lib.getDev [
     elfutils
     ncurses
