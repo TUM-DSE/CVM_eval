@@ -22,8 +22,12 @@ in
   nix.extraOptions =
     ''
       experimental-features = nix-command flakes
+      keep-outputs = true
+      keep-derivations = true
+      auto-optimise-store = false
     '';
   nix.package = pkgs.nixFlakes;
+  nix.gc.automatic = false;
 
   # virtio-console login setting
   # (somehow udev does not pick up hvc0?)
@@ -64,6 +68,7 @@ in
   # services.resolved.enable = false;
   # networking.useNetworkd = true;
 
+  networking.networkmanager.enable = true;
   networking.interfaces.eth0.ipv4.addresses = [{
     address = "10.0.2.15";
     prefixLength = 24;
@@ -73,13 +78,17 @@ in
     prefixLength = 24;
   }];
   networking.useDHCP = false;
+  networking.interfaces.eth0.useDHCP = false;
+  networking.interfaces.eth1.useDHCP = false;
   networking.defaultGateway = "10.0.2.2";
   networking.nameservers = [ "10.0.2.3" ];
   networking.firewall.enable = false;
 
   # don't wait for network to be online
   systemd.services.systemd-networkd-wait-online.enable = false;
+  systemd.services.NetworkManager-wait-online.enable = false;
   systemd.network.wait-online.enable = false;
+  systemd.network.wait-online.anyInterface = false;
 
   # no auto-updates
   systemd.services.update-prefetch.enable = false;
@@ -165,6 +174,9 @@ in
     outb
     test-dmcrypt
   ];
+
+  # additonal kernel parameters
+  # boot.kernelParams = [ ];
 
   boot.loader.grub.enable = false;
   boot.initrd.enable = false;
