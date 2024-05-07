@@ -13,6 +13,9 @@
   the kernel has enough swiotlb
     - The size is `min(6% of the total memory, 1GB)`
 - See: https://github.com/torvalds/linux/blob/v6.8/arch/x86/mm/mem_encrypt.c#L100-L118
+- Linux also supports dynamic allocation of swiotlb
+    - https://lwn.net/Articles/940973/
+    - https://patchwork.kernel.org/project/linux-mips/cover/cover.1690871004.git.petr.tesarik.ext@huawei.com/
 
 ### How it works
 - `dma_map*()` functions evantually call [`swiotlb_map()`](https://github.com/torvalds/linux/blob/v6.8/kernel/dma/swiotlb.c#L1472) if swiotlb is enabled.
@@ -49,8 +52,9 @@
 [    0.720886] software IO TLB: mapped [mem 0x0000000032600000-0x0000000072600000] (1024MB)
 [    0.768479] software IO TLB: Memory encryption is active and system is using DMA bounce buffers
 ```
-- Note: swiotlb is allocated by default even for the normal guest
-- If swiotlb size is too small, the kenerl prints `swiotlb buffer is full`
+- Note: swiotlb is allocated by default even for the normal guest regardless the use of swtiolb
+    - We should check debugfs and bpftrace (kprobe/tracepoint) to see if the swiotlb is actually used
+- If swiotlb size is too small, the kernel prints `swiotlb buffer is full`
 - bpftrace
 ```
 # bpftrace -e 't:swiotlb:swiotlb_bounced { @++; } i:s:1 { if(@){print(@); clear(@);} }'
