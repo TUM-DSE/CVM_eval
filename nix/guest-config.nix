@@ -140,6 +140,7 @@ in
     bpftrace
     tmux
     vim
+    git
     fio
     iperf
     cryptsetup
