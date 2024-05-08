@@ -211,6 +211,8 @@ def qemu_option_virtio_blk(
     aio: str = "native",  # either of threads, native (POSIX AIO), io_uring
     direct: bool = True,  # if True, QEMU uses O_DIRECT to open the file
     iothread: bool = True,  # if True, use QEMU iothread
+    iommu_option: bool = False,  # if True, enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
+    # (this is necessary to force bounce buffers in a normal VM for testing)
 ) -> List[str]:
     # QEMU options (https://www.qemu.org/docs/master/system/qemu-manpage.html)
     # -drive cache=
@@ -245,16 +247,21 @@ def qemu_option_virtio_blk(
     else:
         cache_direct = "off"
 
+    if iommu_option:
+        iommu = ",iommu_platform=on,disable-modern=off,disable-legacy=on"
+    else:
+        iommu = ""
+
     if iothread:
         option = f"""
             -blockdev node-name=q1,driver=raw,file.driver={driver},file.filename={file},file.aio={aio},cache.direct={cache_direct},cache.no-flush=off
-            -device virtio-blk-pci,drive=q1,iothread=iothread0
+            -device virtio-blk-pci,drive=q1,iothread=iothread0{iommu}
             -object iothread,id=iothread0
         """
     else:
         option = f"""
             -blockdev node-name=q1,driver=raw,file.driver={driver},file.filename={file},file.aio={aio},cache.direct={cache_direct},cache.no-flush=off
-            -device virtio-blk-pci,drive=q1
+            -device virtio-blk-pci,drive=q1{iommu}
         """
 
     return shlex.split(option)
@@ -268,6 +275,7 @@ def qemu_option_virtio_nic(tap=None, vhost=False, mq=False, config={}) -> List[s
     """
 
     resource: VMResource = config["resource"]
+    iommu_option = config.get("virtio_iommu", False)
     num_cpus = resource.cpu
     if vhost:
         vhost_option = "on"
@@ -278,16 +286,20 @@ def qemu_option_virtio_nic(tap=None, vhost=False, mq=False, config={}) -> List[s
             tap = "mtap0"
         else:
             tap = "tap0"
+    if iommu_option:
+        iommu = ",iommu_platform=on,disable-modern=off,disable-legacy=on"
+    else:
+        iommu = ""
 
     if mq:
         option = f"""
         -netdev tap,id=en0,ifname={tap},script=no,downscript=no,vhost={vhost_option},queues={num_cpus}
-        -device virtio-net-pci,netdev=en0,mq=on,vectors=18
+        -device virtio-net-pci,netdev=en0,mq=on,vectors=18{iommu}
         """
     else:
         option = f"""
         -netdev tap,id=en0,ifname={tap},script=no,downscript=no,vhost={vhost_option}
-        -device virtio-net-pci,netdev=en0,mq=off,vectors=18
+        -device virtio-net-pci,netdev=en0,mq=off,vectors=18{iommu}
         """
         # option = f"""
         #     -netdev bridge,id=en0,br={bridge}
@@ -464,6 +476,7 @@ def start(
     phoronix_bench_name: Optional[str] = None,
     # application bench options
     repeat: int = 1,
+    virtio_iommu: bool = False,  # enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
     # virtio-nic options
     virtio_nic: bool = False,
     virtio_nic_vhost: bool = False,
@@ -516,7 +529,11 @@ def start(
             print(f"{virtio_blk} is not a file nor a block device")
             return
         qemu_cmd += qemu_option_virtio_blk(
-            virtio_blk, virtio_blk_aio, virtio_blk_direct, virtio_blk_iothread
+            virtio_blk,
+            virtio_blk_aio,
+            virtio_blk_direct,
+            virtio_blk_iothread,
+            virtio_iommu,
         )
 
     name = f"{type}-{'direct' if direct else 'disk'}-{size}"
