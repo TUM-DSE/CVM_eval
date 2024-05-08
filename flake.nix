@@ -110,6 +110,7 @@
                 gdb
                 jq
                 bridge-utils
+                hwloc
                 numactl
 
                 fio
