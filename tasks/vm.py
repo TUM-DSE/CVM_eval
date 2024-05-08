@@ -421,7 +421,9 @@ def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
 def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
-    with spawn_qemu(qemu_cmd, numa_node=numa_node, config=kargs["config"]) as vm:
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
         if pin:
             vm.pin_vcpu()
         vm.wait_for_ssh()
@@ -432,6 +434,11 @@ def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
             name += f"-nodirect"
         if not kargs["config"]["virtio_blk_iothread"]:
             name += f"-noiothread"
+        if (
+            kargs["config"]["virtio_iommu"]
+            and "swiotlb" in kargs["config"]["extra_cmdline"]
+        ):
+            name += f"-swiotlb"
         fio_job = kargs["config"]["fio_job"]
         storage.run_fio(name, vm, fio_job)
 
