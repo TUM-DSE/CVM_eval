@@ -1,5 +1,27 @@
 # Miscellaneous Notes on AMD SEV-SNP
 
+## #VC exception handling in Linux
+- Based on Linux 6.8
+- #VC can happen in both user and kernel space
+- [user-space entry point](https://github.com/torvalds/linux/blob/v6.8/arch/x86/kernel/sev.c#L1976)
+- [kernel-space entry point](https://github.com/torvalds/linux/blob/v6.8/arch/x86/kernel/sev.c#L1924)
+
+### Detail
+- Main handler is [`vc_handle_exitcode()`](https://github.com/torvalds/linux/blob/v6.8/arch/x86/kernel/sev.c#L1751)
+- cpuid
+    - The kernel contains code for both SEV(-ES) and SNP
+        - SNP VM can have cpuid page
+    - SNP
+        - The main part is [`vc_hdnale_cpuid_snp()`](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/sev-shared.c#L933)
+        - The handler tries to get cpuid [from the cpuid page](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/sev-shared.c#L396)
+        - Then only call [VMGEXIT for fixup if needed](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/sev-shared.c#L437)
+- rdmsr / wrmsr
+    - [VMGEIXT `SVM_EXIT_MSR`](https://github.com/torvalds/linux/blob/v6.8/arch/x86/kernel/sev.c#L1196)
+- pio
+    - [VMGEXIT `SVM_EXIT_IOIO`](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/sev-shared.c#L825)
+- hypercall (`vmmcall`)
+    - [VMGEIXT `SVM_EXIT_VMMCALL`](https://github.com/torvalds/linux/blob/v6.8/arch/x86/kernel/sev.c#L1706)
+
 ## Enable AVX 512 in the guest
 
 QEMU 8.1.5 requires to use not `-cpu host` but `-cpu EPYC-v4` to boot SNP guests, but this CPU model misses several CPUIDs.
