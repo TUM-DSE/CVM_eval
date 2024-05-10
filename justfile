@@ -144,12 +144,15 @@ start-snp-direct:
 # TDX machine
 #
 
+TDX_QEMU := "qemu-system-x86_64"
+#TDX_QEMU := join(BUILD_DIR, "qemu-tdx/bin/qemu-system-x86_64")
 TDVF_FIRMWARE := "/usr/share/ovmf/OVMF.fd"
+#TDVF_FIRMWARE := join(BUILD_DIR, "ovmf-tdx-fd/FV/OVMF.fd")
 TD_IMG := join(BUILD_DIR, "image/tdx-guest-ubuntu-23.10.qcow2")
 QUOTE_ARGS := "-device vhost-vsock-pci,guest-cid=3"
 
 start-tdx-vm:
-    qemu-system-x86_64 \
+    {{TDX_QEMU}} \
         -cpu host \
         -smp {{smp}} \
         -m {{mem}} \
@@ -168,7 +171,7 @@ start-tdx-vm:
         {{QUOTE_ARGS}}
 
 start-tdx-direct:
-    qemu-system-x86_64 \
+    {{TDX_QEMU}} \
         -cpu host \
         -smp {{smp}} \
         -m {{mem}} \
@@ -191,6 +194,27 @@ start-tdx-direct:
         -mon chardev=char0,mode=readline \
         -device virtconsole,chardev=char0,id=vc0,nr=0 \
         {{QUOTE_ARGS}}
+
+start-intel-direct:
+    {{TDX_QEMU}} \
+        -cpu host \
+        -smp {{smp}} \
+        -m {{mem}} \
+        -enable-kvm \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0" \
+        -bios {{TDVF_FIRMWARE}} \
+        -nographic \
+        -nodefaults \
+        -device virtio-net-pci,netdev=nic0_td \
+        -netdev user,id=nic0_td,hostfwd=tcp::{{SSH_PORT}}-:22 \
+        -drive file={{GUEST_FS}},if=none,id=virtio-disk0 \
+        -device virtio-blk-pci,drive=virtio-disk0 \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device virtconsole,chardev=char0,id=vc0,nr=0
 
 # ------------------------------
 # Utility commands
