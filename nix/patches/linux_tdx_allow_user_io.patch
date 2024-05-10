@@ -1,0 +1,13 @@
+diff --git a/arch/x86/coco/tdx/tdx.c b/arch/x86/coco/tdx/tdx.c
+index cf1f13c82175..ebc9953ac950 100644
+--- a/arch/x86/coco/tdx/tdx.c
++++ b/arch/x86/coco/tdx/tdx.c
+@@ -641,6 +641,8 @@ static int virt_exception_user(struct pt_regs *regs, struct ve_info *ve)
+ 	switch (ve->exit_reason) {
+ 	case EXIT_REASON_CPUID:
+ 		return handle_cpuid(regs, ve);
++	case EXIT_REASON_IO_INSTRUCTION:
++		return handle_io(regs, ve);
+ 	default:
+ 		pr_warn("Unexpected #VE: %lld\n", ve->exit_reason);
+ 		return -EIO;

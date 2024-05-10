@@ -144,10 +144,10 @@ start-snp-direct:
 # TDX machine
 #
 
-TDX_QEMU := "qemu-system-x86_64"
-#TDX_QEMU := join(BUILD_DIR, "qemu-tdx/bin/qemu-system-x86_64")
-TDVF_FIRMWARE := "/usr/share/ovmf/OVMF.fd"
-#TDVF_FIRMWARE := join(BUILD_DIR, "ovmf-tdx-fd/FV/OVMF.fd")
+#TDX_QEMU := "qemu-system-x86_64"
+TDX_QEMU := join(BUILD_DIR, "qemu-tdx/bin/qemu-system-x86_64")
+#TDVF_FIRMWARE := "/usr/share/ovmf/OVMF.fd"
+TDVF_FIRMWARE := join(BUILD_DIR, "ovmf-tdx-fd/FV/OVMF.fd")
 TD_IMG := join(BUILD_DIR, "image/tdx-guest-ubuntu-23.10.qcow2")
 QUOTE_ARGS := "-device vhost-vsock-pci,guest-cid=3"
 
@@ -269,6 +269,7 @@ clone-linux:
     fi
 
     patch -d {{ LINUX_DIR }} -p1 < {{ PROJECT_ROOT }}/nix/patches/linux_event_record.patch
+    patch -d {{ LINUX_DIR }} -p1 < {{ PROJECT_ROOT }}/nix/patches/linux_tdx_allow_user_io.patch
 
 # kernel configuration for SEV-SNP guest
 configure-linux-old:
