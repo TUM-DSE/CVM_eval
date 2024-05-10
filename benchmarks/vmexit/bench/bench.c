@@ -3,6 +3,7 @@
 #include <linux/module.h>
 #include <linux/time.h>
 #include <linux/types.h>
+#include <asm/kvm_para.h>
 
 #include "tsc.h"
 
@@ -19,6 +20,11 @@
 #else
 #define WARMUP_COUNT 0
 #define BENCH_COUNT 1
+#endif
+
+#if 1 // Define this for TDX evaluation
+#define TDX
+#include <asm/tdx.h>
 #endif
 
 MODULE_LICENSE("GPL");
@@ -135,7 +141,16 @@ static void bench_msr(void)
 static inline uint64_t _hypercall(unsigned int nr)
 {
 	uint64_t ret;
+#ifdef TDX
+	// While the SNP kernel calls VMGEXIT for hypercall in #VC handler,
+	// the TDX kernel does not handler it in #VE handler, returning an error.
+	ret = tdx_kvm_hypercall(nr, 0, 0, 0, 0);
+#else
+// intel: vmcall
+// amd: vmmcall
+#define HYPERCALL ALTERNATIVE("vmcall", "vmmcall", X86_FEATURE_VMMCALL)
 	asm volatile(HYPERCALL : "=a"(ret) : "a"(nr) : "memory");
+#endif
 	return ret;
 }
 
