@@ -37,6 +37,13 @@
           ovmf-amd-sev-snp =
             pkgs.callPackage ./nix/ovmf-amd-sev-snp.nix { inherit pkgs; };
 
+          # Note: this does not work yet!
+          qemu-tdx =
+            pkgs.callPackage ./nix/qemu-tdx.nix { inherit pkgs; };
+
+          ovmf-tdx =
+            pkgs.callPackage ./nix/ovmf-tdx.nix { inherit pkgs; };
+
           # qcow image with Linux kernel
           normal-guest-image = make-disk-image {
             config = self.nixosConfigurations.normal-guest.config;
