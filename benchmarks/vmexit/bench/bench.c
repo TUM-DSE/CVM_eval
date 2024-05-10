@@ -130,7 +130,7 @@ static void bench_msr(void)
 {
 	pr_info("Benchmarking msr\n");
 	measure_msr(0x1b); // IA32_APIC_BASE
-	measure_msr(0x198); // IA32_PERF_STATUS
+	//measure_msr(0x198); // IA32_PERF_STATUS
 	measure_msr(0xC0000100); // IA32_FS_BASE
 }
 
