@@ -151,7 +151,7 @@
           pkgs = nixpkgs-unstable.legacyPackages.x86_64-linux;
           selfpkgs = self.packages.x86_64-linux;
           kernelConfig = { config, lib, pkgs, ... }: {
-            boot.kernelPackages = pkgs.linuxPackages_6_6;
+            boot.kernelPackages = pkgs.linuxPackages_6_8;
           };
         in
         {
