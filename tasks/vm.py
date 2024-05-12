@@ -79,6 +79,60 @@ def get_vm_config(name: str) -> VMConfig:
             initrd=None,
             cmdline="root=/dev/vda console=hvc0",
         )
+    if name == "intel":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/normal-guest-image.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
+    if name == "intel-direct":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/guest-fs.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=LINUX_DIR / "arch/x86/boot/bzImage",
+            initrd=None,
+            cmdline="root=/dev/vda console=hvc0",
+        )
+    if name == "intel-ubuntu":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/tdx-guest-ubuntu-23.10.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
+    if name == "tdx":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/tdx-guest-image.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
+    if name == "tdx-direct":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/guest-fs.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=LINUX_DIR / "arch/x86/boot/bzImage",
+            initrd=None,
+            cmdline="root=/dev/vda console=hvc0",
+        )
+    if name == "tdx-ubuntu":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/tdx-guest-ubuntu-23.10.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
     raise ValueError(f"Unknown VM image: {name}")
 
 
@@ -201,6 +255,138 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -chardev stdio,mux=on,id=char0,signal=off
     -mon chardev=char0,mode=readline
     -device virtconsole,chardev=char0,id=vc0,nr=0
+    """
+
+    return shlex.split(qemu_cmd)
+
+
+def get_intel_qemu_cmd(type: str, resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config(type)
+    ssh_port = config["ssh_port"]
+
+    qemu_cmd = f"""
+    {vmconfig.qemu}
+        -enable-kvm
+        -cpu host
+        -smp {resource.cpu}
+        -m {resource.memory}G
+
+        -bios {vmconfig.ovmf}
+        -nographic
+        -nodefaults
+        -serial stdio
+
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+        -device virtio-blk-pci,drive=q2,bootindex=0
+        -device virtio-net-pci,netdev=net0
+        -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
+        -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
+    """
+
+    return shlex.split(qemu_cmd)
+
+
+def get_intel_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("intel-direct")
+    ssh_port = config["ssh_port"]
+    extra_cmdline = config.get("extra_cmdline", "")
+
+    qemu_cmd = f"""
+    {vmconfig.qemu}
+        -enable-kvm
+        -cpu host
+        -smp {resource.cpu}
+        -m {resource.memory}G
+
+        -kernel {vmconfig.kernel}
+        -append "{vmconfig.cmdline} {extra_cmdline}"
+
+        -bios {vmconfig.ovmf}
+        -nographic
+        -nodefaults
+
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+        -device virtio-blk-pci,drive=q2
+        -device virtio-net-pci,netdev=net0
+        -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
+        -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
+        -serial null
+        -device virtio-serial
+        -chardev stdio,mux=on,id=char0,signal=off
+        -mon chardev=char0,mode=readline
+        -device virtconsole,chardev=char0,id=vc0,nr=0
+    """
+
+    return shlex.split(qemu_cmd)
+
+
+def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config(type)
+    ssh_port = config["ssh_port"]
+
+    qemu_cmd = f"""
+    {vmconfig.qemu}
+        -enable-kvm
+        -cpu host
+        -smp {resource.cpu}
+        -m {resource.memory}G
+        -machine q35,hpet=off,kernel_irqchip=split,memory-encryption=tdx,memory-backend=ram1
+
+        -object tdx-guest,id=tdx
+        -object memory-backend-ram,id=ram1,size={resource.memory}G,private=on
+        -bios {vmconfig.ovmf}
+        -nographic
+        -nodefaults
+        -serial stdio
+
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+        -device virtio-blk-pci,drive=q2,bootindex=0
+        -device virtio-net-pci,netdev=net0
+        -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
+        -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
+
+        -device vhost-vsock-pci,guest-cid=3
+    """
+
+    return shlex.split(qemu_cmd)
+
+
+def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("tdx-direct")
+    ssh_port = config["ssh_port"]
+    extra_cmdline = config.get("extra_cmdline", "")
+
+    qemu_cmd = f"""
+    {vmconfig.qemu}
+        -enable-kvm
+        -cpu host
+        -smp {resource.cpu}
+        -m {resource.memory}G
+        -machine q35,hpet=off,kernel_irqchip=split,memory-encryption=tdx,memory-backend=ram1
+
+        -object tdx-guest,id=tdx
+        -object memory-backend-ram,id=ram1,size={resource.memory}G,private=on
+
+        -kernel {vmconfig.kernel}
+        -append "{vmconfig.cmdline} {extra_cmdline}"
+
+        -bios {vmconfig.ovmf}
+        -nographic
+        -nodefaults
+
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+        -device virtio-blk-pci,drive=q2
+        -device virtio-net-pci,netdev=net0
+        -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
+        -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
+
+        -serial null
+        -device virtio-serial
+        -chardev stdio,mux=on,id=char0,signal=off
+        -mon chardev=char0,mode=readline
+        -device virtconsole,chardev=char0,id=vc0,nr=0
+
+        -device vhost-vsock-pci,guest-cid=3
     """
 
     return shlex.split(qemu_cmd)
@@ -513,6 +699,16 @@ def start(
             qemu_cmd = get_snp_direct_qemu_cmd(resource, config)
         else:
             qemu_cmd = get_snp_qemu_cmd(resource, config)
+    elif type == "intel" or type == "intel-ubuntu":
+        if direct:
+            qemu_cmd = get_intel_direct_qemu_cmd(resource, config)
+        else:
+            qemu_cmd = get_intel_qemu_cmd(type, resource, config)
+    elif type == "tdx" or type == "tdx-ubuntu":
+        if direct:
+            qemu_cmd = get_tdx_direct_qemu_cmd(resource, config)
+        else:
+            qemu_cmd = get_tdx_qemu_cmd(type, resource, config)
     else:
         raise ValueError(f"Unknown VM type: {type}")
 
