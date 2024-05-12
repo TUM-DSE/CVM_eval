@@ -75,3 +75,18 @@ CRYPTO_DEV_SP_PSP y
 KVM_AMD_SEV y
 MEMORY_FAILURE y
 ```
+
+-----------
+
+## Intel TDX
+
+### QEMU
+```
+git clone https://github.com/intel-staging/qemu-tdx/
+cd qemu-tdx
+git checkout -b tdx-qemu-next origin/tdx-qemu-next
+mkdir build
+cd build
+../configure --target-list=x86_64-softmmu
+make -j$(nproc)
+```

@@ -79,6 +79,60 @@ def get_vm_config(name: str) -> VMConfig:
             initrd=None,
             cmdline="root=/dev/vda console=hvc0",
         )
+    if name == "intel":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/normal-guest-image.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
+    if name == "intel-direct":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/guest-fs.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=LINUX_DIR / "arch/x86/boot/bzImage",
+            initrd=None,
+            cmdline="root=/dev/vda console=hvc0",
+        )
+    if name == "intel-ubuntu":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/tdx-guest-ubuntu-23.10.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
+    if name == "tdx":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/tdx-guest-image.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
+    if name == "tdx-direct":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/guest-fs.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=LINUX_DIR / "arch/x86/boot/bzImage",
+            initrd=None,
+            cmdline="root=/dev/vda console=hvc0",
+        )
+    if name == "tdx-ubuntu":
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/tdx-guest-ubuntu-23.10.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
     raise ValueError(f"Unknown VM image: {name}")
 
 
@@ -206,11 +260,145 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
+def get_intel_qemu_cmd(type: str, resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config(type)
+    ssh_port = config["ssh_port"]
+
+    qemu_cmd = f"""
+    {vmconfig.qemu}
+        -enable-kvm
+        -cpu host
+        -smp {resource.cpu}
+        -m {resource.memory}G
+
+        -bios {vmconfig.ovmf}
+        -nographic
+        -nodefaults
+        -serial stdio
+
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+        -device virtio-blk-pci,drive=q2,bootindex=0
+        -device virtio-net-pci,netdev=net0
+        -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
+        -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
+    """
+
+    return shlex.split(qemu_cmd)
+
+
+def get_intel_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("intel-direct")
+    ssh_port = config["ssh_port"]
+    extra_cmdline = config.get("extra_cmdline", "")
+
+    qemu_cmd = f"""
+    {vmconfig.qemu}
+        -enable-kvm
+        -cpu host
+        -smp {resource.cpu}
+        -m {resource.memory}G
+
+        -kernel {vmconfig.kernel}
+        -append "{vmconfig.cmdline} {extra_cmdline}"
+
+        -bios {vmconfig.ovmf}
+        -nographic
+        -nodefaults
+
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+        -device virtio-blk-pci,drive=q2
+        -device virtio-net-pci,netdev=net0
+        -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
+        -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
+        -serial null
+        -device virtio-serial
+        -chardev stdio,mux=on,id=char0,signal=off
+        -mon chardev=char0,mode=readline
+        -device virtconsole,chardev=char0,id=vc0,nr=0
+    """
+
+    return shlex.split(qemu_cmd)
+
+
+def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config(type)
+    ssh_port = config["ssh_port"]
+
+    qemu_cmd = f"""
+    {vmconfig.qemu}
+        -enable-kvm
+        -cpu host
+        -smp {resource.cpu}
+        -m {resource.memory}G
+        -machine q35,hpet=off,kernel_irqchip=split,memory-encryption=tdx,memory-backend=ram1
+
+        -object tdx-guest,id=tdx
+        -object memory-backend-ram,id=ram1,size={resource.memory}G,private=on
+        -bios {vmconfig.ovmf}
+        -nographic
+        -nodefaults
+        -serial stdio
+
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+        -device virtio-blk-pci,drive=q2,bootindex=0
+        -device virtio-net-pci,netdev=net0
+        -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
+        -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
+
+        -device vhost-vsock-pci,guest-cid=3
+    """
+
+    return shlex.split(qemu_cmd)
+
+
+def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("tdx-direct")
+    ssh_port = config["ssh_port"]
+    extra_cmdline = config.get("extra_cmdline", "")
+
+    qemu_cmd = f"""
+    {vmconfig.qemu}
+        -enable-kvm
+        -cpu host
+        -smp {resource.cpu}
+        -m {resource.memory}G
+        -machine q35,hpet=off,kernel_irqchip=split,memory-encryption=tdx,memory-backend=ram1
+
+        -object tdx-guest,id=tdx
+        -object memory-backend-ram,id=ram1,size={resource.memory}G,private=on
+
+        -kernel {vmconfig.kernel}
+        -append "{vmconfig.cmdline} {extra_cmdline}"
+
+        -bios {vmconfig.ovmf}
+        -nographic
+        -nodefaults
+
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+        -device virtio-blk-pci,drive=q2
+        -device virtio-net-pci,netdev=net0
+        -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
+        -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
+
+        -serial null
+        -device virtio-serial
+        -chardev stdio,mux=on,id=char0,signal=off
+        -mon chardev=char0,mode=readline
+        -device virtconsole,chardev=char0,id=vc0,nr=0
+
+        -device vhost-vsock-pci,guest-cid=3
+    """
+
+    return shlex.split(qemu_cmd)
+
+
 def qemu_option_virtio_blk(
     file: Path,  # file or block device to be used as a backend of virtio-blk
     aio: str = "native",  # either of threads, native (POSIX AIO), io_uring
     direct: bool = True,  # if True, QEMU uses O_DIRECT to open the file
     iothread: bool = True,  # if True, use QEMU iothread
+    iommu_option: bool = False,  # if True, enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
+    # (this is necessary to force bounce buffers in a normal VM for testing)
 ) -> List[str]:
     # QEMU options (https://www.qemu.org/docs/master/system/qemu-manpage.html)
     # -drive cache=
@@ -245,16 +433,21 @@ def qemu_option_virtio_blk(
     else:
         cache_direct = "off"
 
+    if iommu_option:
+        iommu = ",iommu_platform=on,disable-modern=off,disable-legacy=on"
+    else:
+        iommu = ""
+
     if iothread:
         option = f"""
             -blockdev node-name=q1,driver=raw,file.driver={driver},file.filename={file},file.aio={aio},cache.direct={cache_direct},cache.no-flush=off
-            -device virtio-blk-pci,drive=q1,iothread=iothread0
+            -device virtio-blk-pci,drive=q1,iothread=iothread0{iommu}
             -object iothread,id=iothread0
         """
     else:
         option = f"""
             -blockdev node-name=q1,driver=raw,file.driver={driver},file.filename={file},file.aio={aio},cache.direct={cache_direct},cache.no-flush=off
-            -device virtio-blk-pci,drive=q1
+            -device virtio-blk-pci,drive=q1{iommu}
         """
 
     return shlex.split(option)
@@ -268,6 +461,7 @@ def qemu_option_virtio_nic(tap=None, vhost=False, mq=False, config={}) -> List[s
     """
 
     resource: VMResource = config["resource"]
+    iommu_option = config.get("virtio_iommu", False)
     num_cpus = resource.cpu
     if vhost:
         vhost_option = "on"
@@ -278,16 +472,20 @@ def qemu_option_virtio_nic(tap=None, vhost=False, mq=False, config={}) -> List[s
             tap = "mtap0"
         else:
             tap = "tap0"
+    if iommu_option:
+        iommu = ",iommu_platform=on,disable-modern=off,disable-legacy=on"
+    else:
+        iommu = ""
 
     if mq:
         option = f"""
         -netdev tap,id=en0,ifname={tap},script=no,downscript=no,vhost={vhost_option},queues={num_cpus}
-        -device virtio-net-pci,netdev=en0,mq=on,vectors=18
+        -device virtio-net-pci,netdev=en0,mq=on,vectors=18{iommu}
         """
     else:
         option = f"""
         -netdev tap,id=en0,ifname={tap},script=no,downscript=no,vhost={vhost_option}
-        -device virtio-net-pci,netdev=en0,mq=off,vectors=18
+        -device virtio-net-pci,netdev=en0,mq=off,vectors=18{iommu}
         """
         # option = f"""
         #     -netdev bridge,id=en0,br={bridge}
@@ -409,7 +607,9 @@ def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
 def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
-    with spawn_qemu(qemu_cmd, numa_node=numa_node, config=kargs["config"]) as vm:
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
         if pin:
             vm.pin_vcpu()
         vm.wait_for_ssh()
@@ -420,6 +620,11 @@ def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
             name += f"-nodirect"
         if not kargs["config"]["virtio_blk_iothread"]:
             name += f"-noiothread"
+        if (
+            kargs["config"]["virtio_iommu"]
+            and "swiotlb" in kargs["config"]["extra_cmdline"]
+        ):
+            name += f"-swiotlb"
         fio_job = kargs["config"]["fio_job"]
         storage.run_fio(name, vm, fio_job)
 
@@ -464,6 +669,7 @@ def start(
     phoronix_bench_name: Optional[str] = None,
     # application bench options
     repeat: int = 1,
+    virtio_iommu: bool = False,  # enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
     # virtio-nic options
     virtio_nic: bool = False,
     virtio_nic_vhost: bool = False,
@@ -493,6 +699,16 @@ def start(
             qemu_cmd = get_snp_direct_qemu_cmd(resource, config)
         else:
             qemu_cmd = get_snp_qemu_cmd(resource, config)
+    elif type == "intel" or type == "intel-ubuntu":
+        if direct:
+            qemu_cmd = get_intel_direct_qemu_cmd(resource, config)
+        else:
+            qemu_cmd = get_intel_qemu_cmd(type, resource, config)
+    elif type == "tdx" or type == "tdx-ubuntu":
+        if direct:
+            qemu_cmd = get_tdx_direct_qemu_cmd(resource, config)
+        else:
+            qemu_cmd = get_tdx_qemu_cmd(type, resource, config)
     else:
         raise ValueError(f"Unknown VM type: {type}")
 
@@ -516,7 +732,11 @@ def start(
             print(f"{virtio_blk} is not a file nor a block device")
             return
         qemu_cmd += qemu_option_virtio_blk(
-            virtio_blk, virtio_blk_aio, virtio_blk_direct, virtio_blk_iothread
+            virtio_blk,
+            virtio_blk_aio,
+            virtio_blk_direct,
+            virtio_blk_iothread,
+            virtio_iommu,
         )
 
     name = f"{type}-{'direct' if direct else 'disk'}-{size}"

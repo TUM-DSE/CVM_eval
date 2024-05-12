@@ -37,3 +37,28 @@ Measurement:
 [...]
 ```
 
+## Intel TDX
+
+### Get TDReport in the guest
+#### pytdxmeasure 
+- https://github.com/intel/tdx-tools/tree/tdx-1.5/attestation/pytdxmeasure
+- On the guest
+```
+git clone https://github.com/intel/tdx-tools
+cd tdx-tools
+cd checkout -b tdx-1.5 origin/tdx-1.5
+cd attestation/pytdxmeasure
+./tdx_tdreport
+```
+
+#### libtdx-attest-dev
+- On the Ubuntu guest installed by https://github.com/canonical/tdx/
+```
+git clone https://github.com/canonical/tdx.git
+cd tdx/attestation
+./setup-attestation-guest.sh
+cd /usr/share/doc/libtdx-attest-dev/examples/
+./test_tdx_attest
+```
+- Where is a repository of libtdx-attest-dev?
+     - It seems https://github.com/intel/SGXDataCenterAttestationPrimitives/tree/main/QuoteGeneration/quote_wrapper/tdx_attest

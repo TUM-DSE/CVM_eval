@@ -11,7 +11,18 @@
     - https://github.com/torvalds/linux/blob/v6.8/include/linux/swiotlb.h#L36
 - However, SEV/TDX-aware guests automatically adjust the swiotlb size so that
   the kernel has enough swiotlb
+    - The size is `min(6% of the total memory, 1GB)`
 - See: https://github.com/torvalds/linux/blob/v6.8/arch/x86/mm/mem_encrypt.c#L100-L118
+- Linux also supports dynamic allocation of swiotlb
+    - https://lwn.net/Articles/940973/
+    - https://patchwork.kernel.org/project/linux-mips/cover/cover.1690871004.git.petr.tesarik.ext@huawei.com/
+
+### How it works
+- `dma_map*()` functions evantually call [`swiotlb_map()`](https://github.com/torvalds/linux/blob/v6.8/kernel/dma/swiotlb.c#L1472) if swiotlb is enabled.
+- Note that `dma_alloc*()` functions do not use swiotlb even if `swiotlb=force`
+    - `dma_alloc*()` converts allocated memory into shared memory
+        - https://github.com/torvalds/linux/blob/v6.8/kernel/dma/direct.c#L369
+    - If [Restricted DMA](https://lwn.net/Articles/841916/) is enabled, then DMA memory is allocated from swiotlb buffer.
 
 ### Check status
 - debugfs
@@ -41,8 +52,9 @@
 [    0.720886] software IO TLB: mapped [mem 0x0000000032600000-0x0000000072600000] (1024MB)
 [    0.768479] software IO TLB: Memory encryption is active and system is using DMA bounce buffers
 ```
-- Note: swiotlb is allocated by default even for the normal guest
-- If swiotlb size is too small, the kenerl prints `swiotlb buffer is full`
+- Note: swiotlb is allocated by default even for the normal guest regardless the use of swtiolb
+    - We should check debugfs and bpftrace (kprobe/tracepoint) to see if the swiotlb is actually used
+- If swiotlb size is too small, the kernel prints `swiotlb buffer is full`
 - bpftrace
 ```
 # bpftrace -e 't:swiotlb:swiotlb_bounced { @++; } i:s:1 { if(@){print(@); clear(@);} }'
@@ -51,6 +63,22 @@ Attaching 2 probes...
 @: 55
 @: 21
 [...]
+```
+
+### Note on bounce buffer with virtio devices
+- On a normal VM, virtio devices *do not use bounce buffers even with `swiotlb=force`*
+- This is because [`vring_use_dma_api`](https://github.com/torvalds/linux/blob/v6.8/drivers/virtio/virtio_ring.c#L279) is false as the virtio device does not have the `VIRTIO_F_ACCESS_PLATFORM` (also known as `VIRTIO_F_IOMMU_PLATFORM`) feature bit
+    - This is for letting the guest perform direct memory access without any IOMMU involvement
+- QEMU enabes `VIRTIO_F_ACCESS_PLATFORM` feature bit when the guest is a CVM
+    - See https://github.com/qemu/qemu/commit/9f88a7a3df11a5aaa6212ea535d40d5f92561683
+- To force `VIRTIO_F_ACCES_PLATFORM` feature, add `iommu_platform=on,disable-modern=off,disable-legacy=on` to the virtio option
+    - Example: `-device virtio-net-pci,netdev=en0,iommu_platform=on,disable-modern=off,disable-legacy=on`
+- We can check the virtio features as following
+```
+# cat /sys/devices/pci0000\:00/0000\:00\:03.0/virtio1/features
+0010010000000001111101010000110010000000100000000000000000000000
+                                 ^
+                                 VIRTIO_F_ACCESS_PLATFORM(33)
 ```
 
 ## virtio-nic
