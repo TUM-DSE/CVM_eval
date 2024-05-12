@@ -34,6 +34,7 @@ $ dmesg
 
 [./hello](./hello) is an example kernel module.
 
+- How to build with Nix (NOTE: we can build the kernel module on the host)
 ```
 cd hello
 nix-shell '<nixpkgs>' -A linuxPackages_6_6.kernel.dev
@@ -41,3 +42,7 @@ make -C $(nix-build -E '(import <nixpkgs> {}).linuxPackages_6_6.kernel.dev' --no
 insmod ./hello.ko
 ```
 
+- Build a kernel module for the kernel definied in the flake
+```
+make -C $(nix build --no-link --print-out-paths .#nixosConfigurations.tdx-guest.config.boot.kernelPackages.kernel.dev)/lib/modules/*/build M=$(pwd) modules
+```
