@@ -16,5 +16,9 @@
       name = "tdx-handle-vmcall-ve";
       patch = ./patches/linux_tdx_handle_vmcall_ve.patch;
     }
+    {
+      name = "tdx-export-hypercall";
+      patch = ./patches/linux_tdx_export_hypercall.patch;
+    }
   ];
 }

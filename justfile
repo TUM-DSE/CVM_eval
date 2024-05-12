@@ -270,6 +270,7 @@ clone-linux:
 
     patch -d {{ LINUX_DIR }} -p1 < {{ PROJECT_ROOT }}/nix/patches/linux_event_record.patch
     patch -d {{ LINUX_DIR }} -p1 < {{ PROJECT_ROOT }}/nix/patches/linux_tdx_allow_user_io.patch
+    patch -d {{ LINUX_DIR }} -p1 < {{ PROJECT_ROOT }}/nix/patches/linux_tdx_export_hypercall.patch
 
 # kernel configuration for SEV-SNP guest
 configure-linux-old:
