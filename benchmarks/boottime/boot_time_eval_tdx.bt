@@ -1,0 +1,36 @@
+#!/usr/bin/env bpftrace
+
+#define BENCHMARK_PORT 0xf4
+
+BEGIN {
+    @ = 0;
+    @EVENT[0]   = "OVMF: PEI main start";
+    @EVENT[1]   = "OVMF: PEI main end";
+    @EVENT[100] = "OVMF: DXE main end";
+    @EVENT[101] = "OVMF: DXE main start";
+    @EVENT[102] = "OVMF: EXITBOOTSERVICE";
+    @EVENT[230] = "Linux: kernel_start";
+    @EVENT[231] = "Linux: init_start";
+    @EVENT[240] = "Linux: systemd init end";
+}
+
+// QEMU entry point
+u:../../build/qemu-tdx/bin/qemu-system-x86_64:main {
+    printf("%llu: QEMU: main\n", nsecs);
+}
+
+u:../../build/qemu-tdx/bin/qemu-system-x86_64:kvm_cpu_exec / @ == 0/ {
+    @ = 1;
+    printf("%llu: QEMU: kvm_cpu_exec\n", nsecs);
+}
+
+tracepoint:kvm:kvm_pio {
+    if (args->port == BENCHMARK_PORT) {
+        printf("%llu: %d %s\n", nsecs, args->val, @EVENT[args->val]);
+    }
+}
+
+END {
+    clear(@);
+    clear(@EVENT);
+}

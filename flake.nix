@@ -37,6 +37,14 @@
           ovmf-amd-sev-snp =
             pkgs.callPackage ./nix/ovmf-amd-sev-snp.nix { inherit pkgs; };
 
+          # Note: this does not work yet!
+          qemu-tdx =
+            pkgs.callPackage ./nix/qemu-tdx.nix { inherit pkgs; };
+
+          ovmf-tdx =
+            pkgs.callPackage ./nix/ovmf-tdx.nix { inherit pkgs; };
+
+          # qcow image with Linux kernel
           normal-guest-image = make-disk-image {
             config = self.nixosConfigurations.normal-guest.config;
             inherit (pkgs) lib;
@@ -48,8 +56,21 @@
             touchEFIVars = true;
           };
 
+          # qcow image with Linux kernel with snp support
           snp-guest-image = make-disk-image {
             config = self.nixosConfigurations.snp-guest.config;
+            inherit (pkgs) lib;
+            inherit pkgs;
+            format = "qcow2";
+            partitionTableType = "efi";
+            installBootLoader = true;
+            diskSize = 32768;
+            touchEFIVars = true;
+          };
+
+          # qcow image with Linux kernel with tdx support
+          tdx-guest-image = make-disk-image {
+            config = self.nixosConfigurations.tdx-guest.config;
             inherit (pkgs) lib;
             inherit pkgs;
             format = "qcow2";
@@ -105,6 +126,8 @@
                 python3.pkgs.ipython
 
                 just
+                git
+                tig
                 fzf
                 bpftrace
                 gdb
@@ -129,7 +152,7 @@
           pkgs = nixpkgs-unstable.legacyPackages.x86_64-linux;
           selfpkgs = self.packages.x86_64-linux;
           kernelConfig = { config, lib, pkgs, ... }: {
-            boot.kernelPackages = pkgs.linuxPackages_6_6;
+            boot.kernelPackages = pkgs.linuxPackages_6_8;
           };
         in
         {
@@ -158,6 +181,17 @@
               ./nix/guest-config.nix
               kernelConfig
               ./nix/snp-guest-config.nix
+              ./nix/nixos-generators-qcow.nix
+            ];
+          };
+
+          # TDX guest
+          tdx-guest = nixpkgs-unstable.lib.nixosSystem {
+            system = "x86_64-linux";
+            modules = [
+              ./nix/guest-config.nix
+              kernelConfig
+              ./nix/tdx-guest-config.nix
               ./nix/nixos-generators-qcow.nix
             ];
           };

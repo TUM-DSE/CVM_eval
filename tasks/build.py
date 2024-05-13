@@ -24,12 +24,21 @@ def nix_build(what: str, build_dir: Path = BUILD_DIR) -> Any:
 
 
 @task
-def build_omvf_snp(c: Any) -> None:
+def build_ovmf_snp(c: Any) -> None:
     """Build OVMF with AMD SEV-SNP support.
 
     Output path is ./build/ovmf-amd-sev-snp-fd
     """
     nix_build(".#ovmf-amd-sev-snp")
+
+
+@task
+def build_ovmf_tdx(c: Any) -> None:
+    """Build OVMF with Intel TDX support.
+
+    Output path is ./build/ovmf-tdx-fd
+    """
+    nix_build(".#ovmf-tdx")
 
 
 @task
@@ -39,6 +48,15 @@ def build_qemu_snp(c: Any) -> None:
     Output path is ./build/qemu-amd-sev-snp
     """
     nix_build(".#qemu-amd-sev-snp")
+
+
+@task
+def build_qemu_tdx(c: Any) -> None:
+    """Build QEMU with Intel TDX support.
+
+    Output path is ./build/qemu-tdx
+    """
+    nix_build(".#qemu-tdx")
 
 
 def build_guest_image(
@@ -69,6 +87,19 @@ def build_snp_guest_image(c: Any, force: bool = False) -> None:
     """
 
     build_guest_image(c, "snp-guest-image", force=force)
+
+
+@task
+def build_tdx_guest_image(c: Any, force: bool = False) -> None:
+    """Build a guest image with Intel TDX support.
+
+    Output path is ./build/tdx-guest-image
+
+    The build result is a read-only. Copy the image to
+    ./build/image/tdx-guest-image.qcow2
+    """
+
+    build_guest_image(c, "tdx-guest-image", force=force)
 
 
 @task

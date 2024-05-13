@@ -1,2 +1,4 @@
 - `./check_linux_cpu_vunls.sh`
     - Check if a CPU has microarchitectural vulnerabilities on Linux
+- `./get_topo_fig.sh`
+    - Get a machine's topology figure

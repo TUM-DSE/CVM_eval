@@ -1,0 +1,56 @@
+diff --git a/arch/x86/coco/tdx/tdx.c b/arch/x86/coco/tdx/tdx.c
+index cf1f13c82175..8340cc01bacb 100644
+--- a/arch/x86/coco/tdx/tdx.c
++++ b/arch/x86/coco/tdx/tdx.c
+@@ -234,6 +234,7 @@ static int ve_instr_len(struct ve_info *ve)
+ 	case EXIT_REASON_MSR_WRITE:
+ 	case EXIT_REASON_CPUID:
+ 	case EXIT_REASON_IO_INSTRUCTION:
++	case EXIT_REASON_VMCALL:
+ 		/* It is safe to use ve->instr_len for #VE due instructions */
+ 		return ve->instr_len;
+ 	case EXIT_REASON_EPT_VIOLATION:
+@@ -578,6 +579,34 @@ static int handle_io(struct pt_regs *regs, struct ve_info *ve)
+ 	return ve_instr_len(ve);
+ }
+ 
++/*
++ * Perform vmcall via tdcall
++ */
++static int handle_vmcall(struct pt_regs *regs, struct ve_info *ve)
++{
++	// If r10 is non-zero (!= TDX_HYPERCALL_STANDARD), this means this TDG.VP.VMCALL is vendor-specific
++	// KVM uses this to support KVM hypercalls in TDX
++	// https://github.com/intel/tdx/blob/66a10e258636fa8ec9f5ce687607bf2196a92341/arch/x86/kvm/vmx/tdx.c#L1009
++
++	if (regs->ax == 0) {
++		// unsupported; KVM does not use zero for hypercall anyway
++		return -EIO;
++	}
++
++	struct tdx_module_args args = {
++		.r10 = regs->ax,
++		.r11 = regs->bx,
++		.r12 = regs->cx,
++		.r13 = regs->dx,
++		.r14 = regs->si,
++	};
++
++	u64 ret = __tdx_hypercall(&args);
++	regs->ax = ret;
++
++	return ve_instr_len(ve);
++}
++
+ /*
+  * Early #VE exception handler. Only handles a subset of port I/O.
+  * Intended only for earlyprintk. If failed, return false.
+@@ -675,6 +704,8 @@ static int virt_exception_kernel(struct pt_regs *regs, struct ve_info *ve)
+ 		return handle_mmio(regs, ve);
+ 	case EXIT_REASON_IO_INSTRUCTION:
+ 		return handle_io(regs, ve);
++	case EXIT_REASON_VMCALL:
++		return handle_vmcall(regs, ve);
+ 	default:
+ 		pr_warn("Unexpected #VE: %lld\n", ve->exit_reason);
+ 		return -EIO;

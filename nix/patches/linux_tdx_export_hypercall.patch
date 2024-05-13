@@ -1,0 +1,9 @@
+diff --git a/arch/x86/coco/tdx/tdx-shared.c b/arch/x86/coco/tdx/tdx-shared.c
+index 78e413269791..b92a3b82b17d 100644
+--- a/arch/x86/coco/tdx/tdx-shared.c
++++ b/arch/x86/coco/tdx/tdx-shared.c
+@@ -89,3 +89,4 @@ noinstr u64 __tdx_hypercall(struct tdx_module_args *args)
+ 	/* TDVMCALL leaf return code is in R10 */
+ 	return args->r10;
+ }
++EXPORT_SYMBOL_GPL(__tdx_hypercall);
