@@ -43,6 +43,7 @@ def boot_test(qemu_cmd: List[str], pin: bool, outfile=None, **kargs: Any) -> Non
         )
         bpftrace.stdin.writelines(code)
         bpftrace.stdin.close()  # send EOF
+        time.sleep(3)  # ensure loading of BPF program
 
     vm: QemuVM
     with spawn_qemu(
@@ -52,7 +53,6 @@ def boot_test(qemu_cmd: List[str], pin: bool, outfile=None, **kargs: Any) -> Non
             vm.pin_vcpu()
         time.sleep(10)
         vm.wait_for_ssh()
-        vm.ssh_cmd(["poweroff"])
 
     # get output from bpftrace process
     if trace:
