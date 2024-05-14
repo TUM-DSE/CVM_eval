@@ -286,11 +286,12 @@ def spawn_qemu(
                 f"--membind={','.join(map(str, numa_node))}",
             ]
 
-        qemu_command += [
+        qmp_command = [
             "-qmp",
             f"unix:{str(qmp_socket)},server,nowait",
         ]
         cmd += qemu_command
+        cmd += qmp_command
         cmd += extra_args
 
         print(cmd)
