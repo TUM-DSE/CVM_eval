@@ -34,7 +34,7 @@ sev_uefi_bios_code     := join(sev_ovmf, "FV", "OVMF_CODE.fd")
 native_uefi_bios_vars  := join(native_ovmf, "FV", "OVMF_VARS.fd")
 sev_uefi_bios_vars     := join(sev_ovmf, "FV", "OVMF_VARS.fd")
 
-ssh_port := "2225"
+ssh_port := "2224"
 
 # nix identifiers
 ## recipes

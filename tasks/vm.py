@@ -141,7 +141,7 @@ def get_normal_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     ssh_port = config["ssh_port"]
 
     qemu_cmd = f"""
-    {vmconfig.qemu}
+    {config.qemu}
     -enable-kvm
     -cpu host
     -smp {resource.cpu}
@@ -397,7 +397,8 @@ def qemu_option_virtio_blk(
     aio: str = "native",  # either of threads, native (POSIX AIO), io_uring
     direct: bool = True,  # if True, QEMU uses O_DIRECT to open the file
     iothread: bool = True,  # if True, use QEMU iothread
-    iommu_option: bool = False,  # if True, enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
+    # if True, enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
+    iommu_option: bool = False,
     # (this is necessary to force bounce buffers in a normal VM for testing)
 ) -> List[str]:
     # QEMU options (https://www.qemu.org/docs/master/system/qemu-manpage.html)
@@ -469,9 +470,9 @@ def qemu_option_virtio_nic(tap=None, vhost=False, mq=False, config={}) -> List[s
         vhost_option = "off"
     if tap is None:
         if mq:
-            tap = "mtap0"
+            tap = "mtap1"
         else:
-            tap = "tap0"
+            tap = "tap1"
     if iommu_option:
         iommu = ",iommu_platform=on,disable-modern=off,disable-legacy=on"
     else:
@@ -574,6 +575,55 @@ def run_blender(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
         run_blender(name, vm, repeat=repeat)
 
 
+def run_iperf(
+    name: str, qemu_cmd: List[str], pin: bool, udp: bool = False, **kargs: Any
+):
+    repeat: int = kargs["config"].get("repeat", 1)
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        # if pin:
+        #     vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from network import run_iperf
+
+        run_iperf(name, vm, repeat=repeat, udp=udp)
+
+
+def run_memtier(
+    name: str, qemu_cmd: List[str], pin: bool, server: str = "redis", **kargs: Any
+):
+    repeat: int = kargs["config"].get("repeat", 1)
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        # if pin:
+        #     vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from network import run_memtier
+
+        run_memtier(name, vm, server=server, repeat=repeat)
+
+
+def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
+    repeat: int = kargs["config"].get("repeat", 1)
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        # if pin:
+        #     vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from network import run_ping
+
+        run_ping(name, vm)
+
+
 def run_tensorflow(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     repeat: int = kargs["config"].get("repeat", 1)
     resource: VMResource = kargs["config"]["resource"]
@@ -607,9 +657,7 @@ def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
 def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
-    with spawn_qemu(
-        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
-    ) as vm:
+    with spawn_qemu(qemu_cmd, numa_node=numa_node, config=kargs["config"]) as vm:
         if pin:
             vm.pin_vcpu()
         vm.wait_for_ssh()
@@ -620,11 +668,6 @@ def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
             name += f"-nodirect"
         if not kargs["config"]["virtio_blk_iothread"]:
             name += f"-noiothread"
-        if (
-            kargs["config"]["virtio_iommu"]
-            and "swiotlb" in kargs["config"]["extra_cmdline"]
-        ):
-            name += f"-swiotlb"
         fio_job = kargs["config"]["fio_job"]
         storage.run_fio(name, vm, fio_job)
 
@@ -644,6 +687,16 @@ def do_action(action: str, **kwargs: Any) -> None:
         run_pytorch(**kwargs)
     elif action == "run-fio":
         run_fio(**kwargs)
+    elif action == "run-iperf":
+        run_iperf(**kwargs)
+    elif action == "run-iperf-udp":
+        run_iperf(udp=True, **kwargs)
+    elif action == "run-memtier":
+        run_memtier(server="redis", **kwargs)
+    elif action == "run-memtier-memcached":
+        run_memtier(server="memcached", **kwargs)
+    elif action == "run-ping":
+        run_ping(**kwargs)
     else:
         raise ValueError(f"Unknown action: {action}")
 
@@ -663,17 +716,14 @@ def start(
     direct: bool = True,  # if True, do direct boot. otherwise boot from the disk
     action: str = "attach",
     ssh_port: int = SSH_PORT,
-    pin: bool = True,  # if True, pin vCPUs
-    extra_cmdline: str = "",  # extra kernel cmdline (only for direct boot)
+    pin: bool = False,  # if True, pin vCPUs
     # phoronix options
     phoronix_bench_name: Optional[str] = None,
     # application bench options
     repeat: int = 1,
-    virtio_iommu: bool = False,  # enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
     # virtio-nic options
     virtio_nic: bool = False,
     virtio_nic_vhost: bool = False,
-    virtio_nic_mq: bool = False,
     # virtio-blk options
     virtio_blk: Optional[
         str
@@ -687,7 +737,7 @@ def start(
     config: dict = locals()
     resource: VMResource = get_vm_resource(size)
     config["resource"] = resource
-
+    config["ssh_port"] = ssh_port
     qemu_cmd: str
     if type == "normal":
         if direct:
@@ -699,23 +749,11 @@ def start(
             qemu_cmd = get_snp_direct_qemu_cmd(resource, config)
         else:
             qemu_cmd = get_snp_qemu_cmd(resource, config)
-    elif type == "intel" or type == "intel-ubuntu":
-        if direct:
-            qemu_cmd = get_intel_direct_qemu_cmd(resource, config)
-        else:
-            qemu_cmd = get_intel_qemu_cmd(type, resource, config)
-    elif type == "tdx" or type == "tdx-ubuntu":
-        if direct:
-            qemu_cmd = get_tdx_direct_qemu_cmd(resource, config)
-        else:
-            qemu_cmd = get_tdx_qemu_cmd(type, resource, config)
     else:
         raise ValueError(f"Unknown VM type: {type}")
 
     if virtio_nic:
-        qemu_cmd += qemu_option_virtio_nic(
-            vhost=virtio_nic_vhost, mq=virtio_nic_mq, config=config
-        )
+        qemu_cmd += qemu_option_virtio_nic(vhost=virtio_nic_vhost, config=config)
 
     if virtio_blk:
         virtio_blk = Path(virtio_blk)
@@ -732,11 +770,7 @@ def start(
             print(f"{virtio_blk} is not a file nor a block device")
             return
         qemu_cmd += qemu_option_virtio_blk(
-            virtio_blk,
-            virtio_blk_aio,
-            virtio_blk_direct,
-            virtio_blk_iothread,
-            virtio_iommu,
+            virtio_blk, virtio_blk_aio, virtio_blk_direct, virtio_blk_iothread
         )
 
     name = f"{type}-{'direct' if direct else 'disk'}-{size}"

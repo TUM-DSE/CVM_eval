@@ -10,7 +10,7 @@ OVMF := OVMF_SNP
 SNP_IMAGE := join(BUILD_DIR, "image/snp-guest-image.qcow2")
 NORMAL_IMAGE := join(BUILD_DIR, "image/normal-guest-image.qcow2")
 GUEST_FS := join(BUILD_DIR, "image/guest-fs.qcow2")
-SSH_PORT := "2225"
+SSH_PORT := "2224"
 smp := "4"
 mem := "16G"
 
@@ -43,7 +43,7 @@ start-vm-disk:
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
-        -netdev bridge,id=en0,br=virbr0 \
+        -netdev bridge,id=en0,br=virbr1 \
         -device virtio-net-pci,netdev=en0 \
         -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on
 
@@ -63,7 +63,7 @@ start-vm-direct:
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
-        -netdev bridge,id=en0,br=virbr0 \
+        -netdev bridge,id=en0,br=virbr1 \
         -device virtio-net-pci,netdev=en0 \
         -serial null \
         -device virtio-serial \
@@ -110,7 +110,7 @@ start-snp-disk:
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
-        -netdev bridge,id=en0,br=virbr0 \
+        -netdev bridge,id=en0,br=virbr1 \
         -device virtio-net-pci,netdev=en0 \
         -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on
 
@@ -132,7 +132,7 @@ start-snp-direct:
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on \
-        -netdev bridge,id=en0,br=virbr0 \
+        -netdev bridge,id=en0,br=virbr1 \
         -device virtio-net-pci,netdev=en0 \
         -serial null \
         -device virtio-serial \
@@ -415,20 +415,20 @@ setup-linux:
 
 setup_bridge:
     #!/usr/bin/env bash
-    ip a s virbr0 >/dev/null 2>&1
+    ip a s virbr >/dev/null 2>&1
     if [ $? ]; then
-        sudo brctl addbr virbr0
-        sudo ip a a 172.44.0.1/24 dev virbr0
-        sudo ip l set dev virbr0 up
+        sudo brctl addbr virbr1
+        sudo ip a a 172.44.0.1/24 dev virbr1
+        sudo ip l set dev virbr1 up
     fi
 
 setup_tap:
-    sudo ip tuntap add tap0 mode tap
-    sudo ip link set tap0 master virbr0
-    sudo ip link set tap0 up
-    sudo ip tuntap add mtap0 mode tap multi_queue
-    sudo ip link set mtap0 master virbr0
-    sudo ip link set mtap0 up
+    sudo ip tuntap add tap1 mode tap
+    sudo ip link set tap1 master virbr1
+    sudo ip link set tap1 up
+    sudo ip tuntap add mtap1 mode tap multi_queue
+    sudo ip link set mtap1 master virbr1
+    sudo ip link set mtap1 up
 
 remove_bridge:
     #!/usr/bin/env bash
@@ -436,14 +436,14 @@ remove_bridge:
     sudo ip link del tap0
     sudo ip link set dev mtap0 down
     sudo ip link del mtap0
-    sudo ip link set dev virbr0 down
-    sudo brctl delbr virbr0
+    sudo ip link set dev virbr down
+    sudo brctl delbr virbr
 
-# These commands should show info on virbr0
+# These commands should show info on virb
 show_bridge_status:
     #!/usr/bin/env bash
     set -x
-    ip a show dev virbr0
+    ip a show dev virbr
     brctl show
     networkctl
 

@@ -1,0 +1,5 @@
+run-redis:
+  redis-server --protected-mode no --daemonize yes
+
+run-memcached:
+  memcached -u nobody -d

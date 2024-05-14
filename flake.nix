@@ -139,6 +139,7 @@
                 fio
                 cryptsetup
                 iperf # iperf3
+                memtier-benchmark
               ] ++ [ inv-completion ]
               ++ pre-commit-check.enabledPackages;
             inherit (pre-commit-check) shellHook;
