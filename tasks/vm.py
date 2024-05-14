@@ -543,7 +543,7 @@ def boottime(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     import boottime
 
     type: str = kargs["config"]["type"]
-    kargs["config"]["vmconfig"] = get_vm_config(type)
+    kargs["config"]["vmconfig"] = get_vm_config(f"{type}-direct")
 
     boottime.run_boot_test(name, qemu_cmd, pin, **kargs)
 
