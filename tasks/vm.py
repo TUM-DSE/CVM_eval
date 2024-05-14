@@ -538,6 +538,16 @@ def ipython(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         embed()
 
 
+def boottime(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    """Measure the boot time of a VM"""
+    import boottime
+
+    type: str = kargs["config"]["type"]
+    kargs["config"]["vmconfig"] = get_vm_config(type)
+
+    boottime.run_boot_test(name, qemu_cmd, pin, **kargs)
+
+
 def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     bench_name = kargs["config"]["phoronix_bench_name"]
     if not bench_name:
@@ -634,6 +644,8 @@ def do_action(action: str, **kwargs: Any) -> None:
         start_and_attach(**kwargs)
     elif action == "ipython":
         ipython(**kwargs)
+    elif action == "boottime":
+        boottime(**kwargs)
     elif action == "run-phoronix":
         run_phoronix(**kwargs)
     elif action == "run-blender":
