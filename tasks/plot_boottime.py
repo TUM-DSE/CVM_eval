@@ -71,16 +71,21 @@ def parse_result(result: list) -> List[float]:
         if "OVMF: EXITBOOTSERVICE" in line:
             ovmf_end = float(line.split(":")[0])
             continue
+        if "Linux: init_start" in line:
+            kernel_end = float(line.split(":")[0])
+            continue
         if "Linux: systemd init end" in line:
-            linux_end = float(line.split(":")[0])
+            init_end = float(line.split(":")[0])
             continue
     assert vm_start > qemu_start
     assert ovmf_end > vm_start
-    assert linux_end > ovmf_end
+    assert kernel_end > ovmf_end
+    assert init_end > kernel_end
 
     times.append(vm_start - qemu_start)
     times.append(ovmf_end - vm_start)
-    times.append(linux_end - ovmf_end)
+    times.append(kernel_end - ovmf_end)
+    times.append(init_end - kernel_end)
 
     times = np.array(times)
     times /= 1e9  # convert to seconds
@@ -107,20 +112,24 @@ def load_data(name: str, date=None) -> List[float]:
 
 
 def create_df(vm, cvm, index=["small", "medium", "large"]) -> pd.DataFrame:
-    columns = ["QEMU", "OVMF", "Linux"]
+    columns = ["QEMU", "OVMF", "Linux", "Init"]
 
     vm_qemu = [vm["small"][0], vm["medium"][0], vm["large"][0]]
     vm_ovmf = [vm["small"][1], vm["medium"][1], vm["large"][1]]
     vm_linux = [vm["small"][2], vm["medium"][2], vm["large"][2]]
+    vm_init = [vm["small"][3], vm["medium"][3], vm["large"][3]]
     cvm_qemu = [cvm["small"][0], cvm["medium"][0], cvm["large"][0]]
     cvm_ovmf = [cvm["small"][1], cvm["medium"][1], cvm["large"][1]]
     cvm_linux = [cvm["small"][2], cvm["medium"][2], cvm["large"][2]]
+    cvm_init = [cvm["small"][3], cvm["medium"][3], cvm["large"][3]]
 
     df1 = pd.DataFrame(
-        np.array([vm_qemu, vm_ovmf, vm_linux]).T, index=index, columns=columns
+        np.array([vm_qemu, vm_ovmf, vm_linux, vm_init]).T, index=index, columns=columns
     )
     df2 = pd.DataFrame(
-        np.array([cvm_qemu, cvm_ovmf, cvm_linux]).T, index=index, columns=columns
+        np.array([cvm_qemu, cvm_ovmf, cvm_linux, cvm_init]).T,
+        index=index,
+        columns=columns,
     )
 
     data = [df1, df2]
@@ -176,8 +185,8 @@ def plot_clustered_stacked(
     l1 = axe.legend(
         h[:n_col],
         l[:n_col],
-        ncol=3,
-        bbox_to_anchor=[0.45, -0.20],
+        ncol=4,
+        bbox_to_anchor=[0.60, -0.20],
         labelspacing=0.2,
         columnspacing=0.5,
         handletextpad=0.2,
