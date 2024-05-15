@@ -14,7 +14,6 @@ from qemu import spawn_qemu, QemuVm
 
 @dataclass
 class VMResource:
-    name: str
     cpu: int
     memory: int  # GB
     numa_node: [int] = None
@@ -30,16 +29,23 @@ class VMConfig:
     cmdline: Optional[str]
 
 
-def get_vm_resource(name: str) -> VMResource:
-    if name == "small":
-        return VMResource(name=name, cpu=1, memory=8, numa_node=[0])
-    if name == "medium":
-        return VMResource(name=name, cpu=8, memory=64, numa_node=[0])
-    if name == "large":
-        return VMResource(name=name, cpu=32, memory=256, numa_node=[0])
-    if name == "numa":
-        return VMResource(name=name, cpu=64, memory=512, numa_node=[0, 1])
-    raise ValueError(f"Unknown VM config: {name}")
+VMRESOURCES = {}
+VMRESOURCES["amd"] = {}
+VMRESOURCES["intel"] = {}
+VMRESOURCES["amd"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0])
+VMRESOURCES["amd"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0])
+VMRESOURCES["amd"]["large"] = VMResource(cpu=32, memory=256, numa_node=[0])
+VMRESOURCES["amd"]["numa"] = VMResource(cpu=64, memory=512, numa_node=[0, 1])
+VMRESOURCES["intel"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0])
+VMRESOURCES["intel"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0])
+VMRESOURCES["intel"]["large"] = VMResource(cpu=28, memory=128, numa_node=[0])
+VMRESOURCES["intel"]["numa"] = VMResource(cpu=56, memory=256, numa_node=[0, 1])
+VMRESOURCES["snp"] = VMRESOURCES["amd"]
+VMRESOURCES["tdx"] = VMRESOURCES["intel"]
+
+
+def get_vm_resource(type: str, name: str) -> VMResource:
+    return VMRESOURCES[type][name]
 
 
 def get_vm_config(name: str) -> VMConfig:
@@ -717,7 +723,7 @@ def start(
     warn: bool = True,
 ) -> None:
     config: dict = locals()
-    resource: VMResource = get_vm_resource(size)
+    resource: VMResource = get_vm_resource(type, size)
     config["resource"] = resource
 
     qemu_cmd: str
