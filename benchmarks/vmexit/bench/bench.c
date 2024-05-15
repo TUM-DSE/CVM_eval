@@ -152,7 +152,7 @@ e_restore_irq:
 	local_irq_restore(flags);
 }
 
-static inline void snp_vmmcall(unsigned int nr)
+static inline void snp_hypercall(unsigned int nr)
 {
 	struct ghcb_state state;
 	struct es_em_ctxt ctxt;
@@ -315,7 +315,7 @@ static inline void tdx_inb(uint16_t port, uint8_t *val)
 #endif
 }
 
-static inline void tdx_vmcall(unsigned int nr)
+static inline void tdx_hypercall(unsigned int nr)
 {
 	// assert(nr != zero);
 
@@ -535,13 +535,13 @@ DEFINE_HYPERCALL_FUNC(_hypercall, 2)
 DEFINE_BENCH(_hypercall_2)
 
 #ifdef SNP
-DEFINE_HYPERCALL_FUNC(snp_vmmcall, 2)
-DEFINE_BENCH(snp_vmmcall_2)
+DEFINE_HYPERCALL_FUNC(snp_hypercall, 2)
+DEFINE_BENCH(snp_hypercall_2)
 #endif
 
 #ifdef TDX
-DEFINE_HYPERCALL_FUNC(tdx_vmcall, 2)
-DEFINE_BENCH(tdx_vmcall_2)
+DEFINE_HYPERCALL_FUNC(tdx_hypercall, 2)
+DEFINE_BENCH(tdx_hypercall_2)
 #endif
 
 static void bench_hypercall(void)
@@ -551,11 +551,11 @@ static void bench_hypercall(void)
 	bench__hypercall_2();
 
 #ifdef SNP
-	bench_snp_vmmcall_2();
+	bench_snp_hypercall_2();
 #endif
 
 #ifdef TDX
-	bench_tdx_vmcall_2();
+	bench_tdx_hypercall_2();
 #endif
 }
 
