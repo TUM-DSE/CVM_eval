@@ -639,6 +639,8 @@ static int __init bench_init(void)
 	if (!mode || mode == 4)
 		bench_pio();
 
+	pr_info("done\n");
+
 	return 0;
 }
 
