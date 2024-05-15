@@ -31,7 +31,7 @@ figwidth_full = 7
 FONTSIZE = 9
 
 palette = sns.color_palette("pastel")
-hatches = ["", "//"]
+hatches = ["", "//", "x"]
 
 # bench mark path:
 # ./bench-result/vmexit/{name}.txt
