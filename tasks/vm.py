@@ -37,13 +37,23 @@ def get_vm_resource(name: str) -> VMResource:
         return VMResource(name=name, cpu=8, memory=64, numa_node=[0])
     if name == "large":
         return VMResource(name=name, cpu=32, memory=256, numa_node=[0])
-    if name == "large-numa":
+    if name == "numa":
         return VMResource(name=name, cpu=64, memory=512, numa_node=[0, 1])
     raise ValueError(f"Unknown VM config: {name}")
 
 
 def get_vm_config(name: str) -> VMConfig:
-    if name == "normal":
+    if name == "amd":
+        # use kernel same for the "snp"
+        return VMConfig(
+            qemu=BUILD_DIR / "qemu-amd-sev-snp/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/snp-guest-image.qcow2",
+            ovmf=BUILD_DIR / "ovmf-amd-sev-snp-fd/FV/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
+    if name == "amd-normal":
         return VMConfig(
             qemu=BUILD_DIR / "qemu-amd-sev-snp/bin/qemu-system-x86_64",
             image=BUILD_DIR / "image/normal-guest-image.qcow2",
@@ -52,7 +62,7 @@ def get_vm_config(name: str) -> VMConfig:
             initrd=None,
             cmdline=None,
         )
-    if name == "normal-direct":
+    if name == "amd-direct":
         return VMConfig(
             qemu=BUILD_DIR / "qemu-amd-sev-snp/bin/qemu-system-x86_64",
             image=BUILD_DIR / "image/guest-fs.qcow2",
@@ -80,6 +90,16 @@ def get_vm_config(name: str) -> VMConfig:
             cmdline="root=/dev/vda console=hvc0",
         )
     if name == "intel":
+        # use kernel same for the "tdx"
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/tdx-guest-image.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
+    if name == "intel-normal":
         return VMConfig(
             qemu="/usr/bin/qemu-system-x86_64",
             image=BUILD_DIR / "image/normal-guest-image.qcow2",
@@ -136,8 +156,8 @@ def get_vm_config(name: str) -> VMConfig:
     raise ValueError(f"Unknown VM image: {name}")
 
 
-def get_normal_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config("normal")
+def get_amd_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("amd")
     ssh_port = config["ssh_port"]
 
     qemu_cmd = f"""
@@ -161,8 +181,8 @@ def get_normal_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
-def get_normal_vm_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config("normal-direct")
+def get_amd_vm_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("amd-direct")
     ssh_port = config.get("ssh_port", SSH_PORT)
     extra_cmdline = config.get("extra_cmdline", "")
 
@@ -224,7 +244,7 @@ def get_snp_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 
 
 def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config("normal-direct")
+    vmconfig: VMConfig = get_vm_config("amd-direct")
     ssh_port = config.get("ssh_port", SSH_PORT)
     extra_cmdline = config.get("extra_cmdline", "")
 
@@ -670,8 +690,8 @@ def do_action(action: str, **kwargs: Any) -> None:
 @task
 def start(
     ctx: Any,
-    type: str = "normal",  # normal, snp
-    size: str = "medium",  # small, medium, large, large-numa
+    type: str = "amd",  # amd, snp, intel, tdx
+    size: str = "medium",  # small, medium, large, numa
     direct: bool = True,  # if True, do direct boot. otherwise boot from the disk
     action: str = "attach",
     ssh_port: int = SSH_PORT,
@@ -701,11 +721,11 @@ def start(
     config["resource"] = resource
 
     qemu_cmd: str
-    if type == "normal":
+    if type == "amd":
         if direct:
-            qemu_cmd = get_normal_vm_direct_qemu_cmd(resource, config)
+            qemu_cmd = get_amd_vm_direct_qemu_cmd(resource, config)
         else:
-            qemu_cmd = get_normal_vm_qemu_cmd(resource, config)
+            qemu_cmd = get_amd_vm_qemu_cmd(resource, config)
     elif type == "snp":
         if direct:
             qemu_cmd = get_snp_direct_qemu_cmd(resource, config)
