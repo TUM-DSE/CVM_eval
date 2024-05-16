@@ -640,6 +640,21 @@ def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
         run_pytorch(name, vm, repeat=repeat)
 
 
+def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    resource: VMResource = kargs["config"]["resource"]
+    dbpath: str = kargs["config"].get("dbpath", "/tmp/test.db")
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from application import run_sqlite
+
+        run_sqlite(name, vm, dbpath)
+
+
 def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
@@ -680,6 +695,8 @@ def do_action(action: str, **kwargs: Any) -> None:
         run_tensorflow(**kwargs)
     elif action == "run-pytorch":
         run_pytorch(**kwargs)
+    elif action == "run-sqlite":
+        run_sqlite(**kwargs)
     elif action == "run-fio":
         run_fio(**kwargs)
     else:
@@ -707,6 +724,7 @@ def start(
     phoronix_bench_name: Optional[str] = None,
     # application bench options
     repeat: int = 1,
+    dbpath: str = "/tmp/test.db",
     virtio_iommu: bool = False,  # enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
     # virtio-nic options
     virtio_nic: bool = False,
