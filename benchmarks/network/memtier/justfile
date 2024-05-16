@@ -1,5 +1,32 @@
+STANDARD_PORT := "6379"
+TLS_PORT := "6380"
+VM_IP := "172.45.0.2"
+THREADS := "4"
+
 run-redis:
-  redis-server --protected-mode no --daemonize yes
+  redis-server \
+  --protected-mode no \
+  --daemonize yes \
+  --tls-port {{TLS_PORT}} \
+  --tls-cert-file ../tls/pki/issued/server.crt \
+  --tls-key-file ../tls/pki/private/server.key \
+  --tls-ca-cert-file ../tls/pki/ca.crt
 
 run-memcached:
-  memcached -u nobody -d
+  memcached -u nobody -d -p {{STANDARD_PORT}}
+
+run-memcached-tls:
+  memcached -u nobody -d -p {{STANDARD_PORT}}
+
+run-memtier: 
+  memtier_benchmark --host={{VM_IP}} -p {{STANDARD_PORT}} -t {{THREADS}}
+
+run-memtier-tls:
+  memtier_benchmark \
+  --host={{VM_IP}} \
+  -p {{TLS_PORT}} \
+  -t {{THREADS}} \
+  --tls \
+  --cert=../tls/pki/issued/client.crt \
+  --key=../tls/pki/private/client.key \
+  --cacert=../tls/pki/ca.crt 

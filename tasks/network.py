@@ -22,7 +22,6 @@ def run_ping(name: str, vm: QemuVm):
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
         )
-
         stdout, stderr = process.communicate()
         exit_code = process.wait()
 
@@ -55,8 +54,8 @@ def run_iperf(
     streams = 1
 
     for i in range(repeat):
+        print(f"Running iperf {i+1}/{repeat}")
         for pkt_size in [64, 128, 256, 512, 1024]:
-            print(f"Running iperf {i+1}/{repeat}")
             cmd = [
                 "iperf",
                 "-c",
@@ -68,22 +67,21 @@ def run_iperf(
                 "-P",
                 f"{streams}",
             ]
-            print(cmd)
             if udp:
                 cmd.append("-u")
-            output = subprocess.check_output(cmd)
+            output = subprocess.run(cmd, capture_output=True, text=True)
             if output.returncode != 0:
-                print(f"Error running iperf: {output.stderr}")
+                print(f"Error running ping: {output.stderr}")
                 continue
             lines = output.stdout.split("\n")
             with open(outputdir_host / f"{i+1}.log", "w") as f:
                 f.write("\n".join(lines))
-
     print(f"Results saved in {outputdir_host}")
-    vm.ssh_cmd("poweroff")
 
 
-def run_memtier(name: str, vm: QemuVm, repeat: int = 1, server: str = "redis"):
+def run_memtier(
+    name: str, vm: QemuVm, repeat: int = 1, server: str = "redis", tls: bool = False
+):
     """Run the memtier benchmark on the VM using redis.
     The results are saved in ./bench-result/networking/memtier/redis/{name}/{date}/
     """
@@ -92,43 +90,24 @@ def run_memtier(name: str, vm: QemuVm, repeat: int = 1, server: str = "redis"):
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
-    server_cmd = [
-        "nix-shell",
-        "/share/benchmarks/network/memtier/shell.nix",
-        "--run",
-        f"just run-{server}",
-    ]
+    nix_shell_path = "benchmarks/network/memtier/shell.nix"
+
+    server_cmd = ["nix-shell", f"/share/{nix_shell_path}", "--run", "just run-redis"]
     vm.ssh_cmd(server_cmd)
 
-    port = 6379
+    standard_port = 6379
+    tls_port = 6380
+    port = tls_port if tls else standard_port
     threads = 4
 
     for i in range(repeat):
-        print(f"Running memtier redis {i+1}/{repeat}")
-        cmd = [
-            "memtier_benchmark",
-            f"--host={VM_IP}",
-            "-p",
-            f"{port}",
-            "-t",
-            f"{threads}",
-        ]
-        output = subprocess.check_output(cmd)
+        print(f"Running memtier with redis {i+1}/{repeat}")
+        cmd = ["nix-shell", f"{nix_shell_path}", "--run", "just run-memtier"]
+        output = subprocess.run(cmd, capture_output=True, text=True)
         if output.returncode != 0:
             print(f"Error running memtier: {output.stderr}")
             continue
         lines = output.stdout.split("\n")
         with open(outputdir_host / f"{i+1}.log", "w") as f:
             f.write("\n".join(lines))
-        vm.ssh_cmd("poweroff")
-
-
-# def run_memtier_memcached(name: str, vm: QemuVm, repeat: int = 1, mode: str = "binary"):
-#     """Run the memtier benchmark on the VM using memcached.
-#     The results are saved in ./bench-result/networking/memtier/memcached/{mode}/{name}/{date}/
-#     """
-#     date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-#     outputdir = Path(
-#         f"./bench-result/networking/memtier/memcached/{mode}/{name}/{date}/")
-#     outputdir_host = PROJECT_ROOT / outputdir
-#     outputdir_host.mkdir(parents=True, exist_ok=True)
+    print(f"Results saved in {outputdir_host}")
