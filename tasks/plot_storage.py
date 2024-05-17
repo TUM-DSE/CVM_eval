@@ -111,6 +111,8 @@ def read_result(name: str, label: str, jobname: str, date=None) -> pd.DataFrame:
 
 
 def plot_bw(df, outdir):
+    fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
+
     # read
     bw = df[(df["jobname"] == "bw read")]
     ax = sns.barplot(
@@ -194,12 +196,14 @@ def plot_bw(df, outdir):
     plt.title("Higher is better ↑", fontsize=9, color="navy", weight="bold")
     plt.tight_layout()
     outfile = Path(outdir) / "fio_bw.pdf"
-    plt.savefig(outfile)
+    plt.savefig(outfile, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"saved to {outfile}")
     plt.clf()
 
 
 def plot_iops(df, outdir):
+    fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
+
     ## randread
     iops = df[(df["jobname"] == "iops randread")]
     ax = sns.barplot(
@@ -316,12 +320,14 @@ def plot_iops(df, outdir):
     plt.title("Higher is better ↑", fontsize=9, color="navy", weight="bold")
     plt.tight_layout()
     outfile = Path(outdir) / "fio_iops.pdf"
-    plt.savefig(outfile)
+    plt.savefig(outfile, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"saved to {outfile}")
     plt.clf()
 
 
 def plot_latency(df, outdir):
+    fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
+
     ## read
     lat = df[(df["jobname"] == "alat read")]
     ax = sns.barplot(
@@ -449,7 +455,7 @@ def plot_latency(df, outdir):
     plt.title("Lower is better ↓", fontsize=9, color="navy", weight="bold")
     plt.tight_layout()
     outfile = Path(outdir) / "fio_latency.pdf"
-    plt.savefig(outfile)
+    plt.savefig(outfile, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"saved to {outfile}")
     plt.clf()
 
