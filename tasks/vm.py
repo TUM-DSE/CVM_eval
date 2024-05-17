@@ -479,7 +479,9 @@ def qemu_option_virtio_blk(
     return shlex.split(option)
 
 
-def qemu_option_virtio_nic(tap=None, vhost=False, mq=False, config={}) -> List[str]:
+def qemu_option_virtio_nic(
+    tap="tap0", mtap="mtap0", vhost=False, mq=False, config={}
+) -> List[str]:
     """Qreate a virtio-nic with a tap interface.
     If mq is True, then create multiple queues as many as the number of CPUs.
 
@@ -493,11 +495,6 @@ def qemu_option_virtio_nic(tap=None, vhost=False, mq=False, config={}) -> List[s
         vhost_option = "on"
     else:
         vhost_option = "off"
-    if tap is None:
-        if mq:
-            tap = "mtap0"
-        else:
-            tap = "tap0"
     if iommu_option:
         iommu = ",iommu_platform=on,disable-modern=off,disable-legacy=on"
     else:
@@ -793,6 +790,8 @@ def start(
     virtio_nic: bool = False,
     virtio_nic_vhost: bool = False,
     virtio_nic_mq: bool = False,
+    virtio_nic_tap: str = "tap0",
+    virtio_nic_mtap: str = "mtap0",
     # virtio-blk options
     virtio_blk: Optional[
         str
@@ -833,7 +832,11 @@ def start(
 
     if virtio_nic:
         qemu_cmd += qemu_option_virtio_nic(
-            vhost=virtio_nic_vhost, mq=virtio_nic_mq, config=config
+            tap=virtio_nic_tap,
+            mtap=virtio_nic_mtap,
+            vhost=virtio_nic_vhost,
+            mq=virtio_nic_mq,
+            config=config,
         )
 
     if virtio_blk:
