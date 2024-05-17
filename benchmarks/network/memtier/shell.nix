@@ -1,5 +1,6 @@
 let
-  nixpkgs = fetchTarball "https://github.com/NixOS/nixpkgs/tarball/nixos-23.11";
+  # 23.11
+  nixpkgs = fetchTarball "https://github.com/NixOS/nixpkgs/archive/9ddcaffecdf098822d944d4147dd8da30b4e6843.tar.gz";
   pkgs = import nixpkgs { config = { }; overlays = [ ]; };
 in
 pkgs.mkShell {
