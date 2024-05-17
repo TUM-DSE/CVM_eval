@@ -610,6 +610,52 @@ def run_blender(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
         run_blender(name, vm, repeat=repeat)
 
 
+def run_iperf(
+    name: str, qemu_cmd: List[str], pin: bool, udp: bool = False, **kargs: Any
+):
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from network import run_iperf
+
+        run_iperf(name, vm, udp=udp)
+
+
+def run_memtier(
+    name: str, qemu_cmd: List[str], pin: bool, server: str = "redis", **kargs: Any
+):
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from network import run_memtier
+
+        run_memtier(name, vm, server=server)
+
+
+def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from network import run_ping
+
+        run_ping(name, vm)
+
+
 def run_tensorflow(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     repeat: int = kargs["config"].get("repeat", 1)
     resource: VMResource = kargs["config"]["resource"]
@@ -707,6 +753,16 @@ def do_action(action: str, **kwargs: Any) -> None:
         run_sqlite(**kwargs)
     elif action == "run-fio":
         run_fio(**kwargs)
+    elif action == "run-iperf":
+        run_iperf(**kwargs)
+    elif action == "run-iperf-udp":
+        run_iperf(udp=True, **kwargs)
+    elif action == "run-memtier":
+        run_memtier(server="redis", **kwargs)
+    elif action == "run-memtier-memcached":
+        run_memtier(server="memcached", **kwargs)
+    elif action == "run-ping":
+        run_ping(**kwargs)
     else:
         raise ValueError(f"Unknown action: {action}")
 
