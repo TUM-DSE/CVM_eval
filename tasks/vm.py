@@ -642,7 +642,8 @@ def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
 
 def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     resource: VMResource = kargs["config"]["resource"]
-    dbpath: str = kargs["config"].get("dbpath", "/tmp/test.db")
+    virito_blk: Optional[str] = kargs["config"]["virtio_blk"]
+    dbpath: str = "/tmp/test.db"
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
@@ -650,6 +651,13 @@ def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         if pin:
             vm.pin_vcpu()
         vm.wait_for_ssh()
+
+        if virito_blk:
+            import storage
+
+            storage.mount_disk(vm, "/dev/vdb", "/mnt", format=True)
+            dbpath = "/mnt/test.db"
+
         from application import run_sqlite
 
         run_sqlite(name, vm, dbpath)
@@ -724,7 +732,6 @@ def start(
     phoronix_bench_name: Optional[str] = None,
     # application bench options
     repeat: int = 1,
-    dbpath: str = "/tmp/test.db",
     virtio_iommu: bool = False,  # enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
     # virtio-nic options
     virtio_nic: bool = False,
