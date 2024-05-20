@@ -575,9 +575,7 @@ def run_blender(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
         run_blender(name, vm, repeat=repeat)
 
 
-def run_iperf(
-    name: str, qemu_cmd: List[str], pin: bool, udp: bool = False, **kargs: Any
-):
+def run_iperf(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
     repeat: int = kargs["config"].get("repeat", 1)
     resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
@@ -589,7 +587,7 @@ def run_iperf(
         vm.wait_for_ssh()
         from network import run_iperf
 
-        run_iperf(name, vm, repeat=repeat, udp=udp)
+        run_iperf(name, vm, repeat=repeat)
 
 
 def run_memtier(
@@ -625,7 +623,6 @@ def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
 
 
 def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
-    repeat: int = kargs["config"].get("repeat", 1)
     resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
     with spawn_qemu(
@@ -636,7 +633,7 @@ def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
         vm.wait_for_ssh()
         from network import run_ping
 
-        run_ping(name, vm)
+        run_ping(name)
 
 
 def run_tensorflow(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -704,8 +701,6 @@ def do_action(action: str, **kwargs: Any) -> None:
         run_fio(**kwargs)
     elif action == "run-iperf":
         run_iperf(**kwargs)
-    elif action == "run-iperf-udp":
-        run_iperf(udp=True, **kwargs)
     elif action == "run-memtier":
         run_memtier(server="redis", **kwargs)
     elif action == "run-memtier-memcached":

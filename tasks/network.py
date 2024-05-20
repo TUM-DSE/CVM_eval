@@ -5,9 +5,10 @@ from config import PROJECT_ROOT
 from tasks.qemu import QemuVm
 
 VM_IP = "172.45.0.2"
+NIX_SHELL_PATH = "benchmarks/network/shell.nix"
 
 
-def run_ping(name: str, vm: QemuVm):
+def run_ping(name: str):
     """Ping the VM.
     The results are saved in ./bench-results/networing/ping/{name}/{date}
     """
@@ -17,27 +18,19 @@ def run_ping(name: str, vm: QemuVm):
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
     for pkt_size in [64, 128, 256, 512, 1024]:
-        process = subprocess.Popen(
-            f"ping -c 20 -s {pkt_size} {VM_IP}".split(" "),
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-        )
-        stdout, stderr = process.communicate()
-        exit_code = process.wait()
-
-        if exit_code != 0:
-            print(f"Error running ping: {stderr}")
+        cmd = ["nix-shell", f"{NIX_SHELL_PATH}", "--run", f"just run-ping {pkt_size}"]
+        output = subprocess.run(cmd, capture_output=True, text=True)
+        if output.returncode != 0:
+            print(f"Error running ping: {output.stderr}")
             continue
-
-        with open(outputdir_host / f"pkg_size={pkt_size}.log", "wb") as f:
-            f.write(stdout)
+        with open(outputdir_host / f"pkt_size={pkt_size}.log", "w") as f:
+            f.write(output.stdout)
 
 
 def run_iperf(
     name: str,
     vm: QemuVm,
     repeat: int = 1,
-    udp: bool = False,
 ):
     """Run the iperf benchmark on the VM.
     The results are saved in ./bench-result/networking/iperf/{name}/{date}/
@@ -47,28 +40,23 @@ def run_iperf(
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
-    port = 7175
-
-    server_cmd = ["iperf", "-s", "-p", f"{port}", "-D"]
+    server_cmd = [
+        "nix-shell",
+        f"/share/{NIX_SHELL_PATH}",
+        "--run",
+        "just run-iperf-server",
+    ]
     vm.ssh_cmd(server_cmd)
-    streams = 1
 
     for i in range(repeat):
         print(f"Running iperf {i+1}/{repeat}")
         for pkt_size in [64, 128, 256, 512, 1024]:
             cmd = [
-                "iperf",
-                "-c",
-                f"{VM_IP}",
-                "-p",
-                f"{port}",
-                "-l",
-                f"{pkt_size}",
-                "-P",
-                f"{streams}",
+                "nix-shell",
+                f"{NIX_SHELL_PATH}",
+                "--run",
+                f"just run-iperf-client {pkt_size}",
             ]
-            if udp:
-                cmd.append("-u")
             output = subprocess.run(cmd, capture_output=True, text=True)
             if output.returncode != 0:
                 print(f"Error running ping: {output.stderr}")
@@ -79,9 +67,7 @@ def run_iperf(
     print(f"Results saved in {outputdir_host}")
 
 
-def run_memtier(
-    name: str, vm: QemuVm, repeat: int = 1, server: str = "redis", tls: bool = False
-):
+def run_memtier(name: str, vm: QemuVm, repeat: int = 1, server: str = "redis"):
     """Run the memtier benchmark on the VM using redis.
     The results are saved in ./bench-result/networking/memtier/redis/{name}/{date}/
     """
@@ -90,19 +76,12 @@ def run_memtier(
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
-    nix_shell_path = "benchmarks/network/memtier/shell.nix"
-
-    server_cmd = ["nix-shell", f"/share/{nix_shell_path}", "--run", "just run-redis"]
+    server_cmd = ["nix-shell", f"/share/{NIX_SHELL_PATH}", "--run", "just run-redis"]
     vm.ssh_cmd(server_cmd)
 
-    standard_port = 6379
-    tls_port = 6380
-    port = tls_port if tls else standard_port
-    threads = 4
-
     for i in range(repeat):
-        print(f"Running memtier with redis {i+1}/{repeat}")
-        cmd = ["nix-shell", f"{nix_shell_path}", "--run", "just run-memtier-tls"]
+        print(f"Running memtier with {server} {i+1}/{repeat}")
+        cmd = ["nix-shell", f"{NIX_SHELL_PATH}", "--run", "just run-memtier-tls"]
         output = subprocess.run(cmd, capture_output=True, text=True)
         if output.returncode != 0:
             print(f"Error running memtier: {output.stderr}")
@@ -122,14 +101,12 @@ def run_nginx(name: str, vm: QemuVm, repeat: int = 1):
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
-    nix_shell_path = "benchmarks/network/nginx/shell.nix"
-
-    server_cmd = ["nix-shell", f"/share/{nix_shell_path}", "--run", "just run-nginx"]
+    server_cmd = ["nix-shell", f"/share/{NIX_SHELL_PATH}", "--run", "just run-nginx"]
     vm.ssh_cmd(server_cmd)
 
     for i in range(repeat):
         print(f"Running wrk {i+1}/{repeat}")
-        cmd = ["nix-shell", f"{nix_shell_path}", "--run", "just run-wrk"]
+        cmd = ["nix-shell", f"{NIX_SHELL_PATH}", "--run", "just run-wrk"]
         output = subprocess.run(cmd, capture_output=True, text=True)
         if output.returncode != 0:
             print(f"Error running wrk: {output.stderr}")

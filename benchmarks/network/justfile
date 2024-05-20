@@ -1,0 +1,63 @@
+#networking
+VM_IP := "172.45.0.2"
+IPERF_PORT := "7175"
+STANDARD_MEMTIER_PORT := "6379"
+TLS_MEMTIER_PORT := "6380"
+
+#TLS
+SERVER_CERT := "tls/pki/issued/server.crt"
+SERVER_KEY := "tls/pki/private/server.key"
+CLIENT_CERT := "tls/pki/issued/client.crt"
+CLIENT_KEY := "tls/pki/private/client.key"
+CA_CERT := "tls/pki/ca.crt"
+
+#config
+THREADS := "4"
+PINGS := "20"
+
+#ping
+run-ping pkt_size:
+  ping -c {{PINGS}} -s {{pkt_size}} {{VM_IP}}
+
+#iperf
+run-iperf-server:
+  iperf -s -p {{IPERF_PORT}} -D
+
+run-iperf-client pkt_size:
+  iperf -c {{VM_IP}} -p {{IPERF_PORT}} -l {{pkt_size}}
+
+#nginx
+run-nginx:
+  nginx -e logs/error.log -c nginx.conf  -p nginx
+
+run-wrk:
+  wrk https://{{VM_IP}}
+
+#memtier
+run-redis:
+  redis-server \
+  --protected-mode no \
+  --daemonize yes \
+  --tls-port {{TLS_MEMTIER_PORT}} \
+  --tls-cert-file {{SERVER_CERT}} \
+  --tls-key-file {{SERVER_KEY}} \
+  --tls-ca-cert-file {{CA_CERT}}
+
+run-memcached:
+  memcached -u nobody -d -p {{STANDARD_MEMTIER_PORT}}
+
+run-memcached-tls:
+  memcached -u nobody -d -p {{STANDARD_MEMTIER_PORT}}
+
+run-memtier: 
+  memtier_benchmark --host={{VM_IP}} -p {{STANDARD_MEMTIER_PORT}} -t {{THREADS}}
+
+run-memtier-tls:
+  memtier_benchmark \
+  --host={{VM_IP}} \
+  -p {{TLS_MEMTIER_PORT}} \
+  -t {{THREADS}} \
+  --tls \
+  --cert={{CLIENT_CERT}} \
+  --key={{CLIENT_KEY}} \
+  --cacert={{CA_CERT}}
