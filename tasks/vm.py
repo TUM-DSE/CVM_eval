@@ -609,6 +609,21 @@ def run_memtier(
         run_memtier(name, vm, server=server, repeat=repeat)
 
 
+def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
+    repeat: int = kargs["config"].get("repeat", 1)
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        # if pin:
+        #     vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from network import run_nginx
+
+        run_nginx(name, vm, repeat=repeat)
+
+
 def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
     repeat: int = kargs["config"].get("repeat", 1)
     resource: VMResource = kargs["config"]["resource"]
@@ -697,6 +712,8 @@ def do_action(action: str, **kwargs: Any) -> None:
         run_memtier(server="memcached", **kwargs)
     elif action == "run-ping":
         run_ping(**kwargs)
+    elif action == "run-nginx":
+        run_nginx(**kwargs)
     else:
         raise ValueError(f"Unknown action: {action}")
 

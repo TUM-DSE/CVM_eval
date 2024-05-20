@@ -74,7 +74,7 @@ def run_iperf(
                 print(f"Error running ping: {output.stderr}")
                 continue
             lines = output.stdout.split("\n")
-            with open(outputdir_host / f"{i+1}.log", "w") as f:
+            with open(outputdir_host / f"{i+1}-{pkt_size}.log", "w") as f:
                 f.write("\n".join(lines))
     print(f"Results saved in {outputdir_host}")
 
@@ -102,10 +102,37 @@ def run_memtier(
 
     for i in range(repeat):
         print(f"Running memtier with redis {i+1}/{repeat}")
-        cmd = ["nix-shell", f"{nix_shell_path}", "--run", "just run-memtier"]
+        cmd = ["nix-shell", f"{nix_shell_path}", "--run", "just run-memtier-tls"]
         output = subprocess.run(cmd, capture_output=True, text=True)
         if output.returncode != 0:
             print(f"Error running memtier: {output.stderr}")
+            continue
+        lines = output.stdout.split("\n")
+        with open(outputdir_host / f"{i+1}.log", "w") as f:
+            f.write("\n".join(lines))
+    print(f"Results saved in {outputdir_host}")
+
+
+def run_nginx(name: str, vm: QemuVm, repeat: int = 1):
+    """Run the nginx on the VM and the wrk benchmark on the host.
+    The results are saved in ./bench-result/networking/nginx/{name}/{date}/
+    """
+    date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    outputdir = Path(f"./bench-result/networking/nginx/{name}/{date}/")
+    outputdir_host = PROJECT_ROOT / outputdir
+    outputdir_host.mkdir(parents=True, exist_ok=True)
+
+    nix_shell_path = "benchmarks/network/nginx/shell.nix"
+
+    server_cmd = ["nix-shell", f"/share/{nix_shell_path}", "--run", "just run-nginx"]
+    vm.ssh_cmd(server_cmd)
+
+    for i in range(repeat):
+        print(f"Running wrk {i+1}/{repeat}")
+        cmd = ["nix-shell", f"{nix_shell_path}", "--run", "just run-wrk"]
+        output = subprocess.run(cmd, capture_output=True, text=True)
+        if output.returncode != 0:
+            print(f"Error running wrk: {output.stderr}")
             continue
         lines = output.stdout.split("\n")
         with open(outputdir_host / f"{i+1}.log", "w") as f:

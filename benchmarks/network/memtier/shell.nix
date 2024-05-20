@@ -7,6 +7,7 @@ mkShell {
     memcached
     htop
     just
+    libevent
   ];
   # nix-shell ./path/to/shell.nix automatically cd's into the directory
   shellHook = ''cd "${toString ./.}"'';
