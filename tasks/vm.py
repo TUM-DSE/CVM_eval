@@ -591,7 +591,12 @@ def run_iperf(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
 
 
 def run_memtier(
-    name: str, qemu_cmd: List[str], pin: bool, server: str = "redis", **kargs: Any
+    name: str,
+    qemu_cmd: List[str],
+    pin: bool,
+    server: str = "redis",
+    protocol: str = "redis",
+    **kargs: Any,
 ):
     repeat: int = kargs["config"].get("repeat", 1)
     resource: VMResource = kargs["config"]["resource"]
@@ -604,7 +609,7 @@ def run_memtier(
         vm.wait_for_ssh()
         from network import run_memtier
 
-        run_memtier(name, vm, server=server, repeat=repeat)
+        run_memtier(name, vm, server=server, protocol=protocol, repeat=repeat)
 
 
 def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
@@ -701,10 +706,12 @@ def do_action(action: str, **kwargs: Any) -> None:
         run_fio(**kwargs)
     elif action == "run-iperf":
         run_iperf(**kwargs)
-    elif action == "run-memtier":
-        run_memtier(server="redis", **kwargs)
-    elif action == "run-memtier-memcached":
-        run_memtier(server="memcached", **kwargs)
+    elif action == "run-memtier-redis":
+        run_memtier(**kwargs)
+    elif action == "run-memtier-binary":
+        run_memtier(server="memcached", protocol="memcache_binary", **kwargs)
+    elif action == "run-memtier-text":
+        run_memtier(server="memcached", protocol="memcache_text", **kwargs)
     elif action == "run-ping":
         run_ping(**kwargs)
     elif action == "run-nginx":

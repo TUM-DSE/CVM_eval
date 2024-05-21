@@ -44,15 +44,15 @@ run-redis:
   --tls-ca-cert-file {{CA_CERT}}
 
 run-memcached:
-  memcached -u nobody -d -p {{STANDARD_MEMTIER_PORT}}
+  ./memtier/memcached -u nobody -d -p {{TLS_MEMTIER_PORT}} -Z -o ssl_chain_cert={{SERVER_CERT}},ssl_key={{SERVER_KEY}}
 
-run-memcached-tls:
-  memcached -u nobody -d -p {{STANDARD_MEMTIER_PORT}}
+run-memcached-no-tls:
+  ./memtier/memcached -u nobody -d -p {{STANDARD_MEMTIER_PORT}}
 
-run-memtier: 
-  memtier_benchmark --host={{VM_IP}} -p {{STANDARD_MEMTIER_PORT}} -t {{THREADS}}
+run-memtier protocol: 
+  memtier_benchmark --host={{VM_IP}} -p {{STANDARD_MEMTIER_PORT}} -t {{THREADS}} -P {{protocol}}
 
-run-memtier-tls:
+run-memtier-tls protocol:
   memtier_benchmark \
   --host={{VM_IP}} \
   -p {{TLS_MEMTIER_PORT}} \
@@ -60,4 +60,5 @@ run-memtier-tls:
   --tls \
   --cert={{CLIENT_CERT}} \
   --key={{CLIENT_KEY}} \
-  --cacert={{CA_CERT}}
+  --cacert={{CA_CERT}} \
+  -P {{protocol}}

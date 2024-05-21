@@ -4,7 +4,6 @@ from pathlib import Path
 from config import PROJECT_ROOT
 from tasks.qemu import QemuVm
 
-VM_IP = "172.45.0.2"
 NIX_SHELL_PATH = "benchmarks/network/shell.nix"
 
 
@@ -67,21 +66,37 @@ def run_iperf(
     print(f"Results saved in {outputdir_host}")
 
 
-def run_memtier(name: str, vm: QemuVm, repeat: int = 1, server: str = "redis"):
+def run_memtier(
+    name: str,
+    vm: QemuVm,
+    repeat: int = 1,
+    server: str = "redis",
+    protocol: str = "redis",
+):
     """Run the memtier benchmark on the VM using redis.
-    The results are saved in ./bench-result/networking/memtier/redis/{name}/{date}/
+    The results are saved in ./bench-result/networking/memtier/{protocol}/{name}/{date}/
     """
     date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    outputdir = Path(f"./bench-result/networking/memtier/redis/{name}/{date}/")
+    outputdir = Path(f"./bench-result/networking/memtier/{protocol}/{name}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
-    server_cmd = ["nix-shell", f"/share/{NIX_SHELL_PATH}", "--run", "just run-redis"]
+    server_cmd = [
+        "nix-shell",
+        f"/share/{NIX_SHELL_PATH}",
+        "--run",
+        f"just run-{server}",
+    ]
     vm.ssh_cmd(server_cmd)
 
     for i in range(repeat):
-        print(f"Running memtier with {server} {i+1}/{repeat}")
-        cmd = ["nix-shell", f"{NIX_SHELL_PATH}", "--run", "just run-memtier-tls"]
+        print(f"Running memtier with {server} and {protocol} {i+1}/{repeat}")
+        cmd = [
+            "nix-shell",
+            f"{NIX_SHELL_PATH}",
+            "--run",
+            f"just run-memtier-tls {protocol}",
+        ]
         output = subprocess.run(cmd, capture_output=True, text=True)
         if output.returncode != 0:
             print(f"Error running memtier: {output.stderr}")

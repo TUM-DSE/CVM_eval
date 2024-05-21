@@ -27,4 +27,5 @@ Module.symvers
 modules.order
 
 benchmarks/network/memtier/dump.rdb
-benchmarks/network/nginx/logs
+benchmarks/network/nginx/nginx.pid
+benchmarks/network/nginx/logs/access.log
