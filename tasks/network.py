@@ -119,6 +119,7 @@ def run_memtier(
     server_cmd = [
         "nix-shell",
         "/share/benchmarks/network/memtier/shell.nix",
+        "--repair",
         "--run",
         f"just PORT={port} THREADS={server_threads} run-{server}",
     ]

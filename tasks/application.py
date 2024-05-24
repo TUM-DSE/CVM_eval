@@ -24,6 +24,7 @@ def run_blender(
     cmd = [
         "nix-shell",
         "/share/benchmarks/application/blender/shell.nix",
+        "--repair",
         "--run",
         "just run",
     ]
@@ -65,6 +66,7 @@ def run_tensorflow(
     cmd = [
         "nix-shell",
         "/share/benchmarks/application/tensorflow/shell.nix",
+        "--repair",
         "--run",
         f"just run {thread_cnt}",
     ]
@@ -106,6 +108,7 @@ def run_pytorch(
     cmd = [
         "nix-shell",
         "/share/benchmarks/application/pytorch/shell.nix",
+        "--repair",
         "--run",
         f"just run {thread_cnt}",
     ]
@@ -140,6 +143,7 @@ def run_sqlite(
         cmd = [
             "nix-shell",
             "/share/benchmarks/application/sqlite/shell.nix",
+            "--repair",
             "--run",
             f"just DBPATH={dbpath} init",
         ]
@@ -152,6 +156,7 @@ def run_sqlite(
         cmd = [
             "nix-shell",
             "/share/benchmarks/application/sqlite/shell.nix",
+            "--repair",
             "--run",
             f"just DBPATH={dbpath} run_{test}",
         ]
