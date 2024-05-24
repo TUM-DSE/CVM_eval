@@ -152,6 +152,8 @@ start-snp-direct:
 TDX_QEMU := join(BUILD_DIR, "qemu-tdx/bin/qemu-system-x86_64")
 #TDVF_FIRMWARE := "/usr/share/ovmf/OVMF.fd"
 TDVF_FIRMWARE := join(BUILD_DIR, "ovmf-tdx-fd/FV/OVMF.fd")
+TDSHIM := "../td-shim/target/release/final.bin"
+CLOUD_HYPERVISOR := "../cloud-hypervisor/target/release/cloud-hypervisor"
 TD_IMG := join(BUILD_DIR, "image/tdx-guest-ubuntu-23.10.qcow2")
 QUOTE_ARGS := "-device vhost-vsock-pci,guest-cid=3"
 
@@ -198,6 +200,34 @@ start-tdx-direct:
         -mon chardev=char0,mode=readline \
         -device virtconsole,chardev=char0,id=vc0,nr=0 \
         {{QUOTE_ARGS}}
+
+start-ch:
+   {{CLOUD_HYPERVISOR}} \
+        --kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        --cmdline "console=hvc0 root=/dev/vda rw" \
+        --cpus boot={{smp}} \
+        --memory size={{mem}} \
+        --disk path={{GUEST_FS}} 
+
+start-ch-tdvf:
+   {{CLOUD_HYPERVISOR}} \
+        --platform tdx=on \
+        --firmware {{TDVF_FIRMWARE}} \
+        --kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        --cmdline "console=hvc0 root=/dev/vda rw" \
+        --cpus boot={{smp}} \
+        --memory size={{mem}} \
+        --disk path={{GUEST_FS}} 
+
+start-ch-tdshim:
+   {{CLOUD_HYPERVISOR}} \
+        --platform tdx=on \
+        --firmware {{TDSHIM}} \
+        --kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        --cmdline "console=hvc0 root=/dev/vda rw" \
+        --cpus boot={{smp}} \
+        --memory size={{mem}} \
+        --disk path={{GUEST_FS}} 
 
 start-intel-direct:
     {{TDX_QEMU}} \
