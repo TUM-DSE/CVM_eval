@@ -528,7 +528,6 @@ def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     with spawn_qemu(qemu_cmd, numa_node=resource.numa_node) as vm:
         if pin:
             vm.pin_vcpu()
-        vm.wait_for_ssh()
         vm.attach()
         vm.shutdown()
 
