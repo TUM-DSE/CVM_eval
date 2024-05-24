@@ -44,7 +44,7 @@ def parse_iperf_result(name: str, label: str, mode: str, date=None) -> pd.DataFr
     if mode == "udp":
         pktsize = [64, 128, 256, 512, 1024, 1460]
     elif mode == "tcp":
-        pktsize = [64, 128, 256, 512, "1K", "32K", "128K"]
+        pktsize = [64, 128, 256, 512, 1024, "32K", "128K"]
     else:
         raise ValueError(f"Invalid mode: {mode}")
     ths = []
@@ -121,9 +121,26 @@ def parse_ping_result(name: str, label: str, date=None) -> pd.DataFrame:
 
 
 @task
-def plot_iperf(ctx, vm="amd", cvm="snp", mode="udp", outdir="plot"):
-    df1 = parse_iperf_result(f"{vm}-direct-medium", vm, mode)
-    df2 = parse_iperf_result(f"{cvm}-direct-medium", cvm, mode)
+def plot_iperf(
+    ctx,
+    vm="amd",
+    cvm="snp",
+    mode="udp",
+    vhost=False,
+    mq=False,
+    outdir="plot",
+    outname=None,
+):
+    def get_name(name):
+        n = f"{name}-direct-medium"
+        if vhost:
+            n += "-vhost"
+        if mq:
+            n += "-mq"
+        return n
+
+    df1 = parse_iperf_result(get_name(vm), vm, mode)
+    df2 = parse_iperf_result(get_name(cvm), cvm, mode)
     # merge df using name as key
     df = pd.concat([df1, df2])
 
@@ -164,18 +181,37 @@ def plot_iperf(ctx, vm="amd", cvm="snp", mode="udp", outdir="plot"):
     for container in ax.containers:
         ax.bar_label(container, fmt="%.2f")
 
+    plt.tight_layout()
+
+    if outname is None:
+        outname = f"iperf_{mode}"
+        if vhost:
+            outname += "_vhost"
+        if mq:
+            outname += "_mq"
+        outname += "_throughput.pdf"
+
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    save_path = outdir / f"iperf_{mode}_throughput.pdf"
-    plt.tight_layout()
+    save_path = outdir / outname
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
 
 
 @task
-def plot_ping(ctx, vm="amd", cvm="snp", outdir="plot", outname="ping.pdf"):
-    df1 = parse_ping_result(f"{vm}-direct-medium", vm)
-    df2 = parse_ping_result(f"{cvm}-direct-medium", cvm)
+def plot_ping(
+    ctx, vm="amd", cvm="snp", vhost=False, mq=False, outdir="plot", outname=None
+):
+    def get_name(name):
+        n = f"{name}-direct-medium"
+        if vhost:
+            n += "-vhost"
+        if mq:
+            n += "-mq"
+        return n
+
+    df1 = parse_ping_result(get_name(vm), vm)
+    df2 = parse_ping_result(get_name(cvm), cvm)
     # merge df using name as key
     df = pd.concat([df1, df2])
     print(df)
@@ -218,6 +254,15 @@ def plot_ping(ctx, vm="amd", cvm="snp", outdir="plot", outname="ping.pdf"):
         ax.bar_label(container, fmt="%.2f")
 
     plt.tight_layout()
+
+    if outname is None:
+        outname = f"ping"
+        if vhost:
+            outname += "_vhost"
+        if mq:
+            outname += "_mq"
+        outname += ".pdf"
+
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     save_path = outdir / outname
