@@ -528,7 +528,9 @@ def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     with spawn_qemu(qemu_cmd, numa_node=resource.numa_node) as vm:
         if pin:
             vm.pin_vcpu()
+        vm.wait_for_ssh()
         vm.attach()
+        vm.shutdown()
 
 
 def ipython(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -590,6 +592,7 @@ def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> Non
         import phoronix
 
         phoronix.run_phoronix(name, f"{bench_name}", f"pts/{bench_name}", vm)
+        vm.shutdown()
 
 
 def run_blender(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -605,6 +608,7 @@ def run_blender(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
         from application import run_blender
 
         run_blender(name, vm, repeat=repeat)
+        vm.shutdown()
 
 
 def run_iperf(
@@ -626,6 +630,8 @@ def run_iperf(
             name += f"-mq"
         run_iperf(name, vm, udp=udp)
 
+        vm.shutdown()
+
 
 def run_memtier(
     name: str, qemu_cmd: List[str], pin: bool, server: str = "redis", **kargs: Any
@@ -641,6 +647,7 @@ def run_memtier(
         from network import run_memtier
 
         run_memtier(name, vm, server=server)
+        vm.shutdown()
 
 
 def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
@@ -659,6 +666,7 @@ def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
         if kargs["config"]["virtio_nic_mq"]:
             name += f"-mq"
         run_ping(name, vm)
+        vm.shutdown()
 
 
 def run_tensorflow(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -674,6 +682,7 @@ def run_tensorflow(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> N
         from application import run_tensorflow
 
         run_tensorflow(name, vm, repeat=repeat)
+        vm.shutdown()
 
 
 def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -689,6 +698,7 @@ def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
         from application import run_pytorch
 
         run_pytorch(name, vm, repeat=repeat)
+        vm.shutdown()
 
 
 def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -712,6 +722,7 @@ def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         from application import run_sqlite
 
         run_sqlite(name, vm, dbpath)
+        vm.shutdown()
 
 
 def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -737,6 +748,7 @@ def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
             name += f"-swiotlb"
         fio_job = kargs["config"]["fio_job"]
         storage.run_fio(name, vm, fio_job)
+        vm.shutdown()
 
 
 def do_action(action: str, **kwargs: Any) -> None:

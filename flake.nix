@@ -124,6 +124,7 @@
                 python3.pkgs.binary
                 python3.pkgs.lxml
                 python3.pkgs.ipython
+                python3.pkgs.psutil
 
                 just
                 git

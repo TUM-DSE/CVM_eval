@@ -8,6 +8,7 @@ import os
 import re
 import socket
 import subprocess
+import psutil
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -265,6 +266,16 @@ class QemuVm:
             except OSError as e:
                 print("Failed to pin vCPU{}: {}".format(cpuidx, e))
                 return
+
+    def shutdown(self, timeout=10) -> None:
+        """Try graceful shutdown"""
+        print("shutdown vm")
+        self.ssh_cmd(["poweroff"])
+        count = 0
+        if count < timeout and psutil.pid_exists(self.pid):
+            time.sleep(1)
+            print(".")
+            count += 1
 
 
 @contextmanager
