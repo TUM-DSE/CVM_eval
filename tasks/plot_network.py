@@ -31,7 +31,7 @@ FONTSIZE = 9
 palette = sns.color_palette("pastel")
 hatches = ["", "//"]
 
-BENCH_RESULT_DIR = Path("./bench-result/network")
+BENCH_RESULT_DIR = Path("./bench-result/networking")
 
 
 # bench mark path:
@@ -51,14 +51,12 @@ def parse_iperf_result(name: str, label: str, mode: str, date=None) -> pd.DataFr
 
     if date is None:
         # use the latest date
-        date = sorted(os.listdir(BENCH_RESULT_DIR / "iperf" / name))[-1]
+        date = sorted(os.listdir(BENCH_RESULT_DIR / "iperf" / name / mode))[-1]
 
     print(f"date: {date}")
 
     for size in pktsize:
-        path = Path(
-            f"./bench-result/network/iperf/{name}/{date}/iperf-{mode}-{size}.txt"
-        )
+        path = Path(f"./bench-result/networking/iperf/{name}/{mode}/{date}/{size}.log")
         if not path.exists():
             print(f"XXX: {path} not found!")
             continue
@@ -92,12 +90,12 @@ def parse_ping_result(name: str, label: str, date=None) -> pd.DataFrame:
 
     if date is None:
         # use the latest date
-        date = sorted(os.listdir(BENCH_RESULT_DIR / "iperf" / name))[-1]
+        date = sorted(os.listdir(BENCH_RESULT_DIR / "ping" / name))[-1]
 
     print(f"date: {date}")
 
     for size in pktsize_actual:
-        path = Path(f"./bench-result/network/ping/{name}/{date}/ping-{size}.txt")
+        path = Path(f"./bench-result/networking/ping/{name}/{date}/{size}.log")
         if not path.exists():
             print(f"XXX: {path} not found!")
             continue
@@ -123,9 +121,9 @@ def parse_ping_result(name: str, label: str, date=None) -> pd.DataFrame:
 
 
 @task
-def plot_iperf(ctx):
-    df1 = parse_iperf_result("normal-direct-medium", "amd")
-    df2 = parse_iperf_result("snp-direct-medium", "snp")
+def plot_iperf(ctx, vm="amd", cvm="snp", mode="udp", outdir="plot"):
+    df1 = parse_iperf_result(f"{vm}-direct-medium", vm, mode)
+    df2 = parse_iperf_result(f"{cvm}-direct-medium", cvm, mode)
     # merge df using name as key
     df = pd.concat([df1, df2])
 
@@ -166,16 +164,18 @@ def plot_iperf(ctx):
     for container in ax.containers:
         ax.bar_label(container, fmt="%.2f")
 
-    save_path = Path(f"./plot/iperf_{mode}_throughput.pdf")
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    save_path = outdir / f"iperf_{mode}_throughput.pdf"
     plt.tight_layout()
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
 
 
 @task
-def plot_ping(ctx):
-    df1 = parse_ping_result("normal-direct-medium", "amd")
-    df2 = parse_ping_result("snp-direct-medium", "snp")
+def plot_ping(ctx, vm="amd", cvm="snp", outdir="plot", outname="ping.pdf"):
+    df1 = parse_ping_result(f"{vm}-direct-medium", vm)
+    df2 = parse_ping_result(f"{cvm}-direct-medium", cvm)
     # merge df using name as key
     df = pd.concat([df1, df2])
     print(df)
@@ -217,7 +217,9 @@ def plot_ping(ctx):
     for container in ax.containers:
         ax.bar_label(container, fmt="%.2f")
 
-    save_path = Path("./plot/ping_latency.pdf")
     plt.tight_layout()
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    save_path = outdir / outname
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
