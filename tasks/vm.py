@@ -502,7 +502,7 @@ def qemu_option_virtio_nic(
 
     if mq:
         option = f"""
-        -netdev tap,id=en0,ifname={tap},script=no,downscript=no,vhost={vhost_option},queues={num_cpus}
+        -netdev tap,id=en0,ifname={mtap},script=no,downscript=no,vhost={vhost_option},queues={num_cpus}
         -device virtio-net-pci,netdev=en0,mq=on,vectors=18{iommu}
         """
     else:
@@ -620,6 +620,10 @@ def run_iperf(
         vm.wait_for_ssh()
         from network import run_iperf
 
+        if kargs["config"]["virtio_nic_vhost"]:
+            name += f"-vhost"
+        if kargs["config"]["virtio_nic_mq"]:
+            name += f"-mq"
         run_iperf(name, vm, udp=udp)
 
 
@@ -650,6 +654,10 @@ def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
         vm.wait_for_ssh()
         from network import run_ping
 
+        if kargs["config"]["virtio_nic_vhost"]:
+            name += f"-vhost"
+        if kargs["config"]["virtio_nic_mq"]:
+            name += f"-mq"
         run_ping(name, vm)
 
 
