@@ -136,7 +136,7 @@ start-snp-direct:
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on \
-        -netdev bridge,id=en0,br={{BRIDGE_NAME} \
+        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
         -device virtio-net-pci,netdev=en0 \
         -serial null \
         -device virtio-serial \
