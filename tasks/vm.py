@@ -572,6 +572,22 @@ def boottime(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     boottime.run_boot_test(name, qemu_cmd, pin, **kargs)
 
 
+def prepare_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from phoronix import install_bench
+
+        install_bench("pts/memory", vm)
+        install_bench("pts/npb", vm)
+        vm.shutdown()
+
+
 def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     bench_name = kargs["config"]["phoronix_bench_name"]
     if not bench_name:
@@ -773,6 +789,8 @@ def do_action(action: str, **kwargs: Any) -> None:
         ipython(**kwargs)
     elif action == "boottime":
         boottime(**kwargs)
+    elif action == "prepare-phoronix":
+        prepare_phoronix(**kwargs)
     elif action == "run-phoronix":
         run_phoronix(**kwargs)
     elif action == "run-blender":
