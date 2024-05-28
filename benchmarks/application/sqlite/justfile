@@ -1,0 +1,25 @@
+# vim: set ft=make et :
+
+DBPATH := "./data/test.db"
+
+init:
+    mkdir -p $(dirname {{DBPATH}})
+    kvtest init {{DBPATH}} --count 500k --size 4k --variance 2k
+
+run_seq:
+  kvtest run {{DBPATH}} --count 500k --stats
+
+run_rand:
+  kvtest run {{DBPATH}} --count 500k --stats --random
+
+run_update:
+  kvtest run {{DBPATH}} --count 500k --stats --update
+
+run_update_rand:
+  kvtest run {{DBPATH}} --count 500k --stats --update --random
+
+run_all:
+    @just run_seq
+    @just run_rand
+    @just run_update
+    @just run_update_rand

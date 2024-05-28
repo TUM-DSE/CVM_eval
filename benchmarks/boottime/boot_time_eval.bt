@@ -19,6 +19,11 @@ u:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:main {
     printf("%llu: QEMU: main\n", nsecs);
 }
 
+ur:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:main {
+    printf("%llu: QEMU: exit\n", nsecs);
+    @ = 0;
+}
+
 u:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:sev_kvm_init {
     printf("%llu: QEMU: sev_kvm_init\n", nsecs);
 }

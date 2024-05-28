@@ -22,6 +22,10 @@ LINUX_DIR := join(PROJECT_ROOT, "../linux")
 LINUX_REPO := "https://github.com/torvalds/linux"
 LINUX_COMMIT := "0dd3ee31125508cd67f7e7172247f05b7fd1753a" # v6.7
 
+BRIDGE_NAME := "virbr0"
+TAP_NAME := "tap0"
+MTAP_NAME := "mtap0"
+
 default:
     @just --choose
 
@@ -43,7 +47,7 @@ start-vm-disk:
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
-        -netdev bridge,id=en0,br=virbr0 \
+        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
         -device virtio-net-pci,netdev=en0 \
         -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on
 
@@ -63,7 +67,7 @@ start-vm-direct:
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
-        -netdev bridge,id=en0,br=virbr0 \
+        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
         -device virtio-net-pci,netdev=en0 \
         -serial null \
         -device virtio-serial \
@@ -87,7 +91,7 @@ start-vm-direct-vhost:
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
-        -netdev tap,id=en0,ifname=tap0,script=no,downscript=no,vhost=on,queues=2 \
+        -netdev tap,id=en0,ifname={{TAP_NAME}},script=no,downscript=no,vhost=on,queues=2 \
         -device virtio-net-pci,netdev=en0,mq=on,vectors=18 \
         -serial null \
         -device virtio-serial \
@@ -110,7 +114,7 @@ start-snp-disk:
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
-        -netdev bridge,id=en0,br=virbr0 \
+        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
         -device virtio-net-pci,netdev=en0 \
         -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on
 
@@ -132,7 +136,7 @@ start-snp-direct:
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on \
-        -netdev bridge,id=en0,br=virbr0 \
+        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
         -device virtio-net-pci,netdev=en0 \
         -serial null \
         -device virtio-serial \
@@ -148,6 +152,8 @@ start-snp-direct:
 TDX_QEMU := join(BUILD_DIR, "qemu-tdx/bin/qemu-system-x86_64")
 #TDVF_FIRMWARE := "/usr/share/ovmf/OVMF.fd"
 TDVF_FIRMWARE := join(BUILD_DIR, "ovmf-tdx-fd/FV/OVMF.fd")
+TDSHIM := "../td-shim/target/release/final.bin"
+CLOUD_HYPERVISOR := "../cloud-hypervisor/target/release/cloud-hypervisor"
 TD_IMG := join(BUILD_DIR, "image/tdx-guest-ubuntu-23.10.qcow2")
 QUOTE_ARGS := "-device vhost-vsock-pci,guest-cid=3"
 
@@ -194,6 +200,34 @@ start-tdx-direct:
         -mon chardev=char0,mode=readline \
         -device virtconsole,chardev=char0,id=vc0,nr=0 \
         {{QUOTE_ARGS}}
+
+start-ch:
+   {{CLOUD_HYPERVISOR}} \
+        --kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        --cmdline "console=hvc0 root=/dev/vda rw" \
+        --cpus boot={{smp}} \
+        --memory size={{mem}} \
+        --disk path={{GUEST_FS}} 
+
+start-ch-tdvf:
+   {{CLOUD_HYPERVISOR}} \
+        --platform tdx=on \
+        --firmware {{TDVF_FIRMWARE}} \
+        --kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        --cmdline "console=hvc0 root=/dev/vda rw" \
+        --cpus boot={{smp}} \
+        --memory size={{mem}} \
+        --disk path={{GUEST_FS}} 
+
+start-ch-tdshim:
+   {{CLOUD_HYPERVISOR}} \
+        --platform tdx=on \
+        --firmware {{TDSHIM}} \
+        --kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        --cmdline "console=hvc0 root=/dev/vda rw" \
+        --cpus boot={{smp}} \
+        --memory size={{mem}} \
+        --disk path={{GUEST_FS}} 
 
 start-intel-direct:
     {{TDX_QEMU}} \
@@ -415,35 +449,35 @@ setup-linux:
 
 setup_bridge:
     #!/usr/bin/env bash
-    ip a s virbr0 >/dev/null 2>&1
+    ip a s {{BRIDGE_NAME}} >/dev/null 2>&1
     if [ $? ]; then
-        sudo brctl addbr virbr0
-        sudo ip a a 172.44.0.1/24 dev virbr0
-        sudo ip l set dev virbr0 up
+        sudo brctl addbr {{BRIDGE_NAME}}
+        sudo ip a a 172.44.0.1/24 dev {{BRIDGE_NAME}}
+        sudo ip l set dev {{BRIDGE_NAME}} up
     fi
 
 setup_tap:
-    sudo ip tuntap add tap0 mode tap
-    sudo ip link set tap0 master virbr0
-    sudo ip link set tap0 up
-    sudo ip tuntap add mtap0 mode tap multi_queue
-    sudo ip link set mtap0 master virbr0
-    sudo ip link set mtap0 up
+    sudo ip tuntap add {{TAP_NAME}} mode tap
+    sudo ip link set {{TAP_NAME}} master {{BRIDGE_NAME}}
+    sudo ip link set {{TAP_NAME}} up
+    sudo ip tuntap add {{MTAP_NAME}} mode tap multi_queue
+    sudo ip link set {{MTAP_NAME}} master {{BRIDGE_NAME}}
+    sudo ip link set {{MTAP_NAME}} up
 
 remove_bridge:
     #!/usr/bin/env bash
-    sudo ip link set dev tap0 down
-    sudo ip link del tap0
-    sudo ip link set dev mtap0 down
-    sudo ip link del mtap0
-    sudo ip link set dev virbr0 down
-    sudo brctl delbr virbr0
+    sudo ip link set dev {{TAP_NAME}} down
+    sudo ip link del {{TAP_NAME}}
+    sudo ip link set dev {{MTAP_NAME}} down
+    sudo ip link del {{MTAP_NAME}}
+    sudo ip link set dev {{BRIDGE_NAME}} down
+    sudo brctl delbr {{BRIDGE_NAME}}
 
 # These commands should show info on virbr0
 show_bridge_status:
     #!/usr/bin/env bash
     set -x
-    ip a show dev virbr0
+    ip a show dev {{BRIDGE_NAME}}
     brctl show
     networkctl
 

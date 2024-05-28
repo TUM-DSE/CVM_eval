@@ -8,6 +8,7 @@ import os
 import re
 import socket
 import subprocess
+import psutil
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -266,6 +267,16 @@ class QemuVm:
                 print("Failed to pin vCPU{}: {}".format(cpuidx, e))
                 return
 
+    def shutdown(self, timeout=10) -> None:
+        """Try graceful shutdown"""
+        print("shutdown vm")
+        self.ssh_cmd(["poweroff"])
+        count = 0
+        if count < timeout and psutil.pid_exists(self.pid):
+            time.sleep(1)
+            print(".")
+            count += 1
+
 
 @contextmanager
 def spawn_qemu(
@@ -286,11 +297,12 @@ def spawn_qemu(
                 f"--membind={','.join(map(str, numa_node))}",
             ]
 
-        qemu_command += [
+        qmp_command = [
             "-qmp",
             f"unix:{str(qmp_socket)},server,nowait",
         ]
         cmd += qemu_command
+        cmd += qmp_command
         cmd += extra_args
 
         print(cmd)

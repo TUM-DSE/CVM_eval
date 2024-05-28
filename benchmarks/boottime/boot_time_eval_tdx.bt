@@ -19,6 +19,11 @@ u:../../build/qemu-tdx/bin/qemu-system-x86_64:main {
     printf("%llu: QEMU: main\n", nsecs);
 }
 
+ur:../../build/qemu-tdx/bin/qemu-system-x86_64:main {
+    printf("%llu: QEMU: exit\n", nsecs);
+    @ = 0;
+}
+
 u:../../build/qemu-tdx/bin/qemu-system-x86_64:kvm_cpu_exec / @ == 0/ {
     @ = 1;
     printf("%llu: QEMU: kvm_cpu_exec\n", nsecs);

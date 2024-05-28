@@ -4,22 +4,18 @@ let
   nixpkgs = builtins.fetchGit {
     name = "23.11";
     url = "https://github.com/NixOS/nixpkgs";
-    rev = "9ddcaffecdf098822d944d4147dd8da30b4e6843";
     ref = "refs/heads/nixos-23.11";
+    rev = "9ddcaffecdf098822d944d4147dd8da30b4e6843";
   };
   pkgs = import nixpkgs { config = { }; overlays = [ ]; };
 in
 pkgs.mkShell {
-  packages = [
-    (pkgs.python3.withPackages (pypkgs: [
-      pypkgs.tensorflow
-      pypkgs.keras
-    ]))
-    pkgs.wget
-    pkgs.unzip
+  buildInputs = [
+    pkgs.memtier-benchmark
+    pkgs.redis
+    pkgs.memcached
     pkgs.just
-    pkgs.git
-    pkgs.numactl
   ];
+  # nix-shell ./path/to/shell.nix automatically cd's into the directory
   shellHook = ''cd "${toString ./.}"'';
 }

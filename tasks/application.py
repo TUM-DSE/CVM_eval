@@ -24,6 +24,7 @@ def run_blender(
     cmd = [
         "nix-shell",
         "/share/benchmarks/application/blender/shell.nix",
+        "--repair",
         "--run",
         "just run",
     ]
@@ -65,6 +66,7 @@ def run_tensorflow(
     cmd = [
         "nix-shell",
         "/share/benchmarks/application/tensorflow/shell.nix",
+        "--repair",
         "--run",
         f"just run {thread_cnt}",
     ]
@@ -106,6 +108,7 @@ def run_pytorch(
     cmd = [
         "nix-shell",
         "/share/benchmarks/application/pytorch/shell.nix",
+        "--repair",
         "--run",
         f"just run {thread_cnt}",
     ]
@@ -119,5 +122,57 @@ def run_pytorch(
         lines = output.stdout.split("\n")
         with open(outputdir_host / f"thread_{thread_cnt}-{i+1}.log", "w") as f:
             f.write("\n".join(lines))
+
+    print(f"Results saved in {outputdir_host}")
+
+
+def run_sqlite(
+    name: str,
+    vm: QemuVm,
+    dbpath: str = "/tmp/test.db",
+):
+    """Run the SQLite's kvtest
+    The results are saved in ./bench-result/application/sqlite/{name}/{date}/[seq,rand,update_seq,update_rand].log
+    """
+    date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    outputdir = Path(f"./bench-result/application/sqlite/{name}/{date}/")
+    outputdir_host = PROJECT_ROOT / outputdir
+    outputdir_host.mkdir(parents=True, exist_ok=True)
+
+    def init():
+        cmd = [
+            "nix-shell",
+            "/share/benchmarks/application/sqlite/shell.nix",
+            "--repair",
+            "--run",
+            f"just DBPATH={dbpath} init",
+        ]
+        output = vm.ssh_cmd(cmd)
+        if output.returncode != 0:
+            print(f"Error running sqlite: {output.stderr}")
+            return
+
+    def run(test: str):
+        cmd = [
+            "nix-shell",
+            "/share/benchmarks/application/sqlite/shell.nix",
+            "--repair",
+            "--run",
+            f"just DBPATH={dbpath} run_{test}",
+        ]
+        output = vm.ssh_cmd(cmd)
+        if output.returncode != 0:
+            print(f"Error running sqlite: {output.stderr}")
+            return output.stdout
+
+        lines = output.stdout.split("\n")
+        with open(outputdir_host / f"{test}.log", "w") as f:
+            f.write("\n".join(lines))
+
+    init()
+    run("seq")
+    run("rand")
+    run("update")
+    run("update_rand")
 
     print(f"Results saved in {outputdir_host}")

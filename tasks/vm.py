@@ -14,7 +14,6 @@ from qemu import spawn_qemu, QemuVm
 
 @dataclass
 class VMResource:
-    name: str
     cpu: int
     memory: int  # GB
     numa_node: [int] = None
@@ -30,20 +29,37 @@ class VMConfig:
     cmdline: Optional[str]
 
 
-def get_vm_resource(name: str) -> VMResource:
-    if name == "small":
-        return VMResource(name=name, cpu=1, memory=8, numa_node=[0])
-    if name == "medium":
-        return VMResource(name=name, cpu=8, memory=64, numa_node=[0])
-    if name == "large":
-        return VMResource(name=name, cpu=32, memory=256, numa_node=[0])
-    if name == "large-numa":
-        return VMResource(name=name, cpu=64, memory=512, numa_node=[0, 1])
-    raise ValueError(f"Unknown VM config: {name}")
+VMRESOURCES = {}
+VMRESOURCES["amd"] = {}
+VMRESOURCES["intel"] = {}
+VMRESOURCES["amd"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0])
+VMRESOURCES["amd"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0])
+VMRESOURCES["amd"]["large"] = VMResource(cpu=32, memory=256, numa_node=[0])
+VMRESOURCES["amd"]["numa"] = VMResource(cpu=64, memory=512, numa_node=[0, 1])
+VMRESOURCES["intel"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0])
+VMRESOURCES["intel"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0])
+VMRESOURCES["intel"]["large"] = VMResource(cpu=28, memory=128, numa_node=[0])
+VMRESOURCES["intel"]["numa"] = VMResource(cpu=56, memory=256, numa_node=[0, 1])
+VMRESOURCES["snp"] = VMRESOURCES["amd"]
+VMRESOURCES["tdx"] = VMRESOURCES["intel"]
+
+
+def get_vm_resource(type: str, name: str) -> VMResource:
+    return VMRESOURCES[type][name]
 
 
 def get_vm_config(name: str) -> VMConfig:
-    if name == "normal":
+    if name == "amd":
+        # use kernel same for the "snp"
+        return VMConfig(
+            qemu=BUILD_DIR / "qemu-amd-sev-snp/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/snp-guest-image.qcow2",
+            ovmf=BUILD_DIR / "ovmf-amd-sev-snp-fd/FV/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
+    if name == "amd-normal":
         return VMConfig(
             qemu=BUILD_DIR / "qemu-amd-sev-snp/bin/qemu-system-x86_64",
             image=BUILD_DIR / "image/normal-guest-image.qcow2",
@@ -52,7 +68,7 @@ def get_vm_config(name: str) -> VMConfig:
             initrd=None,
             cmdline=None,
         )
-    if name == "normal-direct":
+    if name == "amd-direct":
         return VMConfig(
             qemu=BUILD_DIR / "qemu-amd-sev-snp/bin/qemu-system-x86_64",
             image=BUILD_DIR / "image/guest-fs.qcow2",
@@ -80,6 +96,16 @@ def get_vm_config(name: str) -> VMConfig:
             cmdline="root=/dev/vda console=hvc0",
         )
     if name == "intel":
+        # use kernel same for the "tdx"
+        return VMConfig(
+            qemu="/usr/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/tdx-guest-image.qcow2",
+            ovmf="/usr/share/ovmf/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
+    if name == "intel-normal":
         return VMConfig(
             qemu="/usr/bin/qemu-system-x86_64",
             image=BUILD_DIR / "image/normal-guest-image.qcow2",
@@ -136,8 +162,8 @@ def get_vm_config(name: str) -> VMConfig:
     raise ValueError(f"Unknown VM image: {name}")
 
 
-def get_normal_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config("normal")
+def get_amd_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("amd")
     ssh_port = config["ssh_port"]
 
     qemu_cmd = f"""
@@ -161,8 +187,8 @@ def get_normal_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     return shlex.split(qemu_cmd)
 
 
-def get_normal_vm_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config("normal-direct")
+def get_amd_vm_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("amd-direct")
     ssh_port = config.get("ssh_port", SSH_PORT)
     extra_cmdline = config.get("extra_cmdline", "")
 
@@ -224,7 +250,7 @@ def get_snp_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 
 
 def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config("normal-direct")
+    vmconfig: VMConfig = get_vm_config("amd-direct")
     ssh_port = config.get("ssh_port", SSH_PORT)
     extra_cmdline = config.get("extra_cmdline", "")
 
@@ -453,7 +479,9 @@ def qemu_option_virtio_blk(
     return shlex.split(option)
 
 
-def qemu_option_virtio_nic(tap=None, vhost=False, mq=False, config={}) -> List[str]:
+def qemu_option_virtio_nic(
+    tap="tap0", mtap="mtap0", vhost=False, mq=False, config={}
+) -> List[str]:
     """Qreate a virtio-nic with a tap interface.
     If mq is True, then create multiple queues as many as the number of CPUs.
 
@@ -467,11 +495,6 @@ def qemu_option_virtio_nic(tap=None, vhost=False, mq=False, config={}) -> List[s
         vhost_option = "on"
     else:
         vhost_option = "off"
-    if tap is None:
-        if mq:
-            tap = "mtap0"
-        else:
-            tap = "tap0"
     if iommu_option:
         iommu = ",iommu_platform=on,disable-modern=off,disable-legacy=on"
     else:
@@ -479,7 +502,7 @@ def qemu_option_virtio_nic(tap=None, vhost=False, mq=False, config={}) -> List[s
 
     if mq:
         option = f"""
-        -netdev tap,id=en0,ifname={tap},script=no,downscript=no,vhost={vhost_option},queues={num_cpus}
+        -netdev tap,id=en0,ifname={mtap},script=no,downscript=no,vhost={vhost_option},queues={num_cpus}
         -device virtio-net-pci,netdev=en0,mq=on,vectors=18{iommu}
         """
     else:
@@ -506,6 +529,7 @@ def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         if pin:
             vm.pin_vcpu()
         vm.attach()
+        vm.shutdown()
 
 
 def ipython(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -538,6 +562,16 @@ def ipython(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         embed()
 
 
+def boottime(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    """Measure the boot time of a VM"""
+    import boottime
+
+    type: str = kargs["config"]["type"]
+    kargs["config"]["vmconfig"] = get_vm_config(f"{type}-direct")
+
+    boottime.run_boot_test(name, qemu_cmd, pin, **kargs)
+
+
 def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     bench_name = kargs["config"]["phoronix_bench_name"]
     if not bench_name:
@@ -557,6 +591,7 @@ def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> Non
         import phoronix
 
         phoronix.run_phoronix(name, f"{bench_name}", f"pts/{bench_name}", vm)
+        vm.shutdown()
 
 
 def run_blender(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -572,6 +607,65 @@ def run_blender(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
         from application import run_blender
 
         run_blender(name, vm, repeat=repeat)
+        vm.shutdown()
+
+
+def run_iperf(
+    name: str, qemu_cmd: List[str], pin: bool, udp: bool = False, **kargs: Any
+):
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from network import run_iperf
+
+        if kargs["config"]["virtio_nic_vhost"]:
+            name += f"-vhost"
+        if kargs["config"]["virtio_nic_mq"]:
+            name += f"-mq"
+        run_iperf(name, vm, udp=udp)
+
+        vm.shutdown()
+
+
+def run_memtier(
+    name: str, qemu_cmd: List[str], pin: bool, server: str = "redis", **kargs: Any
+):
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from network import run_memtier
+
+        run_memtier(name, vm, server=server)
+        vm.shutdown()
+
+
+def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from network import run_ping
+
+        if kargs["config"]["virtio_nic_vhost"]:
+            name += f"-vhost"
+        if kargs["config"]["virtio_nic_mq"]:
+            name += f"-mq"
+        run_ping(name, vm)
+        vm.shutdown()
 
 
 def run_tensorflow(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -587,6 +681,7 @@ def run_tensorflow(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> N
         from application import run_tensorflow
 
         run_tensorflow(name, vm, repeat=repeat)
+        vm.shutdown()
 
 
 def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -602,6 +697,31 @@ def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
         from application import run_pytorch
 
         run_pytorch(name, vm, repeat=repeat)
+        vm.shutdown()
+
+
+def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    resource: VMResource = kargs["config"]["resource"]
+    virito_blk: Optional[str] = kargs["config"]["virtio_blk"]
+    dbpath: str = "/tmp/test.db"
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+
+        if virito_blk:
+            import storage
+
+            storage.mount_disk(vm, "/dev/vdb", "/mnt", format=True)
+            dbpath = "/mnt/test.db"
+
+        from application import run_sqlite
+
+        run_sqlite(name, vm, dbpath)
+        vm.shutdown()
 
 
 def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -627,6 +747,7 @@ def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
             name += f"-swiotlb"
         fio_job = kargs["config"]["fio_job"]
         storage.run_fio(name, vm, fio_job)
+        vm.shutdown()
 
 
 def do_action(action: str, **kwargs: Any) -> None:
@@ -634,6 +755,8 @@ def do_action(action: str, **kwargs: Any) -> None:
         start_and_attach(**kwargs)
     elif action == "ipython":
         ipython(**kwargs)
+    elif action == "boottime":
+        boottime(**kwargs)
     elif action == "run-phoronix":
         run_phoronix(**kwargs)
     elif action == "run-blender":
@@ -642,8 +765,20 @@ def do_action(action: str, **kwargs: Any) -> None:
         run_tensorflow(**kwargs)
     elif action == "run-pytorch":
         run_pytorch(**kwargs)
+    elif action == "run-sqlite":
+        run_sqlite(**kwargs)
     elif action == "run-fio":
         run_fio(**kwargs)
+    elif action == "run-iperf":
+        run_iperf(**kwargs)
+    elif action == "run-iperf-udp":
+        run_iperf(udp=True, **kwargs)
+    elif action == "run-memtier":
+        run_memtier(server="redis", **kwargs)
+    elif action == "run-memtier-memcached":
+        run_memtier(server="memcached", **kwargs)
+    elif action == "run-ping":
+        run_ping(**kwargs)
     else:
         raise ValueError(f"Unknown action: {action}")
 
@@ -658,8 +793,8 @@ def do_action(action: str, **kwargs: Any) -> None:
 @task
 def start(
     ctx: Any,
-    type: str = "normal",  # normal, snp
-    size: str = "medium",  # small, medium, large, large-numa
+    type: str = "amd",  # amd, snp, intel, tdx
+    size: str = "medium",  # small, medium, large, numa
     direct: bool = True,  # if True, do direct boot. otherwise boot from the disk
     action: str = "attach",
     ssh_port: int = SSH_PORT,
@@ -674,6 +809,8 @@ def start(
     virtio_nic: bool = False,
     virtio_nic_vhost: bool = False,
     virtio_nic_mq: bool = False,
+    virtio_nic_tap: str = "tap0",
+    virtio_nic_mtap: str = "mtap0",
     # virtio-blk options
     virtio_blk: Optional[
         str
@@ -685,15 +822,15 @@ def start(
     warn: bool = True,
 ) -> None:
     config: dict = locals()
-    resource: VMResource = get_vm_resource(size)
+    resource: VMResource = get_vm_resource(type, size)
     config["resource"] = resource
 
     qemu_cmd: str
-    if type == "normal":
+    if type == "amd":
         if direct:
-            qemu_cmd = get_normal_vm_direct_qemu_cmd(resource, config)
+            qemu_cmd = get_amd_vm_direct_qemu_cmd(resource, config)
         else:
-            qemu_cmd = get_normal_vm_qemu_cmd(resource, config)
+            qemu_cmd = get_amd_vm_qemu_cmd(resource, config)
     elif type == "snp":
         if direct:
             qemu_cmd = get_snp_direct_qemu_cmd(resource, config)
@@ -714,7 +851,11 @@ def start(
 
     if virtio_nic:
         qemu_cmd += qemu_option_virtio_nic(
-            vhost=virtio_nic_vhost, mq=virtio_nic_mq, config=config
+            tap=virtio_nic_tap,
+            mtap=virtio_nic_mtap,
+            vhost=virtio_nic_vhost,
+            mq=virtio_nic_mq,
+            config=config,
         )
 
     if virtio_blk:

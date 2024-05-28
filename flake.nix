@@ -124,6 +124,7 @@
                 python3.pkgs.binary
                 python3.pkgs.lxml
                 python3.pkgs.ipython
+                python3.pkgs.psutil
 
                 just
                 git
@@ -139,6 +140,7 @@
                 fio
                 cryptsetup
                 iperf # iperf3
+                memtier-benchmark
               ] ++ [ inv-completion ]
               ++ pre-commit-check.enabledPackages;
             inherit (pre-commit-check) shellHook;

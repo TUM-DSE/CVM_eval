@@ -28,3 +28,11 @@ def run_fio(
         fio_job,
     ]
     vm.ssh_cmd(cmd)
+
+
+def mount_disk(vm: QemuVm, dev: str, mountpoint: str = "/mnt", format=False):
+    """Mount a disk on the VM"""
+    if format:
+        vm.ssh_cmd(["sudo", "mkfs.ext4", dev])
+    vm.ssh_cmd(["sudo", "mkdir", "-p", mountpoint])
+    vm.ssh_cmd(["sudo", "mount", dev, mountpoint])

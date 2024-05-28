@@ -147,21 +147,22 @@ def parse_tensorflow_result(name: str, date: Optional[str] = None) -> float:
 
 
 @task
-def plot_application(ctx):
+def plot_application(
+    ctx, vm="amd", cvm="snp", outdir="plot", outname="application.pdf"
+):
     # create a data frame like
     # | VM | Size | Application | Time |
     # |----|------|-------------|------|
     # |    |      |             |      |
     data = []
-    for vm in ["normal", "snp"]:
+    for vmname in [vm, cvm]:
         for size in ["small", "medium", "large"]:
-            vmname = "amd" if vm == "normal" else "snp"
             data.append(
                 {
                     "VM": vmname,
                     "Size": size,
                     "Application": "Blender",
-                    "Time": parse_blender_result(f"{vm}-direct-{size}"),
+                    "Time": parse_blender_result(f"{vmname}-direct-{size}"),
                 },
             )
             data.append(
@@ -169,7 +170,7 @@ def plot_application(ctx):
                     "VM": vmname,
                     "Size": size,
                     "Application": "Tensorflow",
-                    "Time": parse_tensorflow_result(f"{vm}-direct-{size}"),
+                    "Time": parse_tensorflow_result(f"{vmname}-direct-{size}"),
                 },
             )
             data.append(
@@ -177,7 +178,7 @@ def plot_application(ctx):
                     "VM": vmname,
                     "Size": size,
                     "Application": "Pytorch",
-                    "Time": parse_pytorch_result(f"{vm}-direct-{size}"),
+                    "Time": parse_pytorch_result(f"{vmname}-direct-{size}"),
                 },
             )
     df = pd.DataFrame(data)
@@ -268,8 +269,10 @@ def plot_application(ctx):
                     fontsize=5,
                 )
 
-    save_path = Path("./plot/application.pdf")
     plt.tight_layout()
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    save_path = outdir / outname
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
 
