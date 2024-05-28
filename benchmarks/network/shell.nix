@@ -8,12 +8,22 @@ let
     rev = "9ddcaffecdf098822d944d4147dd8da30b4e6843";
   };
   pkgs = import nixpkgs { config = { }; overlays = [ ]; };
+  memcached = pkgs.memcached.overrideAttrs (new: old: {
+    buildInputs = old.buildInputs ++ [
+      pkgs.openssl
+    ];
+    configureFlags = old.configureFlags ++ [
+      "--enable-tls"
+    ];
+  });
 in
 pkgs.mkShell {
   buildInputs = [
+    memcached
     pkgs.memtier-benchmark
     pkgs.redis
-    pkgs.memcached
+    pkgs.nginx
+    pkgs.wrk
     pkgs.just
   ];
   # nix-shell ./path/to/shell.nix automatically cd's into the directory
