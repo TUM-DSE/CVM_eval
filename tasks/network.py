@@ -126,11 +126,13 @@ def run_memtier(
         raise ValueError(f"Unknown server: {server}")
 
     server_cmd = [
-        "nix-shell",
-        "/share/benchmarks/network/shell.nix",
-        "--repair",
-        "--run",
-        f"just STANDARD_MEMTIER_PORT={port} TLS_MEMTIER_PORT={tls_port} THREADS={server_threads} run-{server}{tls_}",
+        "just",
+        "-f",
+        "/share/benchmarks/network/justfile",
+        f"STANDARD_MEMTIER_PORT={port}",
+        f"TLS_MEMTIER_PORT={tls_port}",
+        f"THREADS={server_threads}",
+        f"run-{server}{tls_}",
     ]
     vm.ssh_cmd(server_cmd)
     print("Server started")
@@ -184,9 +186,7 @@ def run_nginx(name: str, vm: QemuVm):
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
-    nix_shell_path = "benchmarks/network/shell.nix"
-
-    server_cmd = ["nix-shell", f"/share/{nix_shell_path}", "--run", "just run-nginx"]
+    server_cmd = ["just", "-f", "/share/benchmarks/network/justfile", "run-nginx"]
     vm.ssh_cmd(server_cmd)
     time.sleep(1)
 

@@ -5,7 +5,7 @@
 
 ## Run
 ```
-nix-shell
+nix develop .#tensorflow
 just models
 just data
 just run 32

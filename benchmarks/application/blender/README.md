@@ -4,7 +4,7 @@
 
 ## Run
 ```
-nix-shell
+nix develop .#blender
 just run
 ```
 or

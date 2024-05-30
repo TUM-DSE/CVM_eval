@@ -1,5 +1,7 @@
 # common nixos guest configuration
 
+{ extraEnvPackages ? [ ] }:
+
 { pkgs, lib, modulesPath, ... }:
 
 let
@@ -174,7 +176,7 @@ in
     # custom tools
     outb
     test-dmcrypt
-  ];
+  ] ++ extraEnvPackages;
 
   # additonal kernel parameters
   # boot.kernelParams = [ ];

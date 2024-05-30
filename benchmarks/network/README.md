@@ -4,7 +4,7 @@
 
 ### Start server
 ```
-nix-shell
+nix develop .#network
 
 just run-redis
 just run-memcached
