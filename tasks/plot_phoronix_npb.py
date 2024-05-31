@@ -78,7 +78,7 @@ def parse_result(name: str, date: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def load_data(vm: str, cvm: str, size="numa") -> pd.DataFrame:
+def load_data(vm: str, cvm: str, size="large") -> pd.DataFrame:
     vm_df = parse_result(f"{vm}-direct-{size}")
     cvm_df = parse_result(f"{cvm}-direct-{size}")
 
@@ -111,7 +111,7 @@ def plot_npb(
     data = load_data(vm, cvm)
 
     # fig, ax = plt.subplots(figsize=(4.5, 4.0))
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
 
     ax.barh(
         data["benchmark_id"],
