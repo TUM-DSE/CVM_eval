@@ -78,9 +78,13 @@ def parse_result(name: str, date: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def load_data(vm: str, cvm: str, size="large") -> pd.DataFrame:
+def load_data(vm: str, cvm: str, rel=True, size="large") -> pd.DataFrame:
     vm_df = parse_result(f"{vm}-direct-{size}")
     cvm_df = parse_result(f"{cvm}-direct-{size}")
+
+    if not rel:
+        df = pd.concat([vm_df, cvm_df])
+        return df
 
     # merge two using identifier and benchmark_id as a key
     data = pd.merge(vm_df, cvm_df, on="benchmark_id", suffixes=(f"_{vm}", f"_{cvm}"))
@@ -101,12 +105,12 @@ def load_data(vm: str, cvm: str, size="large") -> pd.DataFrame:
 
 
 @task
-def plot_npb(
+def plot_npb_rel(
     ctx: Any,
     vm: str = "amd",
     cvm: str = "snp",
     outdir: str = "./plot",
-    name: str = "npb.pdf",
+    name: str = "npb_rel.pdf",
 ):
     data = load_data(vm, cvm)
 
@@ -152,3 +156,69 @@ def plot_npb(
     outpath = outdir / name
     plt.savefig(outpath, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"Plot saved in {outpath}")
+
+
+@task
+def plot_npb(
+    ctx: Any,
+    vm: str = "amd",
+    cvm: str = "snp",
+    outdir: str = "./plot",
+    outname: str = "npb.pdf",
+    size: str = "large",
+):
+    df = load_data(vm, cvm, rel=False, size=size)
+    df["identifier"] = df["identifier"].map(
+        {f"{vm}-direct-{size}": vm, f"{cvm}-direct-{size}": cvm}
+    )
+    df["benchmark_id"] = df["benchmark_id"].map(
+        {i: j for i, j in zip(BENCHMARK_ID, LABELS)}
+    )
+    df["value"] = df["value"] / 1e3  # convert to G op/s
+    print(df)
+
+    fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
+
+    sns.barplot(
+        data=df,
+        x="benchmark_id",
+        y="value",
+        hue="identifier",
+        ax=ax,
+        palette=palette,
+        edgecolor="black",
+    )
+    ax.set_xlabel("")
+    ax.set_xticklabels(LABELS, fontsize=5)
+    ax.set_ylabel("Throughput [G op/s]")
+    ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
+
+    # remove legend title
+    ax.get_legend().set_title("")
+
+    # set hatch
+    bars = ax.patches
+    hs = []
+    num_x = len(LABELS)
+    for hatch in hatches:
+        hs.extend([hatch] * num_x)
+    num_legend = len(bars) - len(hs)
+    hs.extend([""] * num_legend)
+    for bar, hatch in zip(bars, hs):
+        bar.set_hatch(hatch)
+
+    # set hatch for the legend
+    for patch in ax.get_legend().get_patches()[1::2]:
+        patch.set_hatch("//")
+
+    # annotate values with .2f
+    for container in ax.containers:
+        ax.bar_label(container, fmt="%.2f")
+
+    plt.tight_layout()
+
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    save_path = outdir / outname
+    plt.savefig(save_path, bbox_inches="tight")
+    print(f"Plot saved in {save_path}")
