@@ -148,15 +148,23 @@ def parse_tensorflow_result(name: str, date: Optional[str] = None) -> float:
 
 @task
 def plot_application(
-    ctx, vm="amd", cvm="snp", outdir="plot", outname="application.pdf"
+    ctx,
+    vm="amd",
+    cvm="snp",
+    outdir="plot",
+    outname="application.pdf",
+    sizes=[],
 ):
+    if len(sizes) == 0:
+        sizes = ["small", "medium", "large", "numa"]
+
     # create a data frame like
     # | VM | Size | Application | Time |
     # |----|------|-------------|------|
     # |    |      |             |      |
     data = []
     for vmname in [vm, cvm]:
-        for size in ["small", "medium", "large"]:
+        for size in sizes:
             data.append(
                 {
                     "VM": vmname,
@@ -278,7 +286,7 @@ def plot_application(
 
 
 if __name__ == "__main__":
-    for vm in ["normal", "snp"]:
+    for vm in ["amd", "snp"]:
         for size in ["small", "medium", "large"]:
             print(f"VM: {vm}, Size: {size}")
             print(parse_blender_result(f"{vm}-direct-{size}"))

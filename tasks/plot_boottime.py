@@ -111,17 +111,17 @@ def load_data(name: str, date=None) -> List[float]:
     return parsed
 
 
-def create_df(vm, cvm, index=["small", "medium", "large"]) -> pd.DataFrame:
+def create_df(vm, cvm, index) -> pd.DataFrame:
     columns = ["QEMU", "OVMF", "Linux", "Init"]
 
-    vm_qemu = [vm["small"][0], vm["medium"][0], vm["large"][0]]
-    vm_ovmf = [vm["small"][1], vm["medium"][1], vm["large"][1]]
-    vm_linux = [vm["small"][2], vm["medium"][2], vm["large"][2]]
-    vm_init = [vm["small"][3], vm["medium"][3], vm["large"][3]]
-    cvm_qemu = [cvm["small"][0], cvm["medium"][0], cvm["large"][0]]
-    cvm_ovmf = [cvm["small"][1], cvm["medium"][1], cvm["large"][1]]
-    cvm_linux = [cvm["small"][2], cvm["medium"][2], cvm["large"][2]]
-    cvm_init = [cvm["small"][3], cvm["medium"][3], cvm["large"][3]]
+    vm_qemu = [vm[index[i]][0] for i in range(len(index))]
+    vm_ovmf = [vm[index[i]][1] for i in range(len(index))]
+    vm_linux = [vm[index[i]][2] for i in range(len(index))]
+    vm_init = [vm[index[i]][3] for i in range(len(index))]
+    cvm_qemu = [cvm[index[i]][0] for i in range(len(index))]
+    cvm_ovmf = [cvm[index[i]][1] for i in range(len(index))]
+    cvm_linux = [cvm[index[i]][2] for i in range(len(index))]
+    cvm_init = [cvm[index[i]][3] for i in range(len(index))]
 
     df1 = pd.DataFrame(
         np.array([vm_qemu, vm_ovmf, vm_linux, vm_init]).T, index=index, columns=columns
@@ -209,17 +209,21 @@ def plot_clustered_stacked(
 
 
 @task
-def plot_boottime(ctx: Any, vm="normal", cvm="snp", outdir="plot") -> None:
-    sizes = ["small", "medium", "large"]
+def plot_boottime(
+    ctx: Any, vm: str = "amd", cvm: str = "snp", outdir: str = "plot", sizes: list = []
+) -> None:
+    # to change sizes, use `--sizes` option multiple times. e.g.,
+    # % inv boottime.plot-boottime --sizes small --sizes medium --sizes large
+    if len(sizes) == 0:
+        sizes = ["small", "medium", "large", "numa"]
+    print(sizes)
     vm_ = {}
     cvm_ = {}
     for size in sizes:
         vm_[size] = load_data(f"{vm}-direct-{size}")
         cvm_[size] = load_data(f"{cvm}-direct-{size}")
-    df = create_df(vm_, cvm_)
+    df = create_df(vm_, cvm_, sizes)
     print(df)
-    if vm == "normal":
-        vm = "amd"
 
     ax = plot_clustered_stacked(df, [vm, cvm], color=palette)
 

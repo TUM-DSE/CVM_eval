@@ -130,9 +130,10 @@ def plot_iperf(
     mq=False,
     outdir="plot",
     outname=None,
+    size="medium",
 ):
     def get_name(name):
-        n = f"{name}-direct-medium"
+        n = f"{name}-direct-{size}"
         if vhost:
             n += "-vhost"
         if mq:
@@ -200,10 +201,17 @@ def plot_iperf(
 
 @task
 def plot_ping(
-    ctx, vm="amd", cvm="snp", vhost=False, mq=False, outdir="plot", outname=None
+    ctx,
+    vm="amd",
+    cvm="snp",
+    vhost=False,
+    mq=False,
+    outdir="plot",
+    outname=None,
+    size="medium",
 ):
     def get_name(name):
-        n = f"{name}-direct-medium"
+        n = f"{name}-direct-{size}"
         if vhost:
             n += "-vhost"
         if mq:
