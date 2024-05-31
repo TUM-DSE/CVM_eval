@@ -5,18 +5,10 @@ let
     pypkgs.torchvision
     pypkgs.pillow
   ]);
-  mypython = pkgs.stdenv.mkDerivation rec {
-    name = "python-pytorch";
-    buildInputs = [ python ];
-    buildCommand = ''
-      mkdir -p $out/bin
-      ln -s ${python.interpreter} $out/bin/${name}
-    '';
-  };
 in
 pkgs.mkShell {
   packages = [
-    mypython
+    python
     pkgs.wget
     pkgs.unzip
     pkgs.just

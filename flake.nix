@@ -161,6 +161,7 @@
       # nixOS configurations to create a guest image
       nixosConfigurations =
         let
+          system = "x86_64-linux";
           # 2024-05-30: the latest nixosSystem of unstable seems really unstable?
           # nix stores get easily corrupted when a VM is killed abruptly
           # use nixpkgs-2311 for the time being
@@ -170,19 +171,30 @@
           kernelConfig = { config, lib, pkgs, ... }: {
             boot.kernelPackages = pkgs.linuxPackages_6_8;
           };
+          gcRootWrapper = (name: buildInputs: pkgs.writeShellApplication {
+            name = "stub-gc-root-${name}";
+            runtimeInputs = buildInputs;
+            text = ''
+              echo "This app does not actually do anything. It just makes sure all packages for ${name} are already loaded in the store."
+              # Actually we should not do this workaround but place an actual garbage
+              # collection root for the dev shell (also including compilers etc), but
+              # i don't know how to do so. 
+            '';
+          });
           # bake in packages for running benchmarks
-          extraEnvPackages =
-            self.devShells.x86_64-linux.blender.nativeBuildInputs
-            ++ self.devShells.x86_64-linux.pytorch.nativeBuildInputs
-            ++ self.devShells.x86_64-linux.tensorflow.nativeBuildInputs
-            ++ self.devShells.x86_64-linux.sqlite.nativeBuildInputs
-            ++ self.devShells.x86_64-linux.network.nativeBuildInputs;
+          extraEnvPackages = [
+            (gcRootWrapper "blender" self.devShells.x86_64-linux.blender.nativeBuildInputs)
+            (gcRootWrapper "pytorch" self.devShells.x86_64-linux.pytorch.nativeBuildInputs)
+            (gcRootWrapper "tensorflow" self.devShells.x86_64-linux.tensorflow.nativeBuildInputs)
+            (gcRootWrapper "sqlite1" self.devShells.x86_64-linux.sqlite.nativeBuildInputs)
+            (gcRootWrapper "network" self.devShells.x86_64-linux.network.nativeBuildInputs)
+          ];
           guestConfig = (import ./nix/guest-config.nix { inherit extraEnvPackages; });
         in
         {
           # File system image w/o kernel
           fs = nixosSystem {
-            system = "x86_64-linux";
+            inherit system;
             modules = [
               guestConfig
             ];
@@ -190,7 +202,7 @@
 
           # Normal Linux guest (mainline)
           normal-guest = nixosSystem {
-            system = "x86_64-linux";
+            inherit system;
             modules = [
               guestConfig
               kernelConfig
@@ -200,7 +212,7 @@
 
           # SEV-SNP guest
           snp-guest = nixosSystem {
-            system = "x86_64-linux";
+            inherit system;
             modules = [
               guestConfig
               kernelConfig
@@ -211,7 +223,7 @@
 
           # TDX guest
           tdx-guest = nixosSystem {
-            system = "x86_64-linux";
+            inherit system;
             modules = [
               guestConfig
               kernelConfig
