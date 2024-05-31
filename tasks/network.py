@@ -177,7 +177,13 @@ def run_memtier(
     print(f"Results saved in {outputdir_host}")
 
 
-def run_nginx(name: str, vm: QemuVm):
+def run_nginx(
+    name: str,
+    vm: QemuVm,
+    threads: int = 8,
+    connections: int = 300,
+    duration: str = "30s",
+):
     """Run the nginx on the VM and the wrk benchmark on the host.
     The results are saved in ./bench-result/network/nginx/{name}/{date}/
     """
@@ -191,7 +197,13 @@ def run_nginx(name: str, vm: QemuVm):
     time.sleep(1)
 
     # HTTP
-    cmd = ["wrk", f"http://{VM_IP}"]
+    cmd = [
+        "wrk",
+        f"http://{VM_IP}",
+        f"-t{threads}",
+        f"-c{connections}",
+        f"-d{duration}",
+    ]
     print(cmd)
     output = subprocess.run(cmd, capture_output=True, text=True)
     if output.returncode != 0:
@@ -201,7 +213,13 @@ def run_nginx(name: str, vm: QemuVm):
         f.write("\n".join(lines))
 
     # HTTPS
-    cmd = ["wrk", f"https://{VM_IP}"]
+    cmd = [
+        "wrk",
+        f"https://{VM_IP}",
+        f"-t{threads}",
+        f"-c{connections}",
+        f"-d{duration}",
+    ]
     print(cmd)
     output = subprocess.run(cmd, capture_output=True, text=True)
     if output.returncode != 0:
