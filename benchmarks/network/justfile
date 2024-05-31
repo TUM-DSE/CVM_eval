@@ -70,10 +70,10 @@ stop-redis-tls:
   redis-cli -p {{TLS_MEMTIER_PORT}} shutdown
 
 run-memcached:
-  memcached -u nobody -d -p {{STANDARD_MEMTIER_PORT}}
+  memcached -u nobody -d -p {{STANDARD_MEMTIER_PORT}} -t {{THREADS}}
 
 run-memcached-tls:
-  memcached -u nobody -d -p {{TLS_MEMTIER_PORT}} -Z -o ssl_chain_cert={{SERVER_CERT}},ssl_key={{SERVER_KEY}}
+  memcached -u nobody -d -p {{TLS_MEMTIER_PORT}} -Z -o ssl_chain_cert={{SERVER_CERT}},ssl_key={{SERVER_KEY}} -t {{THREADS}}
 
 run-memtier protocol="redis":
   memtier_benchmark --host={{VM_IP}} -p {{STANDARD_MEMTIER_PORT}} -t {{THREADS}} --protocol={{protocol}}

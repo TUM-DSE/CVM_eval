@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 import subprocess
 import time
+from typing import Optional
 
 from config import PROJECT_ROOT, VM_IP
 from qemu import QemuVm
@@ -99,8 +100,8 @@ def run_memtier(
     port: int = 6379,
     tls_port: int = 6380,
     tls: bool = False,
-    server_threads: int = 8,
-    client_threads: int = 8,
+    server_threads: Optional[int] = None,
+    client_threads: Optional[int] = None,
     client_key: str = PROJECT_ROOT / "benchmarks/network/tls/pki/private/client.key",
     client_cert: str = PROJECT_ROOT / "benchmarks/network/tls/pki/issued/client.crt",
     ca_cert: str = PROJECT_ROOT / "benchmarks/network/tls/pki/ca.crt",
@@ -124,6 +125,18 @@ def run_memtier(
         proto = "memcache_binary"
     else:
         raise ValueError(f"Unknown server: {server}")
+
+    if server_threads is None:
+        if "resource" in vm.config:
+            server_threads = vm.config["resource"].cpu
+        else:
+            server_threads = 1
+
+    if client_threads is None:
+        if server == "redis":
+            client_threads = 8
+        else:
+            client_threads = vm.config["resource"].cpu
 
     server_cmd = [
         "just",
