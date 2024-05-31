@@ -120,6 +120,65 @@ def parse_ping_result(name: str, label: str, date=None) -> pd.DataFrame:
     return df
 
 
+def parse_memtier_result(path: str, label: str, tls: bool = False) -> pd.DataFrame:
+    """
+        Example output:
+        ```
+    Type         Ops/sec     Hits/sec   Misses/sec    Avg. Latency     p50 Latency     p99 Latency   p99.9 Latency       KB/sec
+    ----------------------------------------------------------------------------------------------------------------------------
+    Sets        47686.59          ---          ---        62.87207        37.37500       716.79900       937.98300      3672.70
+    Gets       476341.91         0.00    476341.91        62.40503        37.37500       716.79900       937.98300     18090.40
+    Waits           0.00          ---          ---             ---             ---             ---             ---          ---
+    Totals     524028.51         0.00    476341.91        62.44752        37.37500       716.79900       937.98300     21763.10
+    ```
+    """
+    print(path)
+    if tls:
+        tls_ = " (tls)"
+    else:
+        tls_ = ""
+    workloads = []
+    ths = []
+    with open(path, "r") as f:
+        lines = f.readlines()
+
+        for line in lines:
+            if line.startswith("Gets"):
+                th = float(line.split()[1].strip()) / 1e6
+                ths.append(th)
+                workloads.append(f"GET{tls_}")
+            elif line.startswith("Sets"):
+                th = float(line.split()[1].strip()) / 1e6
+                ths.append(th)
+                workloads.append(f"SET{tls_}")
+
+    df = pd.DataFrame({"name": label, "workload": workloads, "throughput": ths})
+    return df
+
+
+def parse_redis_result(name: str, label: str, date=None, date_tls=None) -> pd.DataFrame:
+    if date is None:
+        date = sorted(os.listdir(BENCH_RESULT_DIR / "memtier" / "redis" / name))[-1]
+    df = parse_memtier_result(
+        BENCH_RESULT_DIR / "memtier" / "redis" / name / date / "memtier.log",
+        label,
+        False,
+    )
+    if date_tls is None:
+        date_tls = sorted(
+            os.listdir(BENCH_RESULT_DIR / "memtier" / "redis-tls" / name)
+        )[-1]
+    df_tls = parse_memtier_result(
+        BENCH_RESULT_DIR / "memtier" / "redis-tls" / name / date_tls / "memtier.log",
+        f"{label}",
+        True,
+    )
+
+    df = pd.concat([df, df_tls])
+
+    return df
+
+
 @task
 def plot_iperf(
     ctx,
@@ -265,6 +324,85 @@ def plot_ping(
 
     if outname is None:
         outname = f"ping"
+        if vhost:
+            outname += "_vhost"
+        if mq:
+            outname += "_mq"
+        outname += ".pdf"
+
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    save_path = outdir / outname
+    plt.savefig(save_path, bbox_inches="tight")
+    print(f"Plot saved in {save_path}")
+
+
+@task
+def plot_redis(
+    ctx,
+    vm="amd",
+    cvm="snp",
+    mode="udp",
+    vhost=False,
+    mq=False,
+    outdir="plot",
+    outname=None,
+    size="medium",
+):
+    def get_name(name):
+        n = f"{name}-direct-{size}"
+        if vhost:
+            n += "-vhost"
+        if mq:
+            n += "-mq"
+        return n
+
+    df1 = parse_redis_result(get_name(vm), vm)
+    df2 = parse_redis_result(get_name(cvm), cvm)
+    ## merge df using name as key
+    df = pd.concat([df1, df2])
+    print(df)
+
+    fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
+    sns.barplot(
+        x="workload",
+        y="throughput",
+        hue="name",
+        data=df,
+        ax=ax,
+        palette=palette,
+        edgecolor="black",
+    )
+    ax.set_xlabel("")
+    ax.set_ylabel("Throughput [M req/s]")
+    ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
+
+    # remove legend title
+    ax.get_legend().set_title("")
+
+    # set hatch
+    bars = ax.patches
+    hs = []
+    num_x = 4
+    for hatch in hatches:
+        hs.extend([hatch] * num_x)
+    num_legend = len(bars) - len(hs)
+    hs.extend([""] * num_legend)
+    for bar, hatch in zip(bars, hs):
+        bar.set_hatch(hatch)
+
+    # set hatch for the legend
+    for patch in ax.get_legend().get_patches()[1::2]:
+        patch.set_hatch("//")
+
+    # annotate values with .2f
+    for container in ax.containers:
+        ax.bar_label(container, fmt="%.2f")
+
+    plt.tight_layout()
+
+    if outname is None:
+        outname = f"redis"
         if vhost:
             outname += "_vhost"
         if mq:
