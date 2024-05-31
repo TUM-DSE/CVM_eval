@@ -1,21 +1,22 @@
-{ pkgs ? import <nixpkgs> { } }:
+{ pkgs ? import <nixpkgs> { }, mypython ? null }:
 let
-  python = pkgs.python3.withPackages (pypkgs: [
-    pypkgs.tensorflow
-    pypkgs.keras
-  ]);
-  mypython = pkgs.stdenv.mkDerivation rec {
-    name = "python-tensorflow";
-    buildInputs = [ python ];
-    buildCommand = ''
-      mkdir -p $out/bin
-      ln -s ${python.interpreter} $out/bin/${name}
-    '';
-  };
+  pyPackages = [
+    "tensorflow"
+    "keras"
+  ];
+  pyPackages' = (pypkgs: 
+    (pkgs.lib.forEach pyPackages (package:
+      pypkgs.${package}
+    ))
+  );
+  mypython' = if mypython != null then mypython else pkgs.python3.withPackages pyPackages';
 in
 pkgs.mkShell {
+  # keep function to generate the list of python packages available in this shells python
+  inherit pyPackages;
+
   packages = [
-    mypython
+    mypython'
     pkgs.wget
     pkgs.unzip
     pkgs.just

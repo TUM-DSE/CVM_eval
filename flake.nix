@@ -103,7 +103,18 @@
 
         };
 
-        devShells = {
+        devShells = let 
+          pyPackages = []
+            ++ self.devShells.${system}.pytorch.pyPackages
+            ++ self.devShells.${system}.tensorflow.pyPackages;
+          pyPackages' = (pypkgs: 
+            (pkgs.lib.forEach pyPackages (package:
+              pypkgs.${package}
+            ))
+          );
+          # 2024-05-30: keras in the latest pkgs has some dependency issues; use pkgs-2311
+          mypython = pkgs-2311.python3.withPackages pyPackages';
+        in {
           default = pkgs.mkShell {
             name = "devshell";
             buildInputs =
@@ -148,9 +159,9 @@
 
           # for running benchmarks
           blender = pkgs.callPackage ./benchmarks/application/blender/shell.nix { inherit pkgs; };
-          pytorch = pkgs.callPackage ./benchmarks/application/pytorch/shell.nix { inherit pkgs; };
+          pytorch = pkgs.callPackage ./benchmarks/application/pytorch/shell.nix { inherit pkgs; inherit mypython; };
           # 2024-05-30: keras in the latest pkgs has some dependency issues; use pkgs-2311
-          tensorflow = pkgs.callPackage ./benchmarks/application/tensorflow/shell.nix { pkgs = pkgs-2311; };
+          tensorflow = pkgs.callPackage ./benchmarks/application/tensorflow/shell.nix { pkgs = pkgs-2311; inherit mypython; };
           sqlite = pkgs.callPackage ./benchmarks/application/sqlite/shell.nix { inherit pkgs; };
           network = pkgs.callPackage ./benchmarks/network/shell.nix { inherit pkgs; };
         };
