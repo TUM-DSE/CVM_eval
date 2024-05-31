@@ -4,6 +4,7 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from subprocess import CalledProcessError
 
 from config import PROJECT_ROOT
 from qemu import QemuVm
@@ -72,7 +73,12 @@ def run_tensorflow(
 
     for i in range(repeat):
         print(f"Running tensorflow {i+1}/{repeat}")
-        output = vm.ssh_cmd(cmd)
+        try:
+            output = vm.ssh_cmd(cmd)
+        except CalledProcessError as e:
+            # Tensorflow may fail due to OOM, ignore that case
+            print(f"Error running tensorflow: {e}")
+            continue
         if output.returncode != 0:
             print(f"Error running tensorflow: {output.stderr}")
             continue
