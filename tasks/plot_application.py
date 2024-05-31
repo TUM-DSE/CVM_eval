@@ -146,6 +146,49 @@ def parse_tensorflow_result(name: str, date: Optional[str] = None) -> float:
     return np.median(times)
 
 
+# bench mark path:
+# ./bench-result/application/sqlite/{name}/{date}/
+def parse_sqlite_result(
+    name: str, date: Optional[str] = None, label: Optional[str] = None
+) -> pd.DataFrame:
+    if date is None:
+        # we use the latest result if date is not provided
+        date = sorted(os.listdir(BENCH_RESULT_DIR / "sqlite" / name))[-1]
+    if label is None:
+        label = name
+    path = BENCH_RESULT_DIR / "sqlite" / name / date
+
+    if not os.path.exists(path):
+        print(f"XXX: No result found in {path}")
+        return 0
+
+    print(f"{path}")
+
+    workloads = ["seq", "rand", "update", "update_rand"]
+
+    # create data frame like
+    # | name | workload | time |
+
+    # iterate over the files in the directory
+    rows = []
+    for workload in workloads:
+        path = BENCH_RESULT_DIR / "sqlite" / name / date / f"{workload}.log"
+        with open(path) as f:
+            lines = f.readlines()
+        for line in lines:
+            if line.startswith("Total elapsed time:"):
+                time = float(line.split(":")[1].strip())
+                rows.append({"name": label, "workload": workload, "time": time})
+                break
+        else:
+            print(f"XXX: No time found in {file}")
+            continue
+
+    df = pd.DataFrame(rows, columns=["name", "workload", "time"])
+
+    return df
+
+
 @task
 def plot_application(
     ctx,
@@ -285,10 +328,61 @@ def plot_application(
     print(f"Plot saved in {save_path}")
 
 
-if __name__ == "__main__":
-    for vm in ["amd", "snp"]:
-        for size in ["small", "medium", "large"]:
-            print(f"VM: {vm}, Size: {size}")
-            print(parse_blender_result(f"{vm}-direct-{size}"))
-            print(parse_tensorflow_result(f"{vm}-direct-{size}"))
-            print(parse_pytorch_result(f"{vm}-direct-{size}"))
+@task
+def plot_sqlite(
+    ctx,
+    vm="amd",
+    cvm="snp",
+    outdir="plot",
+    outname="sqlite.pdf",
+    size="medium",
+):
+    vm_df = parse_sqlite_result(f"{vm}-direct-{size}", label=vm)
+    cvm_df = parse_sqlite_result(f"{cvm}-direct-{size}", label=cvm)
+    df = pd.concat([vm_df, cvm_df])
+
+    print(df)
+
+    fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
+    sns.barplot(
+        x="workload",
+        y="time",
+        hue="name",
+        data=df,
+        ax=ax,
+        palette=palette,
+        edgecolor="black",
+    )
+    ax.set_xlabel("")
+    ax.set_ylabel("Runtime [sec]")
+    ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
+
+    # remove legend title
+    ax.get_legend().set_title("")
+
+    # set hatch
+    bars = ax.patches
+    hs = []
+    num_x = 4
+    for hatch in hatches:
+        hs.extend([hatch] * num_x)
+    num_legend = len(bars) - len(hs)
+    hs.extend([""] * num_legend)
+    for bar, hatch in zip(bars, hs):
+        bar.set_hatch(hatch)
+
+    # set hatch for the legend
+    for patch in ax.get_legend().get_patches()[1::2]:
+        patch.set_hatch("//")
+
+    # annotate values with .2f
+    for container in ax.containers:
+        ax.bar_label(container, fmt="%.2f")
+
+    plt.tight_layout()
+
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    save_path = outdir / outname
+    plt.savefig(save_path, bbox_inches="tight")
+    print(f"Plot saved in {save_path}")
