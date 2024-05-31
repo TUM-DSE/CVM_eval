@@ -103,12 +103,21 @@ def load_data(name: str, date=None) -> List[float]:
         # use the latest date
         date = sorted(os.listdir(BENCH_RESULT_DIR / name))[-1]
 
-    # FIXME: how shold we plot multiple measurements?
-    file = BENCH_RESULT_DIR / name / date / "1.txt"
-    with open(file) as f:
-        result = f.readlines()
-    parsed = parse_result(result)
-    return parsed
+    path = BENCH_RESULT_DIR / name / date
+
+    # directory contains results of multiple runs
+    results = []
+    for file in os.listdir(path):
+        if file.endswith(".txt"):
+            with open(path / file) as f:
+                result = f.readlines()
+            parsed = parse_result(result)
+            results.append(parsed)
+
+    # choose median value of the total time as a result
+    total_times = np.sum(results, axis=1)
+    median_index = np.argsort(total_times)[len(total_times) // 2]
+    return results[median_index]
 
 
 def create_df(vm, cvm, index) -> pd.DataFrame:
