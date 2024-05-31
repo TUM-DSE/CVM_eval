@@ -31,7 +31,7 @@ FONTSIZE = 9
 palette = sns.color_palette("pastel")
 hatches = ["", "//"]
 
-BENCH_RESULT_DIR = Path("./bench-result/networking")
+BENCH_RESULT_DIR = Path("./bench-result/network")
 
 
 # bench mark path:
@@ -56,7 +56,7 @@ def parse_iperf_result(name: str, label: str, mode: str, date=None) -> pd.DataFr
     print(f"date: {date}")
 
     for size in pktsize:
-        path = Path(f"./bench-result/networking/iperf/{name}/{mode}/{date}/{size}.log")
+        path = Path(f"./bench-result/network/iperf/{name}/{mode}/{date}/{size}.log")
         if not path.exists():
             print(f"XXX: {path} not found!")
             continue
@@ -95,7 +95,7 @@ def parse_ping_result(name: str, label: str, date=None) -> pd.DataFrame:
     print(f"date: {date}")
 
     for size in pktsize_actual:
-        path = Path(f"./bench-result/networking/ping/{name}/{date}/{size}.log")
+        path = Path(f"./bench-result/network/ping/{name}/{date}/{size}.log")
         if not path.exists():
             print(f"XXX: {path} not found!")
             continue

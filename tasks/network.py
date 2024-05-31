@@ -10,10 +10,10 @@ from qemu import QemuVm
 
 def run_ping(name: str, vm: QemuVm):
     """Ping the VM.
-    The results are saved in ./bench-results/networing/ping/{name}/{date}
+    The results are saved in ./bench-results/network/ping/{name}/{date}
     """
     date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    outputdir = Path(f"./bench-result/networking/ping/{name}/{date}/")
+    outputdir = Path(f"./bench-result/network/ping/{name}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
@@ -45,7 +45,7 @@ def run_iperf(
     parallel: int = 8,  # number of parallel streams
 ):
     """Run the iperf benchmark on the VM.
-    The results are saved in ./bench-result/networking/iperf/{name}/{proto}/{date}/
+    The results are saved in ./bench-result/network/iperf/{name}/{proto}/{date}/
     """
     if udp:
         proto = "udp"
@@ -55,7 +55,7 @@ def run_iperf(
         proto = "tcp"
 
     date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    outputdir = Path(f"./bench-result/networking/iperf/{name}/{proto}/{date}/")
+    outputdir = Path(f"./bench-result/network/iperf/{name}/{proto}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
@@ -107,14 +107,14 @@ def run_memtier(
 ):
     """Run the memtier benchmark on the VM using redis or memcached.
     `server_threads` is only valid for memcached.
-    The results are saved in ./bench-result/networking/memtier/{server}[-tls]/{name}/{date}/
+    The results are saved in ./bench-result/network/memtier/{server}[-tls]/{name}/{date}/
     """
     if tls:
         tls_ = "-tls"
     else:
         tls_ = ""
     date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    outputdir = Path(f"./bench-result/networking/memtier/{server}{tls_}/{name}/{date}/")
+    outputdir = Path(f"./bench-result/network/memtier/{server}{tls_}/{name}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
@@ -179,10 +179,10 @@ def run_memtier(
 
 def run_nginx(name: str, vm: QemuVm):
     """Run the nginx on the VM and the wrk benchmark on the host.
-    The results are saved in ./bench-result/networking/nginx/{name}/{date}/
+    The results are saved in ./bench-result/network/nginx/{name}/{date}/
     """
     date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    outputdir = Path(f"./bench-result/networking/nginx/{name}/{date}/")
+    outputdir = Path(f"./bench-result/network/nginx/{name}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
