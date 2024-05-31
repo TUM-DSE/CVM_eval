@@ -101,7 +101,6 @@
           # shell for linux kernel build
           kernel-deps = pkgs.callPackage ./nix/kernel-deps.nix { };
 
-          lib.nixpkgsRev = nixpkgs-unstable.shortRev;
         };
 
         devShells = {
@@ -157,6 +156,8 @@
         };
 
       })) // {
+      lib.nixpkgsRev = nixpkgs-unstable.shortRev;
+
       # nixOS configurations to create a guest image
       nixosConfigurations =
         let
