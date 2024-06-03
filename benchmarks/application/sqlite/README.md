@@ -2,7 +2,7 @@
 
 ## Run
 ```
-nix-shell
+nix develop .#sqlite
 just init # this creates db file (~2GB) in ./data
 
 just run_seq

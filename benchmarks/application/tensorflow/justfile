@@ -1,5 +1,6 @@
 # vim: set ft=make et :
 
+PYTHON := "python-tensorflow"
 MODELS_REV := "02a1c5317a74782ff23d39473e31f6bd2024bf81"
 
 run thread_cnt='8':
@@ -7,7 +8,7 @@ run thread_cnt='8':
     set -x
     OMP_NUM_THREADS={{thread_cnt}} \
     KMP_AFFINITY=granularity=fine,verbose,compact,1,0 \
-    python3 \
+    {{PYTHON}} \
     models/models/language_modeling/tensorflow/bert_large/inference/run_squad.py \
     --init_checkpoint=data/bert_large_checkpoints/model.ckpt-3649 \
     --vocab_file=data/wwm_uncased_L-24_H-1024_A-16/vocab.txt \

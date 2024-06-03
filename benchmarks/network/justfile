@@ -1,0 +1,96 @@
+# vim: set ft=make et :
+
+SCRIPT_DIR := justfile_directory()
+
+VM_IP := "172.44.0.2"
+IPERF_PORT := "7175"
+STANDARD_MEMTIER_PORT := "6379"
+TLS_MEMTIER_PORT := "6380"
+
+#TLS
+SERVER_CERT := join(SCRIPT_DIR, "tls/pki/issued/server.crt")
+SERVER_KEY := join(SCRIPT_DIR, "tls/pki/private/server.key")
+CLIENT_CERT := join(SCRIPT_DIR, "tls/pki/issued/client.crt")
+CLIENT_KEY := join(SCRIPT_DIR, "tls/pki/private/client.key")
+CA_CERT := join(SCRIPT_DIR, "tls/pki/ca.crt")
+
+#config
+THREADS := "4"
+CONNECTIONS := "8"
+PINGS := "20"
+
+#ping
+run-ping pkt_size:
+  ping -c {{PINGS}} -s {{pkt_size}} -i0.1 {{VM_IP}}
+
+#iperf
+run-iperf-server:
+  iperf -s -p {{IPERF_PORT}} -D
+
+run-iperf-client-tcp pkt_size:
+  iperf -c {{VM_IP}} -p {{IPERF_PORT}} -l {{pkt_size}} -P {{CONNECTIONS}}
+
+run-iperf-client-udp pkt_size:
+  iperf -c {{VM_IP}} -p {{IPERF_PORT}} -l {{pkt_size}} -P {{CONNECTIONS}} -b 0 -u
+
+#nginx
+run-nginx:
+  nginx -c nginx.conf -p nginx -e ./logs/error.log
+
+stop-nginx:
+  nginx -c nginx.conf -p nginx -e ./logs/error.log -s quit
+
+run-wrk:
+  wrk http://{{VM_IP}}
+
+run-wrk-ssl:
+  wrk https://{{VM_IP}}
+
+#memtier
+run-redis:
+  redis-server \
+  --protected-mode no \
+  --daemonize yes \
+  --port {{STANDARD_MEMTIER_PORT}}
+
+run-redis-tls:
+  redis-server \
+  --protected-mode no \
+  --daemonize yes \
+  --port {{STANDARD_MEMTIER_PORT}} \
+  --tls-port {{TLS_MEMTIER_PORT}} \
+  --tls-cert-file {{SERVER_CERT}} \
+  --tls-key-file {{SERVER_KEY}} \
+  --tls-ca-cert-file {{CA_CERT}}
+
+stop-redis:
+  redis-cli -p {{STANDARD_MEMTIER_PORT}} shutdown
+
+stop-redis-tls:
+  redis-cli -p {{TLS_MEMTIER_PORT}} shutdown
+
+run-memcached:
+  memcached -u nobody -d -p {{STANDARD_MEMTIER_PORT}} -t {{THREADS}}
+
+run-memcached-tls:
+  memcached -u nobody -d -p {{TLS_MEMTIER_PORT}} -Z -o ssl_chain_cert={{SERVER_CERT}},ssl_key={{SERVER_KEY}} -t {{THREADS}}
+
+run-memtier protocol="redis":
+  memtier_benchmark --host={{VM_IP}} -p {{STANDARD_MEMTIER_PORT}} -t {{THREADS}} --protocol={{protocol}}
+
+run-memtier-memcached:
+  @just run-memtier memcache_binary
+
+run-memtier-tls protocol="redis":
+  memtier_benchmark \
+  --host={{VM_IP}} \
+  -p {{TLS_MEMTIER_PORT}} \
+  -t {{THREADS}} \
+  --tls \
+  --cert={{CLIENT_CERT}} \
+  --key={{CLIENT_KEY}} \
+  --cacert={{CA_CERT}} \
+  --protocol={{protocol}}
+
+run-memtier-tls-memcached:
+  @just run-memtier-tls memcache_binary

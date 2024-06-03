@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 import subprocess
 import time
+from typing import Optional
 
 from config import PROJECT_ROOT, VM_IP
 from qemu import QemuVm
@@ -10,10 +11,10 @@ from qemu import QemuVm
 
 def run_ping(name: str, vm: QemuVm):
     """Ping the VM.
-    The results are saved in ./bench-results/networing/ping/{name}/{date}
+    The results are saved in ./bench-results/network/ping/{name}/{date}
     """
     date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    outputdir = Path(f"./bench-result/networking/ping/{name}/{date}/")
+    outputdir = Path(f"./bench-result/network/ping/{name}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
@@ -45,7 +46,7 @@ def run_iperf(
     parallel: int = 8,  # number of parallel streams
 ):
     """Run the iperf benchmark on the VM.
-    The results are saved in ./bench-result/networking/iperf/{name}/{proto}/{date}/
+    The results are saved in ./bench-result/network/iperf/{name}/{proto}/{date}/
     """
     if udp:
         proto = "udp"
@@ -55,7 +56,7 @@ def run_iperf(
         proto = "tcp"
 
     date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    outputdir = Path(f"./bench-result/networking/iperf/{name}/{proto}/{date}/")
+    outputdir = Path(f"./bench-result/network/iperf/{name}/{proto}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
@@ -97,15 +98,24 @@ def run_memtier(
     vm: QemuVm,
     server: str = "redis",
     port: int = 6379,
-    server_threads: int = 8,
-    client_threads: int = 8,
+    tls_port: int = 6380,
+    tls: bool = False,
+    server_threads: Optional[int] = None,
+    client_threads: Optional[int] = None,
+    client_key: str = PROJECT_ROOT / "benchmarks/network/tls/pki/private/client.key",
+    client_cert: str = PROJECT_ROOT / "benchmarks/network/tls/pki/issued/client.crt",
+    ca_cert: str = PROJECT_ROOT / "benchmarks/network/tls/pki/ca.crt",
 ):
     """Run the memtier benchmark on the VM using redis or memcached.
     `server_threads` is only valid for memcached.
-    The results are saved in ./bench-result/networking/memtier/{server}/{name}/{date}/
+    The results are saved in ./bench-result/network/memtier/{server}[-tls]/{name}/{date}/
     """
+    if tls:
+        tls_ = "-tls"
+    else:
+        tls_ = ""
     date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    outputdir = Path(f"./bench-result/networking/memtier/{server}/{name}/{date}/")
+    outputdir = Path(f"./bench-result/network/memtier/{server}{tls_}/{name}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
@@ -116,31 +126,119 @@ def run_memtier(
     else:
         raise ValueError(f"Unknown server: {server}")
 
+    if server_threads is None:
+        if "resource" in vm.config:
+            server_threads = vm.config["resource"].cpu
+        else:
+            server_threads = 1
+
+    if client_threads is None:
+        if server == "redis":
+            client_threads = 8
+        else:
+            client_threads = vm.config["resource"].cpu
+
     server_cmd = [
-        "nix-shell",
-        "/share/benchmarks/network/memtier/shell.nix",
-        "--repair",
-        "--run",
-        f"just PORT={port} THREADS={server_threads} run-{server}",
+        "just",
+        "-f",
+        "/share/benchmarks/network/justfile",
+        f"STANDARD_MEMTIER_PORT={port}",
+        f"TLS_MEMTIER_PORT={tls_port}",
+        f"THREADS={server_threads}",
+        f"run-{server}{tls_}",
     ]
     vm.ssh_cmd(server_cmd)
+    print("Server started")
     time.sleep(1)
 
-    cmd = [
-        "memtier_benchmark",
-        f"--host={VM_IP}",
-        "-p",
-        f"{port}",
-        "-t",
-        f"{client_threads}",
-        "-c",
-        "100",
-        "--pipeline=40",
-        f"--protocol={proto}",
-    ]
+    if tls:
+        cmd = [
+            "memtier_benchmark",
+            f"--host={VM_IP}",
+            "-p",
+            f"{tls_port}",
+            "-t",
+            f"{client_threads}",
+            "-c",
+            "100",
+            "--pipeline=40",
+            f"--protocol={proto}",
+            "--tls",
+            f"--cert={client_cert}",
+            f"--key={client_key}",
+            f"--cacert={ca_cert}",
+        ]
+    else:
+        cmd = [
+            "memtier_benchmark",
+            f"--host={VM_IP}",
+            "-p",
+            f"{port}",
+            "-t",
+            f"{client_threads}",
+            "-c",
+            "100",
+            "--pipeline=40",
+            f"--protocol={proto}",
+        ]
+    print(cmd)
     output = subprocess.check_output(cmd).decode()
     lines = output.split("\n")
     with open(outputdir_host / f"memtier.log", "w") as f:
+        f.write("\n".join(lines))
+
+    print(f"Results saved in {outputdir_host}")
+
+
+def run_nginx(
+    name: str,
+    vm: QemuVm,
+    threads: int = 8,
+    connections: int = 300,
+    duration: str = "30s",
+):
+    """Run the nginx on the VM and the wrk benchmark on the host.
+    The results are saved in ./bench-result/network/nginx/{name}/{date}/
+    """
+    date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    outputdir = Path(f"./bench-result/network/nginx/{name}/{date}/")
+    outputdir_host = PROJECT_ROOT / outputdir
+    outputdir_host.mkdir(parents=True, exist_ok=True)
+
+    server_cmd = ["just", "-f", "/share/benchmarks/network/justfile", "run-nginx"]
+    vm.ssh_cmd(server_cmd)
+    time.sleep(1)
+
+    # HTTP
+    cmd = [
+        "wrk",
+        f"http://{VM_IP}",
+        f"-t{threads}",
+        f"-c{connections}",
+        f"-d{duration}",
+    ]
+    print(cmd)
+    output = subprocess.run(cmd, capture_output=True, text=True)
+    if output.returncode != 0:
+        print(f"Error running wrk: {output.stderr}")
+    lines = output.stdout.split("\n")
+    with open(outputdir_host / f"http.log", "w") as f:
+        f.write("\n".join(lines))
+
+    # HTTPS
+    cmd = [
+        "wrk",
+        f"https://{VM_IP}",
+        f"-t{threads}",
+        f"-c{connections}",
+        f"-d{duration}",
+    ]
+    print(cmd)
+    output = subprocess.run(cmd, capture_output=True, text=True)
+    if output.returncode != 0:
+        print(f"Error running wrk: {output.stderr}")
+    lines = output.stdout.split("\n")
+    with open(outputdir_host / f"https.log", "w") as f:
         f.write("\n".join(lines))
 
     print(f"Results saved in {outputdir_host}")

@@ -1,8 +1,10 @@
 # vim: set ft=make et :
 
+PYTHON := "python-pytorch"
+
 run threads="8":
-    python3 ./pytorchexample.py {{threads}}
+    {{PYTHON}} ./pytorchexample.py {{threads}}
 
 prepare:
-    python3 ./download-pretrained-model.py
+    {{PYTHON}} ./download-pretrained-model.py
 

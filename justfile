@@ -20,7 +20,8 @@ KERNEL_SHELL := "$(nix build --out-link " + NIX_RESULTS + "/kernel-fhs --json " 
 # we use ../linux as linux kernel source directory for development
 LINUX_DIR := join(PROJECT_ROOT, "../linux")
 LINUX_REPO := "https://github.com/torvalds/linux"
-LINUX_COMMIT := "0dd3ee31125508cd67f7e7172247f05b7fd1753a" # v6.7
+# LINUX_COMMIT := "0dd3ee31125508cd67f7e7172247f05b7fd1753a" # v6.7
+LINUX_COMMIT := "e8f897f4afef0031fe618a8e94127a0934896aba" # v6.8
 
 BRIDGE_NAME := "virbr0"
 TAP_NAME := "tap0"
@@ -433,7 +434,7 @@ build-linux:
     #!/usr/bin/env bash
     set -xeu
     cd {{ LINUX_DIR }}
-    yes "" | {{ KERNEL_SHELL }} "make -C {{ LINUX_DIR }} -j$(nproc)"
+    yes "" | {{ KERNEL_SHELL }} "make KCFLAGS=-Wno-error=missing-prototypes -C {{ LINUX_DIR }} -j$(nproc)"
 
 clean-linux:
     {{ KERNEL_SHELL }} "make -C {{ LINUX_DIR }} clean"

@@ -572,6 +572,22 @@ def boottime(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     boottime.run_boot_test(name, qemu_cmd, pin, **kargs)
 
 
+def prepare_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from phoronix import install_bench
+
+        install_bench("pts/memory", vm)
+        install_bench("pts/npb", vm)
+        vm.shutdown()
+
+
 def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     bench_name = kargs["config"]["phoronix_bench_name"]
     if not bench_name:
@@ -635,6 +651,7 @@ def run_iperf(
 def run_memtier(
     name: str, qemu_cmd: List[str], pin: bool, server: str = "redis", **kargs: Any
 ):
+    tls: bool = kargs["config"].get("tls", False)
     resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
     with spawn_qemu(
@@ -645,7 +662,22 @@ def run_memtier(
         vm.wait_for_ssh()
         from network import run_memtier
 
-        run_memtier(name, vm, server=server)
+        run_memtier(name, vm, server=server, tls=tls)
+        vm.shutdown()
+
+
+def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from network import run_nginx
+
+        run_nginx(name, vm)
         vm.shutdown()
 
 
@@ -757,6 +789,8 @@ def do_action(action: str, **kwargs: Any) -> None:
         ipython(**kwargs)
     elif action == "boottime":
         boottime(**kwargs)
+    elif action == "prepare-phoronix":
+        prepare_phoronix(**kwargs)
     elif action == "run-phoronix":
         run_phoronix(**kwargs)
     elif action == "run-blender":
@@ -777,6 +811,8 @@ def do_action(action: str, **kwargs: Any) -> None:
         run_memtier(server="redis", **kwargs)
     elif action == "run-memtier-memcached":
         run_memtier(server="memcached", **kwargs)
+    elif action == "run-nginx":
+        run_nginx(**kwargs)
     elif action == "run-ping":
         run_ping(**kwargs)
     else:
@@ -818,6 +854,7 @@ def start(
     virtio_blk_aio: str = "native",
     virtio_blk_direct: bool = True,
     virtio_blk_iothread: bool = True,
+    tls: bool = False,
     fio_job: str = "test",
     warn: bool = True,
 ) -> None:

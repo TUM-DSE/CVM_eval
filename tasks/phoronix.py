@@ -97,6 +97,22 @@ def parse_xml(path: Union[str, Path]) -> pd.DataFrame:
 XML_DIR = Path("/var/lib/phoronix-test-suite/test-results/")
 
 
+def install_bench(bench_name: str, vm: QemuVm):
+    """Install the benchmark suite on the VM"""
+    # vm.ssh_cmd(["phoronix-test-suite", "install", bench_name], stdin=yes_please())
+    # XXX: for some reason, mpif90 is missing even though mpi is already installed. why?
+    vm.ssh_cmd(
+        [
+            "nix-shell",
+            "-p",
+            "mpi",
+            "--run",
+            f"phoronix-test-suite install {bench_name}",
+        ],
+        stdin=yes_please(),
+    )
+
+
 def run_phoronix(
     name: str,  # vm name, e.g., snp-direct-medium
     bench_name: str,  # name for the result directory

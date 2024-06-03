@@ -53,6 +53,7 @@ def boot_test(qemu_cmd: List[str], pin: bool, outfile=None, **kargs: Any) -> Non
             vm.pin_vcpu()
         time.sleep(10)
         vm.wait_for_ssh()
+        vm.shutdown()
 
     # get output from bpftrace process
     if trace:

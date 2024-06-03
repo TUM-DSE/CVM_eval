@@ -101,7 +101,6 @@
           # shell for linux kernel build
           kernel-deps = pkgs.callPackage ./nix/kernel-deps.nix { };
 
-          lib.nixpkgsRev = nixpkgs-unstable.shortRev;
         };
 
         devShells = {
@@ -141,46 +140,69 @@
                 cryptsetup
                 iperf # iperf3
                 memtier-benchmark
+                wrk
               ] ++ [ inv-completion ]
               ++ pre-commit-check.enabledPackages;
             inherit (pre-commit-check) shellHook;
           };
+
+          # for running benchmarks
+          blender = pkgs.callPackage ./benchmarks/application/blender/shell.nix { inherit pkgs; };
+          pytorch = pkgs.callPackage ./benchmarks/application/pytorch/shell.nix { inherit pkgs; };
+          # 2024-05-30: keras in the latest pkgs has some dependency issues; use pkgs-2311
+          tensorflow = pkgs.callPackage ./benchmarks/application/tensorflow/shell.nix { pkgs = pkgs-2311; };
+          sqlite = pkgs.callPackage ./benchmarks/application/sqlite/shell.nix { inherit pkgs; };
+          network = pkgs.callPackage ./benchmarks/network/shell.nix { inherit pkgs; };
         };
 
       })) // {
+      lib.nixpkgsRev = nixpkgs-unstable.shortRev;
+
       # nixOS configurations to create a guest image
       nixosConfigurations =
         let
+          # 2024-05-30: the latest nixosSystem of unstable seems really unstable?
+          # nix stores get easily corrupted when a VM is killed abruptly
+          # use nixpkgs-2311 for the time being
+          nixosSystem = nixpkgs-2311.lib.nixosSystem;
           pkgs = nixpkgs-unstable.legacyPackages.x86_64-linux;
           selfpkgs = self.packages.x86_64-linux;
           kernelConfig = { config, lib, pkgs, ... }: {
             boot.kernelPackages = pkgs.linuxPackages_6_8;
           };
+          # bake in packages for running benchmarks
+          extraEnvPackages =
+            self.devShells.x86_64-linux.blender.nativeBuildInputs
+            ++ self.devShells.x86_64-linux.pytorch.nativeBuildInputs
+            ++ self.devShells.x86_64-linux.tensorflow.nativeBuildInputs
+            ++ self.devShells.x86_64-linux.sqlite.nativeBuildInputs
+            ++ self.devShells.x86_64-linux.network.nativeBuildInputs;
+          guestConfig = (import ./nix/guest-config.nix { inherit extraEnvPackages; });
         in
         {
           # File system image w/o kernel
-          fs = nixpkgs-unstable.lib.nixosSystem {
+          fs = nixosSystem {
             system = "x86_64-linux";
             modules = [
-              ./nix/guest-config.nix
+              guestConfig
             ];
           };
 
           # Normal Linux guest (mainline)
-          normal-guest = nixpkgs-unstable.lib.nixosSystem {
+          normal-guest = nixosSystem {
             system = "x86_64-linux";
             modules = [
-              ./nix/guest-config.nix
+              guestConfig
               kernelConfig
               ./nix/nixos-generators-qcow.nix
             ];
           };
 
           # SEV-SNP guest
-          snp-guest = nixpkgs-unstable.lib.nixosSystem {
+          snp-guest = nixosSystem {
             system = "x86_64-linux";
             modules = [
-              ./nix/guest-config.nix
+              guestConfig
               kernelConfig
               ./nix/snp-guest-config.nix
               ./nix/nixos-generators-qcow.nix
@@ -188,10 +210,10 @@
           };
 
           # TDX guest
-          tdx-guest = nixpkgs-unstable.lib.nixosSystem {
+          tdx-guest = nixosSystem {
             system = "x86_64-linux";
             modules = [
-              ./nix/guest-config.nix
+              guestConfig
               kernelConfig
               ./nix/tdx-guest-config.nix
               ./nix/nixos-generators-qcow.nix

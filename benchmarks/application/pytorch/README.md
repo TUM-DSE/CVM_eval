@@ -5,7 +5,7 @@
 
 ## Run
 ```
-nix-shell
+nix develop .#pytorch
 just prepare
 just run
 ```

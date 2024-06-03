@@ -4,6 +4,7 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from subprocess import CalledProcessError
 
 from config import PROJECT_ROOT
 from qemu import QemuVm
@@ -22,11 +23,10 @@ def run_blender(
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
     cmd = [
-        "nix-shell",
-        "/share/benchmarks/application/blender/shell.nix",
-        "--repair",
-        "--run",
-        "just run",
+        "just",
+        "-f",
+        "/share/benchmarks/application/blender/justfile",
+        "run",
     ]
 
     for i in range(repeat):
@@ -64,16 +64,21 @@ def run_tensorflow(
             thread_cnt = 1
 
     cmd = [
-        "nix-shell",
-        "/share/benchmarks/application/tensorflow/shell.nix",
-        "--repair",
-        "--run",
-        f"just run {thread_cnt}",
+        "just",
+        "-f",
+        "/share/benchmarks/application/tensorflow/justfile",
+        "run",
+        f"{thread_cnt}",
     ]
 
     for i in range(repeat):
         print(f"Running tensorflow {i+1}/{repeat}")
-        output = vm.ssh_cmd(cmd)
+        try:
+            output = vm.ssh_cmd(cmd)
+        except CalledProcessError as e:
+            # Tensorflow may fail due to OOM, ignore that case
+            print(f"Error running tensorflow: {e}")
+            continue
         if output.returncode != 0:
             print(f"Error running tensorflow: {output.stderr}")
             continue
@@ -106,11 +111,11 @@ def run_pytorch(
             thread_cnt = 1
 
     cmd = [
-        "nix-shell",
-        "/share/benchmarks/application/pytorch/shell.nix",
-        "--repair",
-        "--run",
-        f"just run {thread_cnt}",
+        "just",
+        "-f",
+        "/share/benchmarks/application/pytorch/justfile",
+        "run",
+        f"{thread_cnt}",
     ]
 
     for i in range(repeat):
@@ -141,11 +146,11 @@ def run_sqlite(
 
     def init():
         cmd = [
-            "nix-shell",
-            "/share/benchmarks/application/sqlite/shell.nix",
-            "--repair",
-            "--run",
-            f"just DBPATH={dbpath} init",
+            "just",
+            "-f",
+            "/share/benchmarks/application/sqlite/justfile",
+            f"DBPATH={dbpath}",
+            "init",
         ]
         output = vm.ssh_cmd(cmd)
         if output.returncode != 0:
@@ -154,11 +159,11 @@ def run_sqlite(
 
     def run(test: str):
         cmd = [
-            "nix-shell",
-            "/share/benchmarks/application/sqlite/shell.nix",
-            "--repair",
-            "--run",
-            f"just DBPATH={dbpath} run_{test}",
+            "just",
+            "-f",
+            "/share/benchmarks/application/sqlite/justfile",
+            f"DBPATH={dbpath}",
+            f"run_{test}",
         ]
         output = vm.ssh_cmd(cmd)
         if output.returncode != 0:

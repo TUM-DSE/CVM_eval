@@ -270,7 +270,11 @@ class QemuVm:
     def shutdown(self, timeout=10) -> None:
         """Try graceful shutdown"""
         print("shutdown vm")
-        self.ssh_cmd(["poweroff"])
+        try:
+            self.ssh_cmd(["poweroff"])
+        except subprocess.CalledProcessError:
+            print("ssh failed, the server might be already down")
+            return
         count = 0
         if count < timeout and psutil.pid_exists(self.pid):
             time.sleep(1)
