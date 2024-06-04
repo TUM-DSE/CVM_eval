@@ -360,43 +360,44 @@ configure-linux-old:
          --enable X86_CPUID"
     fi
 
-# kernel configuration tested with v6.7
-configure-linux:
+# kernel configuration tested with v6.8
+configure-linux debug="":
     #!/usr/bin/env bash
     set -xeuo pipefail
     if [[ ! -f {{ LINUX_DIR }}/.config ]]; then
       cd {{ LINUX_DIR }}
       {{ KERNEL_SHELL }} "make defconfig kvm_guest.config"
       {{ KERNEL_SHELL }} "scripts/config \
-         --enable CONFIG_IKCONFIG \
-         --enable CONFIG_IKCONFIG_PROC \
          --enable AMD_MEM_ENCRYPT \
          --disable AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT \
          --enable VIRT_DRIVERS \
          --enable SEV_GUEST"
-      # for debug
-      {{ KERNEL_SHELL }} "scripts/config \
-         --enable KPROBES \
-         --enable KPROBES_ON_FTRACE \
-         --enable KPROBE_EVENTS \
-         --enable DYNAMIC_FTRACE \
-         --enable DYNAMIC_FTRACE_WITH_REGS \
-         --enable DYNAMIC_FTRACE_WITH_ARGS \
-         --enable DYNAMIC_EVENTS \
-         --enable BPF \
-         --enable BPF_SYSCALL \
-         --enable BPF_EVENTS \
-         --enable BPF_JIT \
-         --enable TRACEPOINTS \
-         --enable FUNCTION_TRACER \
-         --enable DEBUG_INFO \
-         --enable DEBUG_INFO_BTF \
-         --enable IKCONFIG \
-         --enable IKCONFIG_PROC \
-         --enable IKHEADERS"
+      if [[ "{{ debug }}" = "debug" ]]; then
+        {{ KERNEL_SHELL }} "scripts/config \
+           --enable CONFIG_IKCONFIG \
+           --enable CONFIG_IKCONFIG_PROC \
+           --enable KPROBES \
+           --enable KPROBES_ON_FTRACE \
+           --enable KPROBE_EVENTS \
+           --enable DYNAMIC_FTRACE \
+           --enable DYNAMIC_FTRACE_WITH_REGS \
+           --enable DYNAMIC_FTRACE_WITH_ARGS \
+           --enable DYNAMIC_EVENTS \
+           --enable BPF \
+           --enable BPF_SYSCALL \
+           --enable BPF_EVENTS \
+           --enable BPF_JIT \
+           --enable TRACEPOINTS \
+           --enable FUNCTION_TRACER \
+           --enable DEBUG_INFO \
+           --enable DEBUG_INFO_BTF \
+           --enable IKCONFIG \
+           --enable IKCONFIG_PROC \
+           --enable IKHEADERS"
+        fi
     fi
 
-# kernel configuration tested with v6.7
+# kernel configuration tested with v6.8
 configure-linux-tdx:
     #!/usr/bin/env bash
     set -xeuo pipefail
