@@ -16,6 +16,9 @@
 , cpio
 , pkg-config
 , pahole
+, inotify-tools
+, cloc
+, tokei
 , runScript ? ''bash -c''
 }:
 buildFHSUserEnv {
@@ -33,6 +36,9 @@ buildFHSUserEnv {
     cpio
     pkg-config
     pahole # BTF
+    inotify-tools
+    cloc
+    tokei
   ] ++ map lib.getDev [
     elfutils
     ncurses
