@@ -45,7 +45,33 @@ $ ls -lh ./arch/x86/boot/vmlinux.bin
 ```
 
 ## OVMF
-- TBD
+- Smae as the linux kernel measurement
+```
+cd edk2
+inotifywait -m -r -e open --format '%w%f' -o build.log $PWD
+# build OMVF (see ./cocs/how_to_build.md)
+cat build.log | cut -c `pwd | wc -c | awk '{print $1 + 1}'`- | sort -u | grep -E "\.c$|\.h$|\.H$|\.s$|\.S$"     | grep -v -E "^\.|^certs|^samples|^scripts|^tools|^usr" > build.log.prepared
+```
+- LoC
+```
+$ cloc --list-file=build.log.prepared
+
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+C                              281          26154          36031         148775
+C/C++ Header                   548          19376          45866          57292
+-------------------------------------------------------------------------------
+SUM:                           829          45530          81897         206067
+-------------------------------------------------------------------------------
+```
+- Binary size
+```
+$ ls -lh ./Build/OvmfX64/RELEASE_GCC5/FV/OVMF*.fd
+-rw-r--r-- 1 masa users 3.5M Jun  5 18:22 ./Build/OvmfX64/RELEASE_GCC5/FV/OVMF_CODE.fd
+-rw-r--r-- 1 masa users 4.0M Jun  5 18:22 ./Build/OvmfX64/RELEASE_GCC5/FV/OVMF.fd
+-rw-r--r-- 1 masa users 528K Apr  4 08:44 ./Build/OvmfX64/RELEASE_GCC5/FV/OVMF_VARS.fd
+```
 
 ## ASP firmware
 ```
@@ -64,5 +90,25 @@ Assembly                         2             23             28             52
 PHP                              1              4              0             47
 -------------------------------------------------------------------------------
 SUM:                           115           6350           7337          28937
+-------------------------------------------------------------------------------
+```
+
+## TDX Module
+```
+git clone https://github.com/intel/tdx-module
+cd tdx-module
+git checkout -b tdx_1.5 origin/tdx_1.5
+cloc src include
+```
+- TDX Module 1.5
+```
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+C                              127           6041           8021          34461
+C/C++ Header                    57           2229           5364           9830
+Assembly                         4             87            202            252
+-------------------------------------------------------------------------------
+SUM:                           188           8357          13587          44543
 -------------------------------------------------------------------------------
 ```
