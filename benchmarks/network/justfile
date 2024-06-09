@@ -2,7 +2,7 @@
 
 SCRIPT_DIR := justfile_directory()
 
-VM_IP := "172.44.0.2"
+VM_IP := "192.168.100.11"
 IPERF_PORT := "7175"
 STANDARD_MEMTIER_PORT := "6379"
 TLS_MEMTIER_PORT := "6380"

@@ -480,7 +480,7 @@ def qemu_option_virtio_blk(
 
 
 def qemu_option_virtio_nic(
-    tap="tap0", mtap="mtap0", vhost=False, mq=False, config={}
+    tap="tap1", mtap="mtap1", vhost=False, mq=False, config={}
 ) -> List[str]:
     """Qreate a virtio-nic with a tap interface.
     If mq is True, then create multiple queues as many as the number of CPUs.
@@ -827,8 +827,8 @@ def start(
     virtio_nic: bool = False,
     virtio_nic_vhost: bool = False,
     virtio_nic_mq: bool = False,
-    virtio_nic_tap: str = "tap0",
-    virtio_nic_mtap: str = "mtap0",
+    virtio_nic_tap: str = "tap1",
+    virtio_nic_mtap: str = "mtap1",
     # virtio-blk options
     virtio_blk: Optional[
         str

@@ -10,7 +10,7 @@ OVMF := OVMF_SNP
 SNP_IMAGE := join(BUILD_DIR, "image/snp-guest-image.qcow2")
 NORMAL_IMAGE := join(BUILD_DIR, "image/normal-guest-image.qcow2")
 GUEST_FS := join(BUILD_DIR, "image/guest-fs.qcow2")
-SSH_PORT := "2225"
+SSH_PORT := "2224"
 smp := "4"
 mem := "16G"
 
@@ -23,9 +23,9 @@ LINUX_REPO := "https://github.com/torvalds/linux"
 # LINUX_COMMIT := "0dd3ee31125508cd67f7e7172247f05b7fd1753a" # v6.7
 LINUX_COMMIT := "e8f897f4afef0031fe618a8e94127a0934896aba" # v6.8
 
-BRIDGE_NAME := "virbr0"
-TAP_NAME := "tap0"
-MTAP_NAME := "mtap0"
+BRIDGE_NAME := "virbr1"
+TAP_NAME := "tap1"
+MTAP_NAME := "mtap1"
 
 default:
     @just --choose

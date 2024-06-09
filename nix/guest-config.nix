@@ -19,13 +19,12 @@ in
 {
   imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
 
-  nix.extraOptions =
-    ''
-      experimental-features = nix-command flakes
-      keep-outputs = true
-      keep-derivations = true
-      auto-optimise-store = false
-    '';
+  nix.extraOptions = ''
+    experimental-features = nix-command flakes
+    keep-outputs = true
+    keep-derivations = true
+    auto-optimise-store = false
+  '';
   nix.package = pkgs.nixFlakes;
   nix.gc.automatic = false;
 
@@ -33,7 +32,8 @@ in
   # (somehow udev does not pick up hvc0?)
   systemd.services."serial-getty" = {
     wantedBy = [ "multi-user.target" ];
-    serviceConfig.ExecStart = "${pkgs.util-linux}/sbin/agetty  --login-program ${pkgs.shadow}/bin/login --autologin root hvc0 --keep-baud vt100";
+    serviceConfig.ExecStart =
+      "${pkgs.util-linux}/sbin/agetty  --login-program ${pkgs.shadow}/bin/login --autologin root hvc0 --keep-baud vt100";
   };
   systemd.services."serial-getty@hvc0".enable = false;
 
@@ -73,10 +73,16 @@ in
     address = "10.0.2.15";
     prefixLength = 24;
   }];
-  networking.interfaces.eth1.ipv4.addresses = [{
-    address = "172.44.0.2";
-    prefixLength = 24;
-  }];
+  networking.interfaces.eth1.ipv4.addresses = [
+    {
+      address = "172.45.0.2";
+      prefixLength = 24;
+    }
+    {
+      address = "192.168.100.11";
+      prefixLength = 24;
+    }
+  ];
   networking.useDHCP = false;
   networking.interfaces.eth0.useDHCP = false;
   networking.interfaces.eth1.useDHCP = false;
