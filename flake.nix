@@ -32,8 +32,10 @@
           # SPDK is for SSD preconditioning
           spdk = pkgs.callPackage ./nix/spdk.nix { inherit pkgs; };
 
+          igvm = pkgs.callPackage ./nix/igvm.nix { inherit pkgs; };
+
           qemu-amd-sev-snp =
-            pkgs.callPackage ./nix/qemu-amd-sev-snp.nix { inherit pkgs; };
+            pkgs.callPackage ./nix/qemu-amd-sev-snp.nix { inherit pkgs; igvm = self.packages.${system}.igvm; };
           ovmf-amd-sev-snp =
             pkgs.callPackage ./nix/ovmf-amd-sev-snp.nix { inherit pkgs; };
 
@@ -142,7 +144,8 @@
                 memtier-benchmark
                 wrk
               ] ++ [ inv-completion ]
-              ++ pre-commit-check.enabledPackages;
+              ++ pre-commit-check.enabledPackages
+              ++ [ self.packages.${system}.qemu-amd-sev-snp ];
             inherit (pre-commit-check) shellHook;
           };
 
