@@ -37,6 +37,28 @@
           ovmf-amd-sev-snp =
             pkgs.callPackage ./nix/ovmf-amd-sev-snp.nix { inherit pkgs; };
 
+          igvm = pkgs.callPackage ./nix/igvm.nix { };
+          qemu-coconut-igvm = pkgs.qemu.overrideAttrs (new: old: {
+            src = builtins.fetchurl {
+              url =
+                "https://github.com/Sabanic-P/qemu/releases/download/v8.2.0-igvm/qemu8.2.0.tar.gz";
+              sha256 =
+                "sha256:15cmwlkiwd001hhbv8rcvdnsdgr092x2jvy15m9c3k4s7g36a7yh";
+            };
+            version = "8.2.0";
+            buildInputs = old.buildInputs ++ [ self.packages.${system}.igvm ];
+            igvm = self.packages.${system}.igvm;
+            configureFlags = old.configureFlags ++ [
+              "--target-list=x86_64-softmmu"
+              "--disable-gtk"
+              "--disable-sdl"
+              "--disable-sdl-image"
+              "--enable-igvm"
+            ];
+          });
+          ovmf-coconut =
+            pkgs.callPackage ./nix/ovmf-coconut.nix { inherit pkgs; };
+
           # Note: this does not work yet!
           qemu-tdx =
             pkgs.callPackage ./nix/qemu-tdx.nix { inherit pkgs; };

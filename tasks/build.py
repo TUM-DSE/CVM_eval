@@ -51,6 +51,24 @@ def build_qemu_snp(c: Any) -> None:
 
 
 @task
+def build_qemu_coconut_igvm(c: Any) -> None:
+    """Build QEMU with AMD SEV-SNP support.
+
+    Output path is ./build/qemu-coconut-igvm
+    """
+    nix_build(".#qemu-coconut-igvm")
+
+
+@task
+def build_ovmf_coconut(c: Any) -> None:
+    """Build OVMF with Coconut support.
+
+    Output path is ./build/ovmf-coconut
+    """
+    nix_build(".#ovmf-coconut")
+
+
+@task
 def build_qemu_tdx(c: Any) -> None:
     """Build QEMU with Intel TDX support.
 
