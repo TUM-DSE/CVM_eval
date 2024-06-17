@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 import time
 
-from config import PROJECT_ROOT, VM_IP
+from config import PROJECT_ROOT, VM_IP, VM_REMOTE_IP
 from qemu import QemuVm
 
 
@@ -43,6 +43,7 @@ def run_iperf(
     udp: bool = False,
     port: int = 7175,
     parallel: int = 8,  # number of parallel streams
+    remote: bool = False,
 ):
     """Run the iperf benchmark on the VM.
     The results are saved in ./bench-result/networking/iperf/{name}/{proto}/{date}/
@@ -69,7 +70,7 @@ def run_iperf(
         cmd = [
             "iperf",
             "-c",
-            f"{VM_IP}",
+            f"{VM_REMOTE_IP if remote else VM_IP}",
             "-p",
             f"{port}",
             "-b",
@@ -84,7 +85,9 @@ def run_iperf(
         if udp:
             cmd.append("-u")
         print(cmd)
-        output = subprocess.check_output(cmd).decode()
+        output = (
+            remote_ssh_cmd(cmd) if remote else subprocess.check_output(cmd).decode()
+        )
         lines = output.split("\n")
         with open(outputdir_host / f"{pkt_size}.log", "w") as f:
             f.write("\n".join(lines))
@@ -99,6 +102,7 @@ def run_memtier(
     port: int = 6379,
     tls_port: int = 6380,
     tls: bool = False,
+    remote: bool = False,
     server_threads: int = 8,
     client_threads: int = 8,
     client_key: str = PROJECT_ROOT / "benchmarks/network/tls/pki/private/client.key",
@@ -128,7 +132,6 @@ def run_memtier(
     server_cmd = [
         "nix-shell",
         "/share/benchmarks/network/shell.nix",
-        "--repair",
         "--run",
         f"just STANDARD_MEMTIER_PORT={port} TLS_MEMTIER_PORT={tls_port} THREADS={server_threads} run-{server}{tls_}",
     ]
@@ -136,38 +139,19 @@ def run_memtier(
     print("Server started")
     time.sleep(1)
 
-    if tls:
-        cmd = [
-            "memtier_benchmark",
-            f"--host={VM_IP}",
-            "-p",
-            f"{tls_port}",
-            "-t",
-            f"{client_threads}",
-            "-c",
-            "100",
-            "--pipeline=40",
-            f"--protocol={proto}",
-            "--tls",
-            f"--cert={client_cert}",
-            f"--key={client_key}",
-            f"--cacert={ca_cert}",
-        ]
-    else:
-        cmd = [
-            "memtier_benchmark",
-            f"--host={VM_IP}",
-            "-p",
-            f"{port}",
-            "-t",
-            f"{client_threads}",
-            "-c",
-            "100",
-            "--pipeline=40",
-            f"--protocol={proto}",
-        ]
+    host_ip = VM_REMOTE_IP if remote else VM_IP
+    bench_path = ("CVM_eval/" if remote else "") + "benchmarks/network/"
+    just_cmd = (
+        f"just STANDARD_MEMTIER_PORT={port} TLS_MEMTIER_PORT={tls_port} VM_IP={host_ip} PROTOCOL={proto} run-memtier"
+        + ("-tls" if tls else "")
+    )
+    cmd = (
+        ["cd", bench_path, "&&", "nix-shell --run", f"'{just_cmd}'"]
+        if remote
+        else ["nix-shell", f"{bench_path}/shell.nix", "--run", f"{just_cmd}"]
+    )
     print(cmd)
-    output = subprocess.check_output(cmd).decode()
+    output = remote_ssh_cmd(cmd) if remote else subprocess.check_output(cmd).decode()
     lines = output.split("\n")
     with open(outputdir_host / f"memtier.log", "w") as f:
         f.write("\n".join(lines))
@@ -175,7 +159,7 @@ def run_memtier(
     print(f"Results saved in {outputdir_host}")
 
 
-def run_nginx(name: str, vm: QemuVm):
+def run_nginx(name: str, vm: QemuVm, remote: bool = False):
     """Run the nginx on the VM and the wrk benchmark on the host.
     The results are saved in ./bench-result/networking/nginx/{name}/{date}/
     """
@@ -185,29 +169,44 @@ def run_nginx(name: str, vm: QemuVm):
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
     nix_shell_path = "benchmarks/network/shell.nix"
+    bench_path = "CVM_eval/benchmarks/network/"
 
     server_cmd = ["nix-shell", f"/share/{nix_shell_path}", "--run", "just run-nginx"]
     vm.ssh_cmd(server_cmd)
     time.sleep(1)
 
+    host_ip = VM_REMOTE_IP if remote else VM_IP
+    just_cmd = f"just VM_IP={host_ip} run-wrk"
+    just_cmd_ssl = just_cmd + "-ssl"
+
     # HTTP
-    cmd = ["wrk", f"http://{VM_IP}"]
+    cmd = (
+        ["cd", f"{bench_path}", "&&", "nix-shell --run", f"'{just_cmd}'"]
+        if remote
+        else ["nix-shell", f"{nix_shell_path}", "--run", f"{just_cmd}"]
+    )
     print(cmd)
-    output = subprocess.run(cmd, capture_output=True, text=True)
-    if output.returncode != 0:
-        print(f"Error running wrk: {output.stderr}")
-    lines = output.stdout.split("\n")
+    output = remote_ssh_cmd(cmd) if remote else subprocess.check_output(cmd).decode()
+    lines = output.split("\n")
     with open(outputdir_host / f"http.log", "w") as f:
         f.write("\n".join(lines))
 
     # HTTPS
-    cmd = ["wrk", f"https://{VM_IP}"]
+    cmd = (
+        ["cd", f"{bench_path}", "&&", "nix-shell --run", f"'{just_cmd_ssl}'"]
+        if remote
+        else ["nix-shell", f"{nix_shell_path}", "--run", f"{just_cmd_ssl}"]
+    )
     print(cmd)
-    output = subprocess.run(cmd, capture_output=True, text=True)
-    if output.returncode != 0:
-        print(f"Error running wrk: {output.stderr}")
-    lines = output.stdout.split("\n")
+    output = remote_ssh_cmd(cmd) if remote else subprocess.check_output(cmd).decode()
+    lines = output.split("\n")
     with open(outputdir_host / f"https.log", "w") as f:
         f.write("\n".join(lines))
 
     print(f"Results saved in {outputdir_host}")
+
+
+def remote_ssh_cmd(command: list[str]):
+    """Execute a command with ssh on a remote machine."""
+    ssh_command = ["ssh", "graham.tum"] + command
+    return subprocess.check_output(ssh_command).decode()

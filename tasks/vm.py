@@ -423,7 +423,8 @@ def qemu_option_virtio_blk(
     aio: str = "native",  # either of threads, native (POSIX AIO), io_uring
     direct: bool = True,  # if True, QEMU uses O_DIRECT to open the file
     iothread: bool = True,  # if True, use QEMU iothread
-    iommu_option: bool = False,  # if True, enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
+    # if True, enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
+    iommu_option: bool = False,
     # (this is necessary to force bounce buffers in a normal VM for testing)
 ) -> List[str]:
     # QEMU options (https://www.qemu.org/docs/master/system/qemu-manpage.html)
@@ -623,11 +624,15 @@ def run_iperf(
         vm.wait_for_ssh()
         from network import run_iperf
 
+        remote = kargs["config"]["remote"]
+
         if kargs["config"]["virtio_nic_vhost"]:
             name += f"-vhost"
         if kargs["config"]["virtio_nic_mq"]:
             name += f"-mq"
-        run_iperf(name, vm, udp=udp)
+        if remote:
+            name += f"-remote"
+        run_iperf(name, vm, udp=udp, remote=remote)
 
         vm.shutdown()
 
@@ -646,7 +651,15 @@ def run_memtier(
         vm.wait_for_ssh()
         from network import run_memtier
 
-        run_memtier(name, vm, server=server, tls=tls)
+        remote = kargs["config"]["remote"]
+
+        if kargs["config"]["virtio_nic_vhost"]:
+            name += f"-vhost"
+        if kargs["config"]["virtio_nic_mq"]:
+            name += f"-mq"
+        if remote:
+            name += f"-remote"
+        run_memtier(name, vm, server=server, tls=tls, remote=remote)
         vm.shutdown()
 
 
@@ -661,7 +674,16 @@ def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
         vm.wait_for_ssh()
         from network import run_nginx
 
-        run_nginx(name, vm)
+        remote = kargs["config"]["remote"]
+
+        if kargs["config"]["virtio_nic_vhost"]:
+            name += f"-vhost"
+        if kargs["config"]["virtio_nic_mq"]:
+            name += f"-mq"
+        if remote:
+            name += f"-remote"
+
+        run_nginx(name, vm, remote=remote)
         vm.shutdown()
 
 
@@ -822,7 +844,8 @@ def start(
     phoronix_bench_name: Optional[str] = None,
     # application bench options
     repeat: int = 1,
-    virtio_iommu: bool = False,  # enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
+    # enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
+    virtio_iommu: bool = False,
     # virtio-nic options
     virtio_nic: bool = False,
     virtio_nic_vhost: bool = False,
@@ -837,6 +860,7 @@ def start(
     virtio_blk_direct: bool = True,
     virtio_blk_iothread: bool = True,
     tls: bool = False,
+    remote: bool = False,
     fio_job: str = "test",
     warn: bool = True,
 ) -> None:

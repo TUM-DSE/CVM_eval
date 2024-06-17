@@ -2,10 +2,14 @@
 
 SCRIPT_DIR := justfile_directory()
 
+# VM_IP := "172.45.0.2"
 VM_IP := "192.168.100.11"
 IPERF_PORT := "7175"
 STANDARD_MEMTIER_PORT := "6379"
 TLS_MEMTIER_PORT := "6380"
+PROTOCOL := "redis"
+NGINX_PORT:="8080"
+NGINX_PORT_SSL:="8443"
 
 #TLS
 SERVER_CERT := join(SCRIPT_DIR, "tls/pki/issued/server.crt")
@@ -35,16 +39,16 @@ run-iperf-client-udp pkt_size:
 
 #nginx
 run-nginx:
-  nginx -c nginx.conf -p nginx -e ./logs/error.log
+  nginx -c nginx.conf -p nginx -e /dev/null
 
 stop-nginx:
-  nginx -c nginx.conf -p nginx -e ./logs/error.log -s quit
+  nginx -c nginx.conf -p nginx -e /dev/null -s quit
 
 run-wrk:
-  wrk http://{{VM_IP}}
+  wrk http://{{VM_IP}}:{{NGINX_PORT}}
 
 run-wrk-ssl:
-  wrk https://{{VM_IP}}
+  wrk https://{{VM_IP}}:{{NGINX_PORT_SSL}}
 
 #memtier
 run-redis:
@@ -75,13 +79,13 @@ run-memcached:
 run-memcached-tls:
   memcached -u nobody -d -p {{TLS_MEMTIER_PORT}} -Z -o ssl_chain_cert={{SERVER_CERT}},ssl_key={{SERVER_KEY}}
 
-run-memtier protocol="redis":
-  memtier_benchmark --host={{VM_IP}} -p {{STANDARD_MEMTIER_PORT}} -t {{THREADS}} --protocol={{protocol}}
+run-memcached-ktls: 
+  memcached -u nobody -d -p {{TLS_MEMTIER_PORT}} -Z -o ssl_chain_cert={{SERVER_CERT}},ssl_key={{SERVER_KEY}},ssl_kernel_tls=true
 
-run-memtier-memcached:
-  @just run-memtier memcache_binary
+run-memtier:
+  memtier_benchmark --host={{VM_IP}} -p {{STANDARD_MEMTIER_PORT}} -t {{THREADS}} --protocol={{PROTOCOL}}
 
-run-memtier-tls protocol="redis":
+run-memtier-tls:
   memtier_benchmark \
   --host={{VM_IP}} \
   -p {{TLS_MEMTIER_PORT}} \
@@ -90,7 +94,5 @@ run-memtier-tls protocol="redis":
   --cert={{CLIENT_CERT}} \
   --key={{CLIENT_KEY}} \
   --cacert={{CA_CERT}} \
-  --protocol={{protocol}}
+  --protocol={{PROTOCOL}}
 
-run-memtier-tls-memcached:
-  @just run-memtier-tls memcache_binary

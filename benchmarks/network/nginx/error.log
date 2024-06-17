@@ -1,0 +1,2 @@
+2024/06/17 10:38:18 [emerg] 150427#150427: bind() to 0.0.0.0:80 failed (13: Permission denied)
+2024/06/17 10:39:00 [emerg] 150520#150520: bind() to 0.0.0.0:80 failed (13: Permission denied)
