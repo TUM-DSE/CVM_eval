@@ -546,7 +546,8 @@ def ipython(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     In [2]: vm.ssh_cmd(["echo", "ok"])
     $ ssh -i /scratch/masa/CVM_eval/nix/ssh_key -p 2225 -oBatchMode=yes -oStrictHostKeyChecking=no -oConnectTimeout=5 -oUserKnownHostsFile=/dev/null root@localhost -- echo ok
     Warning: Permanently added '[localhost]:2225' (ED25519) to the list of known hosts.
-    Out[2]: CompletedProcess(args=['ssh', '-i', '/scratch/masa/CVM_eval/nix/ssh_key', '-p', '2225', '-oBatchMode=yes', '-oStrictHostKeyChecking=no', '-oConnectTimeout=5', '-oUserKnownHostsFile=/dev/null', 'root@localhost', '--', 'echo ok'], returncode=0, stdout='ok\n')
+    Out[2]: CompletedProcess(args=['ssh', '-i', '/scratch/masa/CVM_eval/nix/ssh_key', '-p', '2225', '-oBatchMode=yes', '-oStrictHostKeyChecking=no',
+                             '-oConnectTimeout=5', '-oUserKnownHostsFile=/dev/null', 'root@localhost', '--', 'echo ok'], returncode=0, stdout='ok\n')
     ```
 
     Note that the VM automatically terminates when the ipython session is closed.
@@ -698,11 +699,14 @@ def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
         vm.wait_for_ssh()
         from network import run_ping
 
+        remote = kargs["config"]["remote"]
         if kargs["config"]["virtio_nic_vhost"]:
             name += f"-vhost"
         if kargs["config"]["virtio_nic_mq"]:
             name += f"-mq"
-        run_ping(name, vm)
+        if remote:
+            name += f"-remote"
+        run_ping(name, vm, remote=remote)
         vm.shutdown()
 
 

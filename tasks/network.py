@@ -8,7 +8,7 @@ from config import PROJECT_ROOT, VM_IP, VM_REMOTE_IP
 from qemu import QemuVm
 
 
-def run_ping(name: str, vm: QemuVm):
+def run_ping(name: str, vm: QemuVm, remote: bool = False):
     """Ping the VM.
     The results are saved in ./bench-results/networing/ping/{name}/{date}
     """
@@ -17,22 +17,15 @@ def run_ping(name: str, vm: QemuVm):
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
+    host_ip = VM_REMOTE_IP if remote else VM_IP
     for pkt_size in [64, 128, 256, 512, 1024]:
-        process = subprocess.Popen(
-            f"ping -c 30 -i0.1 -s {pkt_size} {VM_IP}".split(" "),
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
+        cmd = ["ping", "-c", "30", "-i0.1", "-s", f"{pkt_size}", host_ip]
+        output = (
+            remote_ssh_cmd(cmd) if remote else subprocess.check_output(cmd).decode()
         )
-
-        stdout, stderr = process.communicate()
-        exit_code = process.wait()
-
-        if exit_code != 0:
-            print(f"Error running ping: {stderr}")
-            continue
-
-        with open(outputdir_host / f"{pkt_size}.log", "wb") as f:
-            f.write(stdout)
+        lines = output.split("\n")
+        with open(outputdir_host / f"{pkt_size}.log", "w") as f:
+            f.write("\n".join(lines))
 
     print(f"Results saved in {outputdir_host}")
 
@@ -88,6 +81,7 @@ def run_iperf(
         output = (
             remote_ssh_cmd(cmd) if remote else subprocess.check_output(cmd).decode()
         )
+
         lines = output.split("\n")
         with open(outputdir_host / f"{pkt_size}.log", "w") as f:
             f.write("\n".join(lines))
