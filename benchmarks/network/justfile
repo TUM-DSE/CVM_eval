@@ -76,11 +76,10 @@ stop-redis-tls:
 run-memcached:
   memcached -u nobody -d -p {{STANDARD_MEMTIER_PORT}}
 
+#with ktls enabled
 run-memcached-tls:
-  memcached -u nobody -d -p {{TLS_MEMTIER_PORT}} -Z -o ssl_chain_cert={{SERVER_CERT}},ssl_key={{SERVER_KEY}}
+  memcached -u nobody -d -p {{TLS_MEMTIER_PORT}} -Z -o ssl_chain_cert={{SERVER_CERT}},ssl_key={{SERVER_KEY}},ssl_kernel_tls
 
-run-memcached-ktls: 
-  memcached -u nobody -d -p {{TLS_MEMTIER_PORT}} -Z -o ssl_chain_cert={{SERVER_CERT}},ssl_key={{SERVER_KEY}},ssl_kernel_tls=true
 
 run-memtier:
   memtier_benchmark --host={{VM_IP}} -p {{STANDARD_MEMTIER_PORT}} -t {{THREADS}} --protocol={{PROTOCOL}}
