@@ -8,8 +8,7 @@ let
     rev = "9ddcaffecdf098822d944d4147dd8da30b4e6843";
   };
   pkgs = import nixpkgs { config = { }; overlays = [ ]; };
-  memcached_ktls = pkgs.memcached.overrideAttrs (new: old: {
-    nameSuffix = "-ktls";
+  memcached = pkgs.memcached.overrideAttrs (new: old: {
     buildInputs = old.buildInputs ++ [
       pkgs.openssl
     ];
@@ -18,13 +17,21 @@ let
       "--enable-ktls"
     ];
   });
+  nginx = pkgs.nginx.overrideAttrs (new: old: {
+    buildInputs = old.buildInputs ++ [
+      pkgs.openssl
+    ];
+    configureFlags = old.configureFlags ++ [
+      "--with-openssl-opt=enable-ktls"
+    ];
+  });
 in
 pkgs.mkShell {
   buildInputs = [
-    memcached_ktls
+    memcached
+    nginx
     pkgs.memtier-benchmark
     pkgs.redis
-    pkgs.nginx
     pkgs.wrk
     pkgs.just
   ];

@@ -626,7 +626,6 @@ def run_iperf(
         from network import run_iperf
 
         remote = kargs["config"]["remote"]
-        repeat = kargs["config"]["repeat"]
 
         if kargs["config"]["virtio_nic_vhost"]:
             name += f"-vhost"
@@ -634,7 +633,7 @@ def run_iperf(
             name += f"-mq"
         if remote:
             name += f"-remote"
-        run_iperf(name, vm, udp=udp, remote=remote, repeat=repeat)
+        run_iperf(name, vm, udp=udp, remote=remote)
 
         vm.shutdown()
 
@@ -654,7 +653,6 @@ def run_memtier(
         from network import run_memtier
 
         remote = kargs["config"]["remote"]
-        repeat = kargs["config"]["repeat"]
 
         if kargs["config"]["virtio_nic_vhost"]:
             name += f"-vhost"
@@ -662,7 +660,7 @@ def run_memtier(
             name += f"-mq"
         if remote:
             name += f"-remote"
-        run_memtier(name, vm, server=server, tls=tls, remote=remote, repeat=repeat)
+        run_memtier(name, vm, server=server, tls=tls, remote=remote)
         vm.shutdown()
 
 
@@ -678,7 +676,6 @@ def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
         from network import run_nginx
 
         remote = kargs["config"]["remote"]
-        repeat = kargs["config"]["repeat"]
 
         if kargs["config"]["virtio_nic_vhost"]:
             name += f"-vhost"
@@ -687,7 +684,7 @@ def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
         if remote:
             name += f"-remote"
 
-        run_nginx(name, vm, remote=remote, repeat=repeat)
+        run_nginx(name, vm, remote=remote)
         vm.shutdown()
 
 
@@ -932,4 +929,5 @@ def start(
 
     name = f"{type}-{'direct' if direct else 'disk'}-{size}"
     print(f"Starting VM: {name}")
-    do_action(action, qemu_cmd=qemu_cmd, pin=pin, name=name, config=config)
+    for _ in range(0, repeat):
+        do_action(action, qemu_cmd=qemu_cmd, pin=pin, name=name, config=config)
