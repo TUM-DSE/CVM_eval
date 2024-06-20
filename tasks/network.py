@@ -99,7 +99,7 @@ def run_memtier(
     server: str = "redis",
     port: int = 6379,
     tls_port: int = 6380,
-    tls: bool = False,
+    tls: bool = True,
     remote: bool = False,
     server_threads: int = 8,
     client_threads: int = 8,
