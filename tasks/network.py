@@ -37,10 +37,13 @@ def run_iperf(
     port: int = 7175,
     parallel: int = 8,  # number of parallel streams
     remote: bool = False,
+    repeat: int = 1,
 ):
     """Run the iperf benchmark on the VM.
     The results are saved in ./bench-result/networking/iperf/{name}/{proto}/{date}/
     """
+    if repeat == 0:
+        return
     if udp:
         proto = "udp"
         pkt_sizes = [64, 128, 256, 512, 1024, 1460]
@@ -87,6 +90,7 @@ def run_iperf(
             f.write("\n".join(lines))
 
     print(f"Results saved in {outputdir_host}")
+    run_iperf(name, vm, udp, port, parallel, remote, repeat - 1)
 
 
 def run_memtier(
@@ -99,6 +103,7 @@ def run_memtier(
     remote: bool = False,
     server_threads: int = 8,
     client_threads: int = 8,
+    repeat: int = 1,
     client_key: str = PROJECT_ROOT / "benchmarks/network/tls/pki/private/client.key",
     client_cert: str = PROJECT_ROOT / "benchmarks/network/tls/pki/issued/client.crt",
     ca_cert: str = PROJECT_ROOT / "benchmarks/network/tls/pki/ca.crt",
@@ -107,6 +112,8 @@ def run_memtier(
     `server_threads` is only valid for memcached.
     The results are saved in ./bench-result/networking/memtier/{server}[-tls]/{name}/{date}/
     """
+    if repeat == 0:
+        return
     if tls:
         tls_ = "-tls"
     else:
@@ -151,12 +158,29 @@ def run_memtier(
         f.write("\n".join(lines))
 
     print(f"Results saved in {outputdir_host}")
+    run_memtier(
+        name,
+        vm,
+        server,
+        port,
+        tls_port,
+        tls,
+        remote,
+        server_threads,
+        client_threads,
+        repeat - 1,
+        client_key,
+        client_cert,
+        ca_cert,
+    )
 
 
-def run_nginx(name: str, vm: QemuVm, remote: bool = False):
+def run_nginx(name: str, vm: QemuVm, remote: bool = False, repeat: int = 1):
     """Run the nginx on the VM and the wrk benchmark on the host.
     The results are saved in ./bench-result/networking/nginx/{name}/{date}/
     """
+    if repeat == 0:
+        return
     date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     outputdir = Path(f"./bench-result/networking/nginx/{name}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
@@ -198,6 +222,7 @@ def run_nginx(name: str, vm: QemuVm, remote: bool = False):
         f.write("\n".join(lines))
 
     print(f"Results saved in {outputdir_host}")
+    run_nginx(name, vm, remote, repeat - 1)
 
 
 def remote_ssh_cmd(command: list[str]):
