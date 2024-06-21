@@ -202,5 +202,10 @@ def run_nginx(name: str, vm: QemuVm, remote: bool = False):
 
 def remote_ssh_cmd(command: list[str]):
     """Execute a command with ssh on a remote machine."""
-    ssh_command = ["ssh", "graham.tum"] + command
+    ssh_command = [
+        "ssh",
+        "-F",
+        "/scratch/luca/CVM_eval/benchmarks/network/ssh_conf",
+        "graham.tum",
+    ] + command
     return subprocess.check_output(ssh_command).decode()
