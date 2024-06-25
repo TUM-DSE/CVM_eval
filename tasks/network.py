@@ -6,7 +6,7 @@ import time
 import re
 
 from config import PROJECT_ROOT, VM_IP, VM_REMOTE_IP
-from utils import connect_to_mysql, ensure_db, insert_into_db
+from utils import connect_to_db, ensure_db, insert_into_db
 from qemu import QemuVm
 
 COLUMNS = {
@@ -21,7 +21,7 @@ COLUMNS = {
 
 def run_ping(name: str, vm: QemuVm, remote: bool = False):
     """Ping the VM.
-    The results are saved in the database 'bench' in table 'ping'.
+    The results are saved in the database in table 'ping'.
     """
     vhost = "vhost" in name
     attrs = name.split("-")
@@ -36,7 +36,7 @@ def run_ping(name: str, vm: QemuVm, remote: bool = False):
         "mdev": "FLOAT",
     }
     columns.update(ping_columns)
-    connection = connect_to_mysql()
+    connection = connect_to_db()
     ensure_db(connection, table="ping", columns=columns)
 
     host_ip = VM_REMOTE_IP if remote else VM_IP
@@ -75,7 +75,7 @@ def run_ping(name: str, vm: QemuVm, remote: bool = False):
         else:
             print("No match")
     connection.close()
-    print(f"Results saved to database 'bench' in table 'ping'")
+    print(f"Results saved to database in table 'ping'")
 
 
 def run_iperf(
@@ -87,8 +87,27 @@ def run_iperf(
     remote: bool = False,
 ):
     """Run the iperf benchmark on the VM.
-    The results are saved in ./bench-result/networking/iperf/{name}/{proto}/{date}/
+    The results are saved to db in table 'iperf'.
     """
+    vhost = "vhost" in name
+    attrs = name.split("-")
+    ty = attrs[0]
+    size = attrs[2]
+    columns = COLUMNS.copy()
+    memtier = {
+        "lat_max": "FLOAT",
+        "lat_avg": "FLOAT",
+        "ops_per_sec": "FLOAT",
+        "transfer_rate": "FLOAT",  # in KB/s
+        "server": "VARCHAR(10)",
+        "proto": "VARCHAR(3)",
+        "c_threads": "INT",
+        "s_threads": "INT",
+    }
+    columns.update(memtier)
+    connection = connect_to_db()
+    ensure_db(connection, table="memtier", columns=columns)
+
     if udp:
         proto = "udp"
         pkt_sizes = [64, 128, 256, 512, 1024, 1460]
@@ -149,7 +168,7 @@ def run_memtier(
 ):
     """Run the memtier benchmark on the VM using redis or memcached.
     `server_threads` is only valid for memcached.
-    The results are saved in db 'bench' in table 'memtier'.
+    The results are saved to db in table 'memtier'.
     """
     vhost = "vhost" in name
     attrs = name.split("-")
@@ -167,7 +186,7 @@ def run_memtier(
         "s_threads": "INT",
     }
     columns.update(memtier)
-    connection = connect_to_mysql()
+    connection = connect_to_db()
     ensure_db(connection, table="memtier", columns=columns)
 
     if tls:
@@ -263,7 +282,7 @@ def run_nginx(name: str, vm: QemuVm, remote: bool = False):
         "transfer_rate": "FLOAT",  # in KB/s
     }
     columns.update(nginx_columns)
-    connection = connect_to_mysql()
+    connection = connect_to_db()
     ensure_db(connection, table="nginx", columns=columns)
 
     nix_shell_path = "benchmarks/network/shell.nix"

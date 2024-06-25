@@ -5,7 +5,7 @@ from pathlib import Path
 from invoke import task
 
 import config
-import mysql.connector
+import sqlite3
 
 
 @task
@@ -16,23 +16,9 @@ def show_config(ctx):
     print(f"BUILD_DIR: {config.BUILD_DIR}")
 
 
-@task
-def test_db_connection(ctx):
-    """Test the database connection."""
-    connection = connect_to_mysql()
-    if connection.is_connected():
-        print("Connected to MySQL server")
-    else:
-        print("Failed to connect to MySQL server")
-
-
-def connect_to_mysql():
-    """Connect to the MySQL server."""
-    return mysql.connector.connect(
-        host=f"{config.DB_IP}",
-        user="root",
-        password="",
-    )
+def connect_to_db():
+    """Connect to sqlite."""
+    return sqlite3.connect(config.DB_PATH)
 
 
 def ensure_db(
@@ -40,10 +26,9 @@ def ensure_db(
 ):
     """Ensure the database exists."""
     cursor = connection.cursor()
-    cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database}")
-    cursor.execute(f"USE {database}")
-    cols = ", ".join([f"{name} {type}" for name, type in columns.items()])
-    cursor.execute(f"CREATE TABLE IF NOT EXISTS {table} ({cols})")
+    cursor.execute(
+        f"CREATE TABLE IF NOT EXISTS {table} ({', '.join([f'{name} {type}' for name, type in columns.items()])})"
+    )
     connection.commit()
     cursor.close()
 

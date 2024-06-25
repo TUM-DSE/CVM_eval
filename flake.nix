@@ -122,7 +122,6 @@
               python3.pkgs.lxml
               python3.pkgs.ipython
               python3.pkgs.psutil
-              python3.pkgs.mysql-connector
 
               just
               git
@@ -134,8 +133,6 @@
               bridge-utils
               hwloc
               numactl
-              docker
-              mysql
 
               fio
               cryptsetup
@@ -143,22 +140,7 @@
               memtier-benchmark
               wrk
             ] ++ [ inv-completion ] ++ pre-commit-check.enabledPackages;
-          #inherit (pre-commit-check) shellHook;
-          shellHook = ''
-            ${pre-commit-check.shellHook}
-            if ! systemctl is-active --quiet docker; then
-              echo "Starting Docker..."
-              sudo systemctl start docker
-            fi
-
-            #Start MySQL-Container
-              if ! docker ps -a | grep -q bench-mysql; then
-                echo "Starting MySQL..."
-                docker run --name bench-mysql -e MYSQL_ALLOW_EMPTY_PASSWORD=true -p 3306:3306 -d mysql:latest
-              else
-                echo "MySQL already running..."
-              fi
-          '';
+          inherit (pre-commit-check) shellHook;
         };
       };
 
