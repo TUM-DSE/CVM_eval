@@ -3,6 +3,22 @@
 [./bench/](./bench) is a kernel module that executes several instructons which
 normally cause VMEXIT and measure the latency.
 
+## How to run
+- This measurement is not automated
+- Start VM (with disk boot)
+```
+inv vm.start --type intel --no-direct
+```
+- Build kernel module (see below)
+- Run kernel module
+```
+just ssh
+cd /share/benchmarks/vmexit/
+insmod bench.ko
+mkdir -p /share/bench-result/vmexit
+dmesg > /share/bench-result/vmexit/tdx.txt
+```
+
 ## Example
 ```
 $ # build kernel module (see below)
@@ -37,12 +53,13 @@ $ dmesg
 - How to build with Nix (NOTE: we can build the kernel module on the host)
 ```
 cd hello
-nix-shell '<nixpkgs>' -A linuxPackages_6_6.kernel.dev
+nix-shell '<nixpkgs>' -A linuxPackages_6_8.kernel.dev
 make -C $(nix-build -E '(import <nixpkgs> {}).linuxPackages_6_6.kernel.dev' --no-out-link)/lib/modules/*/build M=$(pwd) modules
 insmod ./hello.ko
 ```
 
 - Build a kernel module for the kernel definied in the flake
 ```
+cd ./vmexit
 make -C $(nix build --no-link --print-out-paths .#nixosConfigurations.tdx-guest.config.boot.kernelPackages.kernel.dev)/lib/modules/*/build M=$(pwd) modules
 ```
