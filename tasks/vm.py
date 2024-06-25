@@ -16,6 +16,7 @@ from qemu import spawn_qemu, QemuVm
 class VMResource:
     cpu: int
     memory: int  # GB
+    pin_base: int
     numa_node: [int] = None
 
 
@@ -32,14 +33,20 @@ class VMConfig:
 VMRESOURCES = {}
 VMRESOURCES["amd"] = {}
 VMRESOURCES["intel"] = {}
-VMRESOURCES["amd"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0])
-VMRESOURCES["amd"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0])
-VMRESOURCES["amd"]["large"] = VMResource(cpu=32, memory=256, numa_node=[0])
-VMRESOURCES["amd"]["numa"] = VMResource(cpu=64, memory=512, numa_node=[0, 1])
-VMRESOURCES["intel"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0])
-VMRESOURCES["intel"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0])
-VMRESOURCES["intel"]["large"] = VMResource(cpu=28, memory=128, numa_node=[0])
-VMRESOURCES["intel"]["numa"] = VMResource(cpu=56, memory=256, numa_node=[0, 1])
+VMRESOURCES["amd"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["amd"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0], pin_base=8)
+VMRESOURCES["amd"]["large"] = VMResource(cpu=32, memory=256, numa_node=[0], pin_base=0)
+VMRESOURCES["amd"]["numa"] = VMResource(
+    cpu=64, memory=512, numa_node=[0, 1], pin_base=0
+)
+VMRESOURCES["intel"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["intel"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0], pin_base=8)
+VMRESOURCES["intel"]["large"] = VMResource(
+    cpu=28, memory=128, numa_node=[0], pin_base=28
+)
+VMRESOURCES["intel"]["numa"] = VMResource(
+    cpu=56, memory=256, numa_node=[0, 1], pin_base=0
+)
 VMRESOURCES["snp"] = VMRESOURCES["amd"]
 VMRESOURCES["tdx"] = VMRESOURCES["intel"]
 
@@ -530,10 +537,11 @@ def start_and_attach(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     Note 2: Ctrl-C goes to the tmux session, not the VM, killing the entier session with the VM.
     """
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(qemu_cmd, numa_node=resource.numa_node) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.attach()
         vm.shutdown()
 
@@ -557,12 +565,13 @@ def ipython(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     Note that the VM automatically terminates when the ipython session is closed.
     """
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         from IPython import embed
 
         embed()
@@ -580,12 +589,13 @@ def boottime(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
 
 def prepare_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
         from phoronix import install_bench
 
@@ -603,12 +613,13 @@ def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> Non
         return
 
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
         import phoronix
 
@@ -619,12 +630,13 @@ def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> Non
 def run_blender(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     repeat: int = kargs["config"].get("repeat", 1)
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
         from application import run_blender
 
@@ -636,12 +648,13 @@ def run_iperf(
     name: str, qemu_cmd: List[str], pin: bool, udp: bool = False, **kargs: Any
 ):
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
         from network import run_iperf
 
@@ -659,12 +672,13 @@ def run_memtier(
 ):
     tls: bool = kargs["config"].get("tls", False)
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
         from network import run_memtier
 
@@ -674,12 +688,13 @@ def run_memtier(
 
 def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
         from network import run_nginx
 
@@ -689,12 +704,13 @@ def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
 
 def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
         from network import run_ping
 
@@ -709,12 +725,13 @@ def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
 def run_tensorflow(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     repeat: int = kargs["config"].get("repeat", 1)
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
         from application import run_tensorflow
 
@@ -725,12 +742,13 @@ def run_tensorflow(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> N
 def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     repeat: int = kargs["config"].get("repeat", 1)
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
         from application import run_pytorch
 
@@ -741,13 +759,14 @@ def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
 def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     resource: VMResource = kargs["config"]["resource"]
     virito_blk: Optional[str] = kargs["config"]["virtio_blk"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     dbpath: str = "/tmp/test.db"
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
 
         if virito_blk:
@@ -764,12 +783,13 @@ def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
 
 def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
         import storage
 
@@ -841,6 +861,7 @@ def start(
     action: str = "attach",
     ssh_port: int = SSH_PORT,
     pin: bool = True,  # if True, pin vCPUs
+    pin_base: Optional[int] = None,  # pinning base
     extra_cmdline: str = "",  # extra kernel cmdline (only for direct boot)
     # phoronix options
     phoronix_bench_name: Optional[str] = None,
@@ -923,6 +944,8 @@ def start(
             virtio_iommu,
         )
 
+    if config["pin_base"] is None:
+        config.pop("pin_base", None)
     name = f"{type}-{'direct' if direct else 'disk'}-{size}"
     print(f"Starting VM: {name}")
     do_action(action, qemu_cmd=qemu_cmd, pin=pin, name=name, config=config)

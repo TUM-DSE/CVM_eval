@@ -14,6 +14,7 @@ def boot_test(qemu_cmd: List[str], pin: bool, outfile=None, **kargs: Any) -> Non
     """Start a VM and wait for the VM to boot and then terminate the VM."""
     resource = kargs["config"]["resource"]
     vmconfig = kargs["config"]["vmconfig"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     trace: bool = kargs["config"].get("trace", True)
 
     if trace:
@@ -50,7 +51,7 @@ def boot_test(qemu_cmd: List[str], pin: bool, outfile=None, **kargs: Any) -> Non
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         time.sleep(10)
         vm.wait_for_ssh()
         vm.shutdown()
