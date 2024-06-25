@@ -116,9 +116,11 @@ def get_vm_config(name: str) -> VMConfig:
         )
     if name == "intel-direct":
         return VMConfig(
-            qemu="/usr/bin/qemu-system-x86_64",
+            # qemu="/usr/bin/qemu-system-x86_64",
+            qemu=BUILD_DIR / "qemu-tdx/bin/qemu-system-x86_64",
             image=BUILD_DIR / "image/guest-fs.qcow2",
-            ovmf="/usr/share/ovmf/OVMF.fd",
+            # ovmf="/usr/share/ovmf/OVMF.fd",
+            ovmf=BUILD_DIR / "ovmf-tdx-fd/FV/OVMF.fd",
             kernel=LINUX_DIR / "arch/x86/boot/bzImage",
             initrd=None,
             cmdline="root=/dev/vda console=hvc0",
@@ -126,7 +128,7 @@ def get_vm_config(name: str) -> VMConfig:
     if name == "intel-ubuntu":
         return VMConfig(
             qemu="/usr/bin/qemu-system-x86_64",
-            image=BUILD_DIR / "image/tdx-guest-ubuntu-23.10.qcow2",
+            image=BUILD_DIR / "image/tdx-guest-ubuntu-24.04-generic.qcow2",
             ovmf="/usr/share/ovmf/OVMF.fd",
             kernel=None,
             initrd=None,
@@ -143,9 +145,11 @@ def get_vm_config(name: str) -> VMConfig:
         )
     if name == "tdx-direct":
         return VMConfig(
-            qemu="/usr/bin/qemu-system-x86_64",
+            # qemu="/usr/bin/qemu-system-x86_64",
+            qemu=BUILD_DIR / "qemu-tdx/bin/qemu-system-x86_64",
             image=BUILD_DIR / "image/guest-fs.qcow2",
-            ovmf="/usr/share/ovmf/OVMF.fd",
+            # ovmf="/usr/share/ovmf/OVMF.fd",
+            ovmf=BUILD_DIR / "ovmf-tdx-fd/FV/OVMF.fd",
             kernel=LINUX_DIR / "arch/x86/boot/bzImage",
             initrd=None,
             cmdline="root=/dev/vda console=hvc0",
@@ -293,9 +297,10 @@ def get_intel_qemu_cmd(type: str, resource: VMResource, config: dict) -> List[st
     qemu_cmd = f"""
     {vmconfig.qemu}
         -enable-kvm
-        -cpu host
+        -cpu host,pmu=off
         -smp {resource.cpu}
         -m {resource.memory}G
+        -machine q35,kernel_irqchip=split,hpet=off
 
         -bios {vmconfig.ovmf}
         -nographic
@@ -320,9 +325,10 @@ def get_intel_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     qemu_cmd = f"""
     {vmconfig.qemu}
         -enable-kvm
-        -cpu host
+        -cpu host,pmu=off
         -smp {resource.cpu}
         -m {resource.memory}G
+        -machine q35,kernel_irqchip=split,hpet=off
 
         -kernel {vmconfig.kernel}
         -append "{vmconfig.cmdline} {extra_cmdline}"
@@ -353,13 +359,13 @@ def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
     qemu_cmd = f"""
     {vmconfig.qemu}
         -enable-kvm
-        -cpu host
+        -cpu host,pmu=off
         -smp {resource.cpu}
         -m {resource.memory}G
-        -machine q35,hpet=off,kernel_irqchip=split,memory-encryption=tdx,memory-backend=ram1
+        -machine q35,hpet=off,kernel_irqchip=split,confidential-guest-support=tdx,memory-backend=ram1
 
         -object tdx-guest,id=tdx
-        -object memory-backend-ram,id=ram1,size={resource.memory}G,private=on
+        -object memory-backend-ram,id=ram1,size={resource.memory}G,prealloc=on
         -bios {vmconfig.ovmf}
         -nographic
         -nodefaults
@@ -385,13 +391,13 @@ def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     qemu_cmd = f"""
     {vmconfig.qemu}
         -enable-kvm
-        -cpu host
+        -cpu host,pmu=off
         -smp {resource.cpu}
         -m {resource.memory}G
-        -machine q35,hpet=off,kernel_irqchip=split,memory-encryption=tdx,memory-backend=ram1
+        -machine q35,hpet=off,kernel_irqchip=split,confidential-guest-support=tdx,memory-backend=ram1
 
         -object tdx-guest,id=tdx
-        -object memory-backend-ram,id=ram1,size={resource.memory}G,private=on
+        -object memory-backend-ram,id=ram1,size={resource.memory}G,prealloc=on
 
         -kernel {vmconfig.kernel}
         -append "{vmconfig.cmdline} {extra_cmdline}"
