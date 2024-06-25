@@ -90,6 +90,9 @@ def run_iperf(
         with open(outputdir_host / f"{pkt_size}.log", "w") as f:
             f.write("\n".join(lines))
 
+        # workaround to avoid "iperf3: error - unable to receive control message - port may not be available"
+        time.sleep(1)
+
     print(f"Results saved in {outputdir_host}")
 
 
