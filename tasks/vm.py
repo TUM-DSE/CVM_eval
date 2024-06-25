@@ -682,6 +682,10 @@ def run_memtier(
         vm.wait_for_ssh()
         from network import run_memtier
 
+        if kargs["config"]["virtio_nic_vhost"]:
+            name += f"-vhost"
+        if kargs["config"]["virtio_nic_mq"]:
+            name += f"-mq"
         run_memtier(name, vm, server=server, tls=tls)
         vm.shutdown()
 
@@ -698,6 +702,10 @@ def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
         vm.wait_for_ssh()
         from network import run_nginx
 
+        if kargs["config"]["virtio_nic_vhost"]:
+            name += f"-vhost"
+        if kargs["config"]["virtio_nic_mq"]:
+            name += f"-mq"
         run_nginx(name, vm)
         vm.shutdown()
 
