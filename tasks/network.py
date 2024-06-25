@@ -3,19 +3,81 @@ from datetime import datetime
 from pathlib import Path
 import subprocess
 import time
+import re
 
 from config import PROJECT_ROOT, VM_IP, VM_REMOTE_IP
 from qemu import QemuVm
 
+import mysql.connector
+
+COLUMNS = {
+    "date": "TIMESTAMP PRIMARY KEY",
+    "type": "VARCHAR(10)",
+    "size": "VARCHAR(10)",
+    "remote": "BOOLEAN",
+    "vhost": "BOOLEAN",
+    "tls": "BOOLEAN",
+}
+
+
+def connect_to_mysql():
+    """Connect to the MySQL server."""
+    return mysql.connector.connect(
+        host="127.0.0.1",
+        user="root",
+        password="",
+    )
+
+
+def ensure_db(
+    connection, database: str = "bench", table: str = "test_table", columns: dict = {}
+):
+    """Ensure the database exists."""
+    cursor = connection.cursor()
+    cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database}")
+    cursor.execute(f"USE {database}")
+    cols = ", ".join([f"{name} {type}" for name, type in columns.items()])
+    cursor.execute(f"CREATE TABLE IF NOT EXISTS {table} ({cols})")
+    connection.commit()
+    cursor.close()
+
+
+def insert_into_db(connection, table: str, values: dict):
+    """Insert values into the database."""
+    cursor = connection.cursor()
+    columns = ", ".join(values.keys())
+    formatted_values = []
+    for value in values.values():
+        if isinstance(value, str):
+            formatted_values.append(f"'{value}'")
+        else:
+            formatted_values.append(str(value))
+    values = ", ".join(formatted_values)
+    cursor.execute(f"INSERT INTO {table} ({columns}) VALUES ({values})")
+    connection.commit()
+    cursor.close()
+
 
 def run_ping(name: str, vm: QemuVm, remote: bool = False):
     """Ping the VM.
-    The results are saved in ./bench-results/networing/ping/{name}/{date}
+    The results are saved in the database 'bench' in table 'ping'.
     """
-    date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    outputdir = Path(f"./bench-result/networking/ping/{name}/{date}/")
-    outputdir_host = PROJECT_ROOT / outputdir
-    outputdir_host.mkdir(parents=True, exist_ok=True)
+    vhost = "vhost" in name
+    remote = "remote" in name
+    attrs = name.split("-")
+    ty = attrs[0]
+    size = attrs[2]
+    columns = COLUMNS.copy()
+    ping_columns = {
+        "pkt_size": "INT",
+        "min": "FLOAT",
+        "avg": "FLOAT",
+        "max": "FLOAT",
+        "mdev": "FLOAT",
+    }
+    columns.update(ping_columns)
+    connection = connect_to_mysql()
+    ensure_db(connection, table="ping", columns=columns)
 
     host_ip = VM_REMOTE_IP if remote else VM_IP
     for pkt_size in [64, 128, 256, 512, 1024]:
@@ -23,11 +85,37 @@ def run_ping(name: str, vm: QemuVm, remote: bool = False):
         output = (
             remote_ssh_cmd(cmd) if remote else subprocess.check_output(cmd).decode()
         )
-        lines = output.split("\n")
-        with open(outputdir_host / f"{pkt_size}.log", "w") as f:
-            f.write("\n".join(lines))
-
-    print(f"Results saved in {outputdir_host}")
+        pattern = re.compile(
+            r"rtt min/avg/max/mdev = ([\d.]+)/([\d.]+)/([\d.]+)/([\d.]+) ms"
+        )
+        match = pattern.search(output)
+        if match:
+            min_rtt, avg_rtt, max_rtt, mdev_rtt = match.groups()
+            min_rtt, avg_rtt, max_rtt, mdev_rtt = map(
+                float, [min_rtt, avg_rtt, max_rtt, mdev_rtt]
+            )
+            print(f"Min: {min_rtt}, Avg: {avg_rtt}, Max: {max_rtt}, Mdev: {mdev_rtt}")
+            insert_into_db(
+                connection,
+                "ping",
+                {
+                    "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "type": f"{ty}",
+                    "size": size,
+                    "remote": remote,
+                    "vhost": vhost,
+                    "tls": False,
+                    "pkt_size": pkt_size,
+                    "min": min_rtt,
+                    "avg": avg_rtt,
+                    "max": max_rtt,
+                    "mdev": mdev_rtt,
+                },
+            )
+        else:
+            print("No match")
+    connection.close()
+    print(f"Results saved to database 'bench' in table 'ping'")
 
 
 def run_iperf(

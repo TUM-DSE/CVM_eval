@@ -27,3 +27,6 @@ Module.symvers
 modules.order
 benchmarks/network/nginx/nginx.pid
 benchmarks/network/ssh_conf
+mysql
+.vscode
+bench.session.sql
