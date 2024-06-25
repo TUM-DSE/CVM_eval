@@ -6,9 +6,8 @@ import time
 import re
 
 from config import PROJECT_ROOT, VM_IP, VM_REMOTE_IP
+from utils import connect_to_mysql, ensure_db, insert_into_db
 from qemu import QemuVm
-
-import mysql.connector
 
 COLUMNS = {
     "date": "TIMESTAMP PRIMARY KEY",
@@ -20,50 +19,11 @@ COLUMNS = {
 }
 
 
-def connect_to_mysql():
-    """Connect to the MySQL server."""
-    return mysql.connector.connect(
-        host="127.0.0.1",
-        user="root",
-        password="",
-    )
-
-
-def ensure_db(
-    connection, database: str = "bench", table: str = "test_table", columns: dict = {}
-):
-    """Ensure the database exists."""
-    cursor = connection.cursor()
-    cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database}")
-    cursor.execute(f"USE {database}")
-    cols = ", ".join([f"{name} {type}" for name, type in columns.items()])
-    cursor.execute(f"CREATE TABLE IF NOT EXISTS {table} ({cols})")
-    connection.commit()
-    cursor.close()
-
-
-def insert_into_db(connection, table: str, values: dict):
-    """Insert values into the database."""
-    cursor = connection.cursor()
-    columns = ", ".join(values.keys())
-    formatted_values = []
-    for value in values.values():
-        if isinstance(value, str):
-            formatted_values.append(f"'{value}'")
-        else:
-            formatted_values.append(str(value))
-    values = ", ".join(formatted_values)
-    cursor.execute(f"INSERT INTO {table} ({columns}) VALUES ({values})")
-    connection.commit()
-    cursor.close()
-
-
 def run_ping(name: str, vm: QemuVm, remote: bool = False):
     """Ping the VM.
     The results are saved in the database 'bench' in table 'ping'.
     """
     vhost = "vhost" in name
-    remote = "remote" in name
     attrs = name.split("-")
     ty = attrs[0]
     size = attrs[2]
@@ -186,23 +146,34 @@ def run_memtier(
     tls: bool = True,
     remote: bool = False,
     server_threads: int = 8,
-    client_threads: int = 8,
-    client_key: str = PROJECT_ROOT / "benchmarks/network/tls/pki/private/client.key",
-    client_cert: str = PROJECT_ROOT / "benchmarks/network/tls/pki/issued/client.crt",
-    ca_cert: str = PROJECT_ROOT / "benchmarks/network/tls/pki/ca.crt",
 ):
     """Run the memtier benchmark on the VM using redis or memcached.
     `server_threads` is only valid for memcached.
-    The results are saved in ./bench-result/networking/memtier/{server}[-tls]/{name}/{date}/
+    The results are saved in db 'bench' in table 'memtier'.
     """
+    vhost = "vhost" in name
+    attrs = name.split("-")
+    ty = attrs[0]
+    size = attrs[2]
+    columns = COLUMNS.copy()
+    memtier = {
+        "lat_max": "FLOAT",
+        "lat_avg": "FLOAT",
+        "ops_per_sec": "FLOAT",
+        "transfer_rate": "FLOAT",  # in KB/s
+        "server": "VARCHAR(10)",
+        "proto": "VARCHAR(20)",
+        "c_threads": "INT",
+        "s_threads": "INT",
+    }
+    columns.update(memtier)
+    connection = connect_to_mysql()
+    ensure_db(connection, table="memtier", columns=columns)
+
     if tls:
         tls_ = "-tls"
     else:
         tls_ = ""
-    date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    outputdir = Path(f"./bench-result/networking/memtier/{server}{tls_}/{name}/{date}/")
-    outputdir_host = PROJECT_ROOT / outputdir
-    outputdir_host.mkdir(parents=True, exist_ok=True)
 
     if server == "redis":
         proto = "redis"
@@ -232,23 +203,68 @@ def run_memtier(
         if remote
         else ["nix-shell", f"{bench_path}/shell.nix", "--run", f"{just_cmd}"]
     )
+
+    pattern = r"(\d+)\s+Threads.*?Totals\s+(\d+\.\d+)\s+\d+\.\d+\s+\d+\.\d+\s+(\d+\.\d+)\s+\d+\.\d+\s+\d+\.\d+\s+(\d+\.\d+)\s+(\d+\.\d+)"
+
     print(cmd)
     output = remote_ssh_cmd(cmd) if remote else subprocess.check_output(cmd).decode()
-    lines = output.split("\n")
-    with open(outputdir_host / f"memtier.log", "w") as f:
-        f.write("\n".join(lines))
 
-    print(f"Results saved in {outputdir_host}")
+    match = re.search(pattern, output, re.DOTALL)
+
+    if match:
+        threads, ops_per_sec, lat_avg, lat_max, transfer_rate = map(
+            float, match.groups()
+        )
+        print(
+            f"Threads: {threads}, Latency: {lat_avg}ms, Max: {lat_max}ms, Ops/s: {ops_per_sec}, Transfer rate: {transfer_rate}KB/s"
+        )
+        insert_into_db(
+            connection,
+            "memtier",
+            {
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "type": f"{ty}",
+                "size": size,
+                "remote": remote,
+                "vhost": vhost,
+                "tls": tls,
+                "lat_max": lat_max,
+                "lat_avg": lat_avg,
+                "ops_per_sec": ops_per_sec,
+                "transfer_rate": transfer_rate,
+                "server": server,
+                "proto": proto,
+                "c_threads": threads,
+                "s_threads": server_threads,
+            },
+        )
+
+    else:
+        print("No match")
+
+    print(f"Results saved in database 'bench' in table 'memtier'")
 
 
 def run_nginx(name: str, vm: QemuVm, remote: bool = False):
     """Run the nginx on the VM and the wrk benchmark on the host.
-    The results are saved in ./bench-result/networking/nginx/{name}/{date}/
+    The results are saved in database 'bench' in table 'nginx'.
     """
-    date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    outputdir = Path(f"./bench-result/networking/nginx/{name}/{date}/")
-    outputdir_host = PROJECT_ROOT / outputdir
-    outputdir_host.mkdir(parents=True, exist_ok=True)
+
+    vhost = "vhost" in name
+    attrs = name.split("-")
+    ty = attrs[0]
+    size = attrs[2]
+    columns = COLUMNS.copy()
+    nginx_columns = {
+        "lat_max": "FLOAT",
+        "lat_avg": "FLOAT",
+        "lat_stdev": "FLOAT",
+        "req_per_sec": "FLOAT",  # in Requests/s
+        "transfer_rate": "FLOAT",  # in KB/s
+    }
+    columns.update(nginx_columns)
+    connection = connect_to_mysql()
+    ensure_db(connection, table="nginx", columns=columns)
 
     nix_shell_path = "benchmarks/network/shell.nix"
     bench_path = "CVM_eval/benchmarks/network/"
@@ -261,6 +277,7 @@ def run_nginx(name: str, vm: QemuVm, remote: bool = False):
     just_cmd = f"just VM_IP={host_ip} run-wrk"
     just_cmd_ssl = just_cmd + "-ssl"
 
+    pattern = r"Latency\s+(\d+\.\d+).?s\s+(\d+\.\d+).s\s+(\d+\.\d+).?s.*?Requests/sec:\s+(\d+\.\d+).*?Transfer/sec:\s+(\d+\.\d+).?B"
     # HTTP
     cmd = (
         ["cd", f"{bench_path}", "&&", "nix-shell --run", f"'{just_cmd}'"]
@@ -269,10 +286,7 @@ def run_nginx(name: str, vm: QemuVm, remote: bool = False):
     )
     print(cmd)
     output = remote_ssh_cmd(cmd) if remote else subprocess.check_output(cmd).decode()
-    lines = output.split("\n")
-    with open(outputdir_host / f"http.log", "w") as f:
-        f.write("\n".join(lines))
-
+    match = re.search(pattern, output, re.DOTALL)
     # HTTPS
     cmd = (
         ["cd", f"{bench_path}", "&&", "nix-shell --run", f"'{just_cmd_ssl}'"]
@@ -281,11 +295,62 @@ def run_nginx(name: str, vm: QemuVm, remote: bool = False):
     )
     print(cmd)
     output = remote_ssh_cmd(cmd) if remote else subprocess.check_output(cmd).decode()
-    lines = output.split("\n")
-    with open(outputdir_host / f"https.log", "w") as f:
-        f.write("\n".join(lines))
+    match_ssl = re.search(pattern, output, re.DOTALL)
 
-    print(f"Results saved in {outputdir_host}")
+    if match:
+        lat_avg, lat_stdev, lat_max, req_per_sec, transfer_rate = map(
+            float, match.groups()
+        )
+        print(
+            f"HTTP Latency: {lat_avg}ms, Max: {lat_max}ms, Req/s: {req_per_sec}, Transfer rate: {transfer_rate}KB/s"
+        )
+        insert_into_db(
+            connection,
+            "nginx",
+            {
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "type": f"{ty}",
+                "size": size,
+                "remote": remote,
+                "vhost": vhost,
+                "tls": False,
+                "lat_max": lat_max,
+                "lat_stdev": lat_stdev,
+                "lat_avg": lat_avg,
+                "req_per_sec": req_per_sec,
+                "transfer_rate": transfer_rate,
+            },
+        )
+    else:
+        print("HTTP no match")
+    time.sleep(1)
+    if match_ssl:
+        lat_avg, lat_stdev, lat_max, req_per_sec, transfer_rate = map(
+            float, match_ssl.groups()
+        )
+        print(
+            f"HTTPS Latency: {lat_avg}ms, Max: {lat_max}ms, Req/s: {req_per_sec}, Transfer rate: {transfer_rate}KB/s"
+        )
+        insert_into_db(
+            connection,
+            "nginx",
+            {
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "type": f"{ty}",
+                "size": size,
+                "remote": remote,
+                "vhost": vhost,
+                "tls": True,
+                "lat_max": lat_max,
+                "lat_stdev": lat_stdev,
+                "lat_avg": lat_avg,
+                "req_per_sec": req_per_sec,
+                "transfer_rate": transfer_rate,
+            },
+        )
+    else:
+        print("HTTPS no match")
+    print(f"Results saved in database 'bench' in table 'nginx'")
 
 
 def remote_ssh_cmd(command: list[str]):
