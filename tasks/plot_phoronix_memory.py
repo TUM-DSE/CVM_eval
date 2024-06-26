@@ -165,7 +165,7 @@ def plot_phoronix_memory(
         data["relative"],
         color=palette,
         edgecolor="black",
-        label="SNP",
+        label=f"{cvm}",
     )
 
     # draw a line at 1.0 to indicate the baseline
