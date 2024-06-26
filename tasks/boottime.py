@@ -15,7 +15,7 @@ def boot_test(qemu_cmd: List[str], pin: bool, outfile=None, **kargs: Any) -> Non
     resource = kargs["config"]["resource"]
     vmconfig = kargs["config"]["vmconfig"]
     pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
-    trace: bool = kargs["config"].get("trace", True)
+    trace: bool = kargs["config"].get("boot_trace", True)
 
     if trace:
         trace_script = f"{PROJECT_ROOT}/benchmarks/boottime/boot_time_eval.bt"
@@ -74,12 +74,16 @@ def run_boot_test(
 ) -> None:
     date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     repeat: int = kargs["config"].get("repeat", 1)
+    trace: bool = kargs["config"].get("boot_trace", True)
+
     outputdir = Path(f"{PROJECT_ROOT}/bench-result/boottime/{name}/{date}")
-    outputdir.mkdir(parents=True, exist_ok=True)
+    if trace:
+        outputdir.mkdir(parents=True, exist_ok=True)
 
     for i in range(repeat):
         outfile = outputdir / f"{i+1}.txt"
         boot_test(qemu_cmd, pin, outfile, **kargs)
         time.sleep(1)
 
-    print(f"Output written to {outputdir}")
+    if trace:
+        print(f"Output written to {outputdir}")

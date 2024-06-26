@@ -362,6 +362,10 @@ def get_intel_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config(type)
     ssh_port = config["ssh_port"]
+    if config["boot_prealloc"]:
+        prealloc = "on"
+    else:
+        prealloc = "off"
 
     qemu_cmd = f"""
     {vmconfig.qemu}
@@ -372,7 +376,7 @@ def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
         -machine q35,hpet=off,kernel_irqchip=split,confidential-guest-support=tdx,memory-backend=ram1
 
         -object tdx-guest,id=tdx
-        -object memory-backend-ram,id=ram1,size={resource.memory}G,prealloc=on
+        -object memory-backend-ram,id=ram1,size={resource.memory}G,prealloc={prealloc}
         -bios {vmconfig.ovmf}
         -nographic
         -nodefaults
@@ -394,6 +398,10 @@ def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config("tdx-direct")
     ssh_port = config["ssh_port"]
     extra_cmdline = config.get("extra_cmdline", "")
+    if config["boot_prealloc"]:
+        prealloc = "on"
+    else:
+        prealloc = "off"
 
     qemu_cmd = f"""
     {vmconfig.qemu}
@@ -404,7 +412,7 @@ def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
         -machine q35,hpet=off,kernel_irqchip=split,confidential-guest-support=tdx,memory-backend=ram1
 
         -object tdx-guest,id=tdx
-        -object memory-backend-ram,id=ram1,size={resource.memory}G,prealloc=on
+        -object memory-backend-ram,id=ram1,size={resource.memory}G,prealloc={prealloc}
 
         -kernel {vmconfig.kernel}
         -append "{vmconfig.cmdline} {extra_cmdline}"
@@ -871,6 +879,9 @@ def start(
     pin: bool = True,  # if True, pin vCPUs
     pin_base: Optional[int] = None,  # pinning base
     extra_cmdline: str = "",  # extra kernel cmdline (only for direct boot)
+    # boot eval options
+    boot_trace: bool = True,
+    boot_prealloc: bool = True,
     # phoronix options
     phoronix_bench_name: Optional[str] = None,
     # application bench options
@@ -892,6 +903,7 @@ def start(
     tls: bool = False,
     fio_job: str = "test",
     warn: bool = True,
+    name_extra: str = "",
 ) -> None:
     config: dict = locals()
     resource: VMResource = get_vm_resource(type, size)
@@ -954,6 +966,6 @@ def start(
 
     if config["pin_base"] is None:
         config.pop("pin_base", None)
-    name = f"{type}-{'direct' if direct else 'disk'}-{size}"
+    name = f"{type}-{'direct' if direct else 'disk'}-{size}" + name_extra
     print(f"Starting VM: {name}")
     do_action(action, qemu_cmd=qemu_cmd, pin=pin, name=name, config=config)
