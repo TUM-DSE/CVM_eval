@@ -42,7 +42,7 @@ VMRESOURCES["amd"]["numa"] = VMResource(
 VMRESOURCES["intel"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
 VMRESOURCES["intel"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0], pin_base=8)
 VMRESOURCES["intel"]["large"] = VMResource(
-    cpu=28, memory=128, numa_node=[0], pin_base=28
+    cpu=28, memory=128, numa_node=[1], pin_base=28
 )
 VMRESOURCES["intel"]["numa"] = VMResource(
     cpu=56, memory=256, numa_node=[0, 1], pin_base=0
