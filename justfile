@@ -23,9 +23,9 @@ LINUX_REPO := "https://github.com/torvalds/linux"
 # LINUX_COMMIT := "0dd3ee31125508cd67f7e7172247f05b7fd1753a" # v6.7
 LINUX_COMMIT := "e8f897f4afef0031fe618a8e94127a0934896aba" # v6.8
 
-BRIDGE_NAME := "virbr0"
-TAP_NAME := "tap0"
-MTAP_NAME := "mtap0"
+BRIDGE_NAME := "virbr_cvm"
+TAP_NAME := "tap_cvm"
+MTAP_NAME := "mtap_cvm"
 
 default:
     @just --choose
@@ -155,7 +155,7 @@ TDX_QEMU := join(BUILD_DIR, "qemu-tdx/bin/qemu-system-x86_64")
 TDVF_FIRMWARE := join(BUILD_DIR, "ovmf-tdx-fd/FV/OVMF.fd")
 TDSHIM := "../td-shim/target/release/final.bin"
 CLOUD_HYPERVISOR := "../cloud-hypervisor/target/release/cloud-hypervisor"
-TD_IMG := join(BUILD_DIR, "image/tdx-guest-ubuntu-23.10.qcow2")
+TD_IMG := join(BUILD_DIR, "image/tdx-guest-ubuntu-24.04-generic.qcow2")
 QUOTE_ARGS := "-device vhost-vsock-pci,guest-cid=3"
 
 start-tdx-vm:
@@ -410,20 +410,20 @@ configure-linux-tdx:
          --enable VIRT_DRIVERS \
          --enable CONFIGFS_FS \
          --enable TSM_REPORTS \
-         --enable TDX_GUEST_DRIVER" \
+         --enable TDX_GUEST_DRIVER"
       # for debug
-      {{ KERNEL_SHELL }} "scripts/config \
-         --enable KPROBES \
-         --enable KPROBES_ON_FTRACE \
-         --enable BPF \
-         --enable BPF_SYSCALL \
-         --enable BPF_EVENTS \
-         --enable BPF_JIT \
-         --enable TRACEPOINTS \
-         --enable DEBUG_INFO_BTF \
-         --enable IKCONFIG \
-         --enable IKCONFIG_PROC \
-         --enable IKHEADERS"
+      #{{ KERNEL_SHELL }} "scripts/config \
+      #   --enable KPROBES \
+      #   --enable KPROBES_ON_FTRACE \
+      #   --enable BPF \
+      #   --enable BPF_SYSCALL \
+      #   --enable BPF_EVENTS \
+      #   --enable BPF_JIT \
+      #   --enable TRACEPOINTS \
+      #   --enable DEBUG_INFO_BTF \
+      #   --enable IKCONFIG \
+      #   --enable IKCONFIG_PROC \
+      #   --enable IKHEADERS"
     fi
 
 menuconfig:
