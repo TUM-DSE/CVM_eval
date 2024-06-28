@@ -33,16 +33,23 @@ models:
     #!/usr/bin/env bash
     if [ ! -d models ]; then
         git clone https://github.com/IntelAI/models.git
+        cd models
+        git checkout {{MODELS_REV}}
     fi
-    cd models
-    git switch {{MODELS_REV}}
 
 data:
-    mkdir -p ./data
-    wget https://storage.googleapis.com/bert_models/2019_05_30/wwm_uncased_L-24_H-1024_A-16.zip -P data/
-    unzip data/wwm_uncased_L-24_H-1024_A-16.zip -d data
-    wget https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v1.1.json -P data/wwm_uncased_L-24_H-1024_A-16
-    wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v1_8/bert_large_checkpoints.zip -P data/
-    unzip data/bert_large_checkpoints.zip -d data
-    wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_4_0/fp32_bert_squad.pb -P data/
-    wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v1_8/resnet50v1_5_int8_pretrained_model.pb -P data/
+    #!/usr/bin/env bash
+    if [ ! -d data ]; then
+        mkdir -p ./data
+        wget https://storage.googleapis.com/bert_models/2019_05_30/wwm_uncased_L-24_H-1024_A-16.zip -P data/
+        unzip data/wwm_uncased_L-24_H-1024_A-16.zip -d data
+        wget https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v1.1.json -P data/wwm_uncased_L-24_H-1024_A-16
+        wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v1_8/bert_large_checkpoints.zip -P data/
+        unzip data/bert_large_checkpoints.zip -d data
+        wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v2_4_0/fp32_bert_squad.pb -P data/
+        wget https://storage.googleapis.com/intel-optimized-tensorflow/models/v1_8/resnet50v1_5_int8_pretrained_model.pb -P data/
+    fi
+
+prepare:
+    @just models
+    @just data

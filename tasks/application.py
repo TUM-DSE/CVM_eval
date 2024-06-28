@@ -181,3 +181,16 @@ def run_sqlite(
     run("update_rand")
 
     print(f"Results saved in {outputdir_host}")
+
+
+def prepare(vm: QemuVm):
+    for app in ["pytorch", "tensorflow"]:
+        cmd = [
+            "just",
+            "-f",
+            f"/share/benchmarks/application/{app}/justfile",
+            "prepare",
+        ]
+        output = vm.ssh_cmd(cmd)
+        if output.returncode != 0:
+            print(f"Error preparing {app}: {output.stderr}")
