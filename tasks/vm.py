@@ -49,6 +49,8 @@ VMRESOURCES["intel"]["numa"] = VMResource(
 )
 VMRESOURCES["snp"] = VMRESOURCES["amd"]
 VMRESOURCES["tdx"] = VMRESOURCES["intel"]
+VMRESOURCES["tdx-ubuntu"] = VMRESOURCES["intel"]
+VMRESOURCES["intel-ubuntu"] = VMRESOURCES["intel"]
 
 
 def get_vm_resource(type: str, name: str) -> VMResource:
