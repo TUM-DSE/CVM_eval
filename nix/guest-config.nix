@@ -17,6 +17,7 @@ let
     echo "hello" > /dev/mapper/target
   '';
   outb = pkgs.callPackage ./bin/outb.nix { inherit pkgs; };
+  pts = pkgs.phoronix-test-suite.override { gcc = pkgs.gcc13; };
 in
 {
   imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
@@ -149,7 +150,8 @@ in
     lvm2
 
     # phoronix test suite and dependencies to install tests
-    phoronix-test-suite
+    #phoronix-test-suite
+    pts
     # pts/memory
     unzip
     # pts/sysbench
@@ -159,7 +161,8 @@ in
     automake
     pkg-config
     # pts/npb => use OpenMPI version of NPB
-    gfortran
+    gcc13
+    gfortran13
     mpi
     bc
     # pts/compression
