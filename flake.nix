@@ -166,6 +166,8 @@
           # use nixpkgs-2311 for the time being
           nixosSystem = nixpkgs-2311.lib.nixosSystem;
           pkgs = nixpkgs-unstable.legacyPackages.x86_64-linux;
+          # use gcc13 (same as Ubuntu 24.04)
+          gcc = pkgs.gcc13;
           selfpkgs = self.packages.x86_64-linux;
           kernelConfig = { config, lib, pkgs, ... }: {
             boot.kernelPackages = pkgs.linuxPackages_6_8;
@@ -177,7 +179,7 @@
             ++ self.devShells.x86_64-linux.tensorflow.nativeBuildInputs
             ++ self.devShells.x86_64-linux.sqlite.nativeBuildInputs
             ++ self.devShells.x86_64-linux.network.nativeBuildInputs;
-          guestConfig = (import ./nix/guest-config.nix { inherit extraEnvPackages; });
+          guestConfig = (import ./nix/guest-config.nix { inherit extraEnvPackages; _gcc = gcc; });
         in
         {
           # File system image w/o kernel

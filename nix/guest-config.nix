@@ -1,6 +1,6 @@
 # common nixos guest configuration
 
-{ extraEnvPackages ? [ ] }:
+{ extraEnvPackages ? [ ], _gcc }:
 
 { pkgs, lib, modulesPath, ... }:
 
@@ -17,7 +17,7 @@ let
     echo "hello" > /dev/mapper/target
   '';
   outb = pkgs.callPackage ./bin/outb.nix { inherit pkgs; };
-  pts = pkgs.phoronix-test-suite.override { gcc = pkgs.gcc13; };
+  pts = pkgs.phoronix-test-suite.override { gcc = _gcc; };
 in
 {
   imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
@@ -161,8 +161,9 @@ in
     automake
     pkg-config
     # pts/npb => use OpenMPI version of NPB
-    gcc13
+    _gcc
     gfortran13
+    gnumake
     mpi
     bc
     # pts/compression
