@@ -166,7 +166,7 @@ def get_vm_config(name: str) -> VMConfig:
     if name == "tdx-ubuntu":
         return VMConfig(
             qemu="/usr/bin/qemu-system-x86_64",
-            image=BUILD_DIR / "image/tdx-guest-ubuntu-23.10.qcow2",
+            image=BUILD_DIR / "image/tdx-guest-ubuntu-24.04-generic.qcow2",
             ovmf="/usr/share/ovmf/OVMF.fd",
             kernel=None,
             initrd=None,
@@ -937,6 +937,11 @@ def start(
     config: dict = locals()
     resource: VMResource = get_vm_resource(type, size)
     config["resource"] = resource
+
+    if direct and (type == "intel-ubuntu" or type == "tdx-ubuntu"):
+        raise NotImplementedError(
+            "No support of direct boot of ubuntu (use --no-direct option)"
+        )
 
     qemu_cmd: str
     if type == "amd":
