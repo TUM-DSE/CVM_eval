@@ -13,11 +13,19 @@ from qemu import spawn_qemu, QemuVm
 
 
 @dataclass
+class NodeInfo:
+    cpus: str
+    mem: int
+    dist: [int]
+
+
+@dataclass
 class VMResource:
     cpu: int
     memory: int  # GB
     pin_base: int
     numa_node: [int] = None
+    vnuma: Optional[NodeInfo] = None
 
 
 @dataclass
@@ -46,6 +54,16 @@ VMRESOURCES["intel"]["large"] = VMResource(
 )
 VMRESOURCES["intel"]["numa"] = VMResource(
     cpu=56, memory=256, numa_node=[0, 1], pin_base=0
+)
+VMRESOURCES["intel"]["vnuma"] = VMResource(
+    cpu=56,
+    memory=256,
+    numa_node=[0, 1],
+    pin_base=0,
+    vnuma=[
+        NodeInfo(cpus="0-27", mem=128, dist=[12]),
+        NodeInfo(cpus="28-55", mem=128, dist=[]),
+    ],
 )
 VMRESOURCES["snp"] = VMRESOURCES["amd"]
 VMRESOURCES["tdx"] = VMRESOURCES["intel"]
@@ -331,13 +349,28 @@ def get_intel_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     ssh_port = config["ssh_port"]
     extra_cmdline = config.get("extra_cmdline", "")
 
+    if resource.vnuma is not None:
+        # FIXME: the current vnuma config is static
+        numa_config = f"""
+        -object memory-backend-ram,size=128G,prealloc=yes,host-nodes=0,policy=bind,id=node0
+        -numa node,nodeid=0,cpus=0-27,memdev=node0
+        -object memory-backend-ram,size=128G,prealloc=yes,host-nodes=1,policy=bind,id=node1
+        -numa node,nodeid=1,cpus=28-55,memdev=node1
+        -numa dist,src=0,dst=1,val=12
+        """
+    else:
+        numa_config = ""
+
     qemu_cmd = f"""
     {vmconfig.qemu}
         -enable-kvm
         -cpu host,pmu=off
         -smp {resource.cpu}
+
         -m {resource.memory}G
         -machine q35,kernel_irqchip=split,hpet=off
+
+        {numa_config}
 
         -kernel {vmconfig.kernel}
         -append "{vmconfig.cmdline} {extra_cmdline}"
@@ -405,16 +438,27 @@ def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     else:
         prealloc = "off"
 
+    if resource.vnuma is not None:
+        memory = f"""
+        -object memory-backend-ram,size={resource.memory//2}G,prealloc={prealloc},host-nodes=0,policy=bind,id=node0
+        -numa node,nodeid=0,cpus=0-27,memdev=node0
+        -object memory-backend-ram,size={resource.memory//2}G,prealloc={prealloc},host-nodes=1,policy=bind,id=node1
+        -numa node,nodeid=1,cpus=28-55,memdev=node1
+        -numa dist,src=0,dst=1,val=12
+        """
+    else:
+        memory = f"-object memory-backend-ram,id=node0,size={resource.memory}G,prealloc={prealloc}"
+
     qemu_cmd = f"""
     {vmconfig.qemu}
         -enable-kvm
         -cpu host,pmu=off
         -smp {resource.cpu}
         -m {resource.memory}G
-        -machine q35,hpet=off,kernel_irqchip=split,confidential-guest-support=tdx,memory-backend=ram1
+        -machine q35,hpet=off,kernel_irqchip=split,confidential-guest-support=tdx
 
         -object tdx-guest,id=tdx
-        -object memory-backend-ram,id=ram1,size={resource.memory}G,prealloc={prealloc}
+        {memory}
 
         -kernel {vmconfig.kernel}
         -append "{vmconfig.cmdline} {extra_cmdline}"
