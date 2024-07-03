@@ -739,6 +739,11 @@ def run_iperf(
             name += f"-vhost"
         if kargs["config"]["virtio_nic_mq"]:
             name += f"-mq"
+        if (
+            kargs["config"]["virtio_iommu"]
+            and "swiotlb" in kargs["config"]["extra_cmdline"]
+        ):
+            name += f"-swiotlb"
         run_iperf(name, vm, udp=udp)
 
         vm.shutdown()
@@ -763,6 +768,11 @@ def run_memtier(
             name += f"-vhost"
         if kargs["config"]["virtio_nic_mq"]:
             name += f"-mq"
+        if (
+            kargs["config"]["virtio_iommu"]
+            and "swiotlb" in kargs["config"]["extra_cmdline"]
+        ):
+            name += f"-swiotlb"
         run_memtier(name, vm, server=server, tls=tls)
         vm.shutdown()
 
@@ -783,6 +793,11 @@ def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
             name += f"-vhost"
         if kargs["config"]["virtio_nic_mq"]:
             name += f"-mq"
+        if (
+            kargs["config"]["virtio_iommu"]
+            and "swiotlb" in kargs["config"]["extra_cmdline"]
+        ):
+            name += f"-swiotlb"
         run_nginx(name, vm)
         vm.shutdown()
 
@@ -803,6 +818,11 @@ def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
             name += f"-vhost"
         if kargs["config"]["virtio_nic_mq"]:
             name += f"-mq"
+        if (
+            kargs["config"]["virtio_iommu"]
+            and "swiotlb" in kargs["config"]["extra_cmdline"]
+        ):
+            name += f"-swiotlb"
         run_ping(name, vm)
         vm.shutdown()
 
@@ -964,8 +984,8 @@ def start(
     virtio_nic: bool = False,
     virtio_nic_vhost: bool = False,
     virtio_nic_mq: bool = False,
-    virtio_nic_tap: str = "tap0",
-    virtio_nic_mtap: str = "mtap0",
+    virtio_nic_tap: str = "tap_cvm",
+    virtio_nic_mtap: str = "mtap_cvm",
     # virtio-blk options
     virtio_blk: Optional[
         str
