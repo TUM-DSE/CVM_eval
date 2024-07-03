@@ -10,7 +10,7 @@
 ```
 # build software
 inv build.build-qemu-snp
-inv build.build-omvf-snp
+inv build.build-ovmf-snp
 
 # build guest image for disk boot
 inv build.build-normal-guest-image
@@ -38,9 +38,10 @@ just setup-linux
 ## Launch VM
 - [justfile](../justfile) defines qemu commands for quick tests.
 ```
-just start-vm-disk    # boot vm using the disk image
-just start-snp-direct # boot snp vm with direct boot
-just ssh              # ssh to the vm
+just start-vm-disk      # boot vm using the disk image
+just start-snp-direct   # boot snp vm with direct boot
+chmod 600 ./nix/ssh_key # update permission of the ssh key
+just ssh                # ssh to the vm
 ```
 
 - [tasks/vm.py](../tasks/vm.py) provides commands to launch and execute command in a controlled manner.
@@ -49,8 +50,8 @@ just ssh              # ssh to the vm
     - We can extend "action" to perform automated experiments.
 - Examples
 ```
-# start normal vm
-inv vm.start --type normal --size small
+# start normal vm on AMD machine
+inv vm.start --type amd --size small
 # start snp vm (snp requires sudo)
 sudo inv vm.start --type snp
 # start snp vm, run phoronix benchmark
