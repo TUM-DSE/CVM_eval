@@ -153,6 +153,7 @@
           tensorflow = pkgs.callPackage ./benchmarks/application/tensorflow/shell.nix { pkgs = pkgs-2311; };
           sqlite = pkgs.callPackage ./benchmarks/application/sqlite/shell.nix { inherit pkgs; };
           network = pkgs.callPackage ./benchmarks/network/shell.nix { inherit pkgs; };
+          attestation = pkgs.callPackage ./benchmarks/attestation/shell.nix { inherit pkgs; };
         };
 
       })) // {
@@ -178,7 +179,8 @@
             ++ self.devShells.x86_64-linux.pytorch.nativeBuildInputs
             ++ self.devShells.x86_64-linux.tensorflow.nativeBuildInputs
             ++ self.devShells.x86_64-linux.sqlite.nativeBuildInputs
-            ++ self.devShells.x86_64-linux.network.nativeBuildInputs;
+            ++ self.devShells.x86_64-linux.network.nativeBuildInputs
+            ++ self.devShells.x86_64-linux.attestation.nativeBuildInputs;
           guestConfig = (import ./nix/guest-config.nix { inherit extraEnvPackages; _gcc = gcc; });
         in
         {
