@@ -782,6 +782,21 @@ def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         vm.shutdown()
 
 
+def run_attestation(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from attestation import run_attestation
+
+        run_attestation(name, vm)
+        vm.shutdown()
+
+
 def do_action(action: str, **kwargs: Any) -> None:
     if action == "attach":
         start_and_attach(**kwargs)
@@ -815,6 +830,8 @@ def do_action(action: str, **kwargs: Any) -> None:
         run_nginx(**kwargs)
     elif action == "run-ping":
         run_ping(**kwargs)
+    elif action == "run-attestation":
+        run_attestation(**kwargs)
     else:
         raise ValueError(f"Unknown action: {action}")
 
