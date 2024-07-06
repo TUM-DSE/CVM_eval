@@ -2,6 +2,7 @@
 
 modprobe msr
 
+SCRIPTDIR=$(dirname $0)
 NUM_HUGEPAGES=`cat /proc/sys/vm/nr_hugepages`
 
 if [ $NUM_HUGEPAGES -lt 4000 ]; then
@@ -20,7 +21,7 @@ if [ $# -eq 1 ]; then
     OUTFILE=${1}
     OUT=${OUT:-$OUTDIR/$OUTFILE}
     echo "Result saved as ${OUT}"
-    NIXPKGS_ALLOW_UNFREE=1 nix run --impure nixpkgs#steam-run -- ./mlc | tee -a $OUT
+    NIXPKGS_ALLOW_UNFREE=1 nix run --impure nixpkgs#steam-run -- $SCRIPTDIR/mlc | tee -a $OUT
 else
-    NIXPKGS_ALLOW_UNFREE=1 nix run --impure nixpkgs#steam-run -- ./mlc
+    NIXPKGS_ALLOW_UNFREE=1 nix run --impure nixpkgs#steam-run -- $SCRIPTDIR/mlc
 fi
