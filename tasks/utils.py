@@ -6,6 +6,7 @@ from invoke import task
 
 import config
 import sqlite3
+import pandas as pd
 
 
 @task
@@ -16,14 +17,22 @@ def show_config(ctx):
     print(f"BUILD_DIR: {config.BUILD_DIR}")
 
 
+@task
+def clear_db(ctx, table: str = "test_table"):
+    """Clear the database."""
+    connection = connect_to_db()
+    cursor = connection.cursor()
+    cursor.execute(f"DROP TABLE IF EXISTS {table}")
+    connection.commit()
+    cursor.close()
+
+
 def connect_to_db():
     """Connect to sqlite."""
     return sqlite3.connect(config.DB_PATH)
 
 
-def ensure_db(
-    connection, database: str = "bench", table: str = "test_table", columns: dict = {}
-):
+def ensure_db(connection, table: str = "test_table", columns: dict = {}):
     """Ensure the database exists."""
     cursor = connection.cursor()
     cursor.execute(
@@ -47,3 +56,11 @@ def insert_into_db(connection, table: str, values: dict):
     cursor.execute(f"INSERT INTO {table} ({columns}) VALUES ({values})")
     connection.commit()
     cursor.close()
+
+
+def query_db(query: str):
+    """Query the database with a given query and return a pandas DataFrame."""
+    connection = connect_to_db()
+    df = pd.read_sql_query(query, connection)
+    connection.close()
+    return df

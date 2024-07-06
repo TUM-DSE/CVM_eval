@@ -28,3 +28,4 @@ modules.order
 benchmarks/network/nginx/nginx.pid
 benchmarks/network/ssh_conf
 .vscode
+plot

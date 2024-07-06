@@ -93,5 +93,7 @@ run-memtier-tls:
   --cert={{CLIENT_CERT}} \
   --key={{CLIENT_KEY}} \
   --cacert={{CA_CERT}} \
-  --protocol={{PROTOCOL}}
+  --protocol={{PROTOCOL}} \
+  --key-pattern=S:S \
+  --ratio=1:1
 

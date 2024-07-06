@@ -848,6 +848,7 @@ def start(
     phoronix_bench_name: Optional[str] = None,
     # application bench options
     repeat: int = 1,
+    num: int = 0,
     # enable VIRTIO_F_ACCESS_PLATFORM (VIRTIO_F_IOMMU_PLATFORM) feature bit
     virtio_iommu: bool = False,
     # virtio-nic options

@@ -26,6 +26,7 @@ LINUX_COMMIT := "e8f897f4afef0031fe618a8e94127a0934896aba" # v6.8
 BRIDGE_NAME := "virbr1"
 TAP_NAME := "tap1"
 MTAP_NAME := "mtap1"
+NIC_NAME := "enp1s0f0np0"
 
 default:
     @just --choose
@@ -453,7 +454,8 @@ setup_bridge:
     ip a s {{BRIDGE_NAME}} >/dev/null 2>&1
     if [ $? ]; then
         sudo brctl addbr {{BRIDGE_NAME}}
-        sudo ip a a 172.44.0.1/24 dev {{BRIDGE_NAME}}
+        sudo ip a a 172.45.0.1/24 dev {{BRIDGE_NAME}}
+        sudo ip a a 192.168.100.10/24 dev {{BRIDGE_NAME}}
         sudo ip l set dev {{BRIDGE_NAME}} up
     fi
 

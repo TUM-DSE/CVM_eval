@@ -5,7 +5,7 @@ import subprocess
 import time
 import re
 
-from config import PROJECT_ROOT, VM_IP, VM_REMOTE_IP
+from config import PROJECT_ROOT, VM_IP, VM_REMOTE_IP, DATE_FORMAT
 from utils import connect_to_db, ensure_db, insert_into_db
 from qemu import QemuVm
 
@@ -59,7 +59,7 @@ def run_ping(name: str, vm: QemuVm, remote: bool = False):
                 connection,
                 "ping",
                 {
-                    "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "date": datetime.now().strftime(DATE_FORMAT),
                     "type": f"{ty}",
                     "size": size,
                     "remote": remote,
@@ -94,19 +94,17 @@ def run_iperf(
     ty = attrs[0]
     size = attrs[2]
     columns = COLUMNS.copy()
-    memtier = {
-        "lat_max": "FLOAT",
-        "lat_avg": "FLOAT",
-        "ops_per_sec": "FLOAT",
-        "transfer_rate": "FLOAT",  # in KB/s
-        "server": "VARCHAR(10)",
+    iperf = {
+        "streams": "INT",
+        "pkt_size": "VARCHAR(6)",
+        "bitrate": "FLOAT",
+        "transfer": "FLOAT",
         "proto": "VARCHAR(3)",
-        "c_threads": "INT",
-        "s_threads": "INT",
+        "sender": "BOOLEAN",
     }
-    columns.update(memtier)
+    columns.update(iperf)
     connection = connect_to_db()
-    ensure_db(connection, table="memtier", columns=columns)
+    ensure_db(connection, table="iperf", columns=columns)
 
     if udp:
         proto = "udp"
@@ -114,11 +112,6 @@ def run_iperf(
     else:
         pkt_sizes = [64, 128, 256, 512, 1024, "32K", "128K"]
         proto = "tcp"
-
-    date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    outputdir = Path(f"./bench-result/networking/iperf/{name}/{proto}/{date}/")
-    outputdir_host = PROJECT_ROOT / outputdir
-    outputdir_host.mkdir(parents=True, exist_ok=True)
 
     # start server
     server_cmd = ["iperf", "-s", "-p", f"{port}", "-D"]
@@ -149,11 +142,40 @@ def run_iperf(
             remote_ssh_cmd(cmd) if remote else subprocess.check_output(cmd).decode()
         )
 
-        lines = output.split("\n")
-        with open(outputdir_host / f"{pkt_size}.log", "w") as f:
-            f.write("\n".join(lines))
+        pattern_sender = r"\[SUM\].*sec\s+(\d+\.\d+)\s+.*\s+(\d+\.\d+)\s+.*sender"
+        pattern_receiver = r"\[SUM\].*sec\s+(\d+\.\d+)\s+.*\s+(\d+\.\d+)\s+.*receiver"
 
-    print(f"Results saved in {outputdir_host}")
+        matches = [
+            re.search(pattern_sender, output, re.DOTALL),
+            re.search(pattern_receiver, output),
+        ]
+
+        for match in matches:
+            if match:
+                bitrate, transfer = map(float, match.groups())
+                print(f"Bitrate: {bitrate}, Transfer: {transfer}")
+                insert_into_db(
+                    connection,
+                    "iperf",
+                    {
+                        "date": datetime.now().strftime(DATE_FORMAT),
+                        "type": f"{ty}",
+                        "size": size,
+                        "remote": remote,
+                        "vhost": vhost,
+                        "tls": False,
+                        "streams": parallel,
+                        "pkt_size": pkt_size,
+                        "bitrate": bitrate,  # in Gbits/sec
+                        "transfer": transfer,  # in GBytes
+                        "proto": proto,
+                        "sender": True if match == matches[0] else False,
+                    },
+                )
+                time.sleep(1)
+            else:
+                print("No match")
+    print(f"Results saved in db in table 'iperf'")
 
 
 def run_memtier(
@@ -179,6 +201,8 @@ def run_memtier(
         "lat_max": "FLOAT",
         "lat_avg": "FLOAT",
         "ops_per_sec": "FLOAT",
+        "hits_per_sec": "FLOAT",
+        "misses_per_sec": "FLOAT",
         "transfer_rate": "FLOAT",  # in KB/s
         "server": "VARCHAR(10)",
         "proto": "VARCHAR(20)",
@@ -223,7 +247,7 @@ def run_memtier(
         else ["nix-shell", f"{bench_path}/shell.nix", "--run", f"{just_cmd}"]
     )
 
-    pattern = r"(\d+)\s+Threads.*?Totals\s+(\d+\.\d+)\s+\d+\.\d+\s+\d+\.\d+\s+(\d+\.\d+)\s+\d+\.\d+\s+\d+\.\d+\s+(\d+\.\d+)\s+(\d+\.\d+)"
+    pattern = r"(\d+)\s+Threads.*?Totals\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+\d+\.\d+\s+\d+\.\d+\s+(\d+\.\d+)\s+(\d+\.\d+)"
 
     print(cmd)
     output = remote_ssh_cmd(cmd) if remote else subprocess.check_output(cmd).decode()
@@ -231,7 +255,7 @@ def run_memtier(
     match = re.search(pattern, output, re.DOTALL)
 
     if match:
-        threads, ops_per_sec, lat_avg, lat_max, transfer_rate = map(
+        threads, ops_per_sec, hits, misses, lat_avg, lat_max, transfer_rate = map(
             float, match.groups()
         )
         print(
@@ -241,12 +265,14 @@ def run_memtier(
             connection,
             "memtier",
             {
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "date": datetime.now().strftime(DATE_FORMAT),
                 "type": f"{ty}",
                 "size": size,
                 "remote": remote,
                 "vhost": vhost,
                 "tls": tls,
+                "hits_per_sec": hits,
+                "misses_per_sec": misses,
                 "lat_max": lat_max,
                 "lat_avg": lat_avg,
                 "ops_per_sec": ops_per_sec,
@@ -266,7 +292,7 @@ def run_memtier(
 
 def run_nginx(name: str, vm: QemuVm, remote: bool = False):
     """Run the nginx on the VM and the wrk benchmark on the host.
-    The results are saved in database 'bench' in table 'nginx'.
+    The results are saved in db in table 'nginx'.
     """
 
     vhost = "vhost" in name
@@ -327,7 +353,7 @@ def run_nginx(name: str, vm: QemuVm, remote: bool = False):
             connection,
             "nginx",
             {
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "date": datetime.now().strftime(DATE_FORMAT),
                 "type": f"{ty}",
                 "size": size,
                 "remote": remote,

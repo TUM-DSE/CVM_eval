@@ -11,6 +11,9 @@ import numpy as np
 from pathlib import Path
 
 from invoke import task
+import utils
+import datetime
+
 
 mpl.use("Agg")
 mpl.rcParams["text.latex.preamble"] = r"\usepackage{amsmath}"
@@ -120,82 +123,82 @@ def parse_ping_result(name: str, label: str, date=None) -> pd.DataFrame:
     return df
 
 
-@task
-def plot_iperf(
-    ctx,
-    vm="amd",
-    cvm="snp",
-    mode="udp",
-    vhost=False,
-    mq=False,
-    outdir="plot",
-    outname=None,
-):
-    def get_name(name):
-        n = f"{name}-direct-medium"
-        if vhost:
-            n += "-vhost"
-        if mq:
-            n += "-mq"
-        return n
+# @task
+# def plot_iperf(
+#     ctx,
+#     vm="amd",
+#     cvm="snp",
+#     mode="udp",
+#     vhost=False,
+#     mq=False,
+#     outdir="plot",
+#     outname=None,
+# ):
+#     def get_name(name):
+#         n = f"{name}-direct-medium"
+#         if vhost:
+#             n += "-vhost"
+#         if mq:
+#             n += "-mq"
+#         return n
 
-    df1 = parse_iperf_result(get_name(vm), vm, mode)
-    df2 = parse_iperf_result(get_name(cvm), cvm, mode)
-    # merge df using name as key
-    df = pd.concat([df1, df2])
+#     df1 = parse_iperf_result(get_name(vm), vm, mode)
+#     df2 = parse_iperf_result(get_name(cvm), cvm, mode)
+#     # merge df using name as key
+#     df = pd.concat([df1, df2])
 
-    # plot thropughput
-    fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
-    sns.barplot(
-        x="size",
-        y="throughput",
-        hue="name",
-        data=df,
-        ax=ax,
-        palette=palette,
-        edgecolor="black",
-    )
-    ax.set_xlabel("Packet Size (byte)")
-    ax.set_ylabel("Throughput (Gbps)")
-    ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
+#     # plot thropughput
+#     fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
+#     sns.barplot(
+#         x="size",
+#         y="throughput",
+#         hue="name",
+#         data=df,
+#         ax=ax,
+#         palette=palette,
+#         edgecolor="black",
+#     )
+#     ax.set_xlabel("Packet Size (byte)")
+#     ax.set_ylabel("Throughput (Gbps)")
+#     ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
 
-    # remove legend title
-    ax.get_legend().set_title("")
+#     # remove legend title
+#     ax.get_legend().set_title("")
 
-    # set hatch
-    bars = ax.patches
-    hs = []
-    num_x = len(df["size"].unique())
-    for hatch in hatches:
-        hs.extend([hatch] * num_x)
-    num_legend = len(bars) - len(hs)
-    hs.extend([""] * num_legend)
-    for bar, hatch in zip(bars, hs):
-        bar.set_hatch(hatch)
+#     # set hatch
+#     bars = ax.patches
+#     hs = []
+#     num_x = len(df["size"].unique())
+#     for hatch in hatches:
+#         hs.extend([hatch] * num_x)
+#     num_legend = len(bars) - len(hs)
+#     hs.extend([""] * num_legend)
+#     for bar, hatch in zip(bars, hs):
+#         bar.set_hatch(hatch)
 
-    # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
-        patch.set_hatch("//")
+#     # set hatch for the legend
+#     for patch in ax.get_legend().get_patches()[1::2]:
+#         patch.set_hatch("//")
 
-    # annotate values with .2f
-    for container in ax.containers:
-        ax.bar_label(container, fmt="%.2f")
+#     # annotate values with .2f
+#     for container in ax.containers:
+#         ax.bar_label(container, fmt="%.2f")
 
-    plt.tight_layout()
+#     plt.tight_layout()
 
-    if outname is None:
-        outname = f"iperf_{mode}"
-        if vhost:
-            outname += "_vhost"
-        if mq:
-            outname += "_mq"
-        outname += "_throughput.pdf"
+#     if outname is None:
+#         outname = f"iperf_{mode}"
+#         if vhost:
+#             outname += "_vhost"
+#         if mq:
+#             outname += "_mq"
+#         outname += "_throughput.pdf"
 
-    outdir = Path(outdir)
-    outdir.mkdir(parents=True, exist_ok=True)
-    save_path = outdir / outname
-    plt.savefig(save_path, bbox_inches="tight")
-    print(f"Plot saved in {save_path}")
+#     outdir = Path(outdir)
+#     outdir.mkdir(parents=True, exist_ok=True)
+#     save_path = outdir / outname
+#     plt.savefig(save_path, bbox_inches="tight")
+#     print(f"Plot saved in {save_path}")
 
 
 @task
@@ -268,3 +271,78 @@ def plot_ping(
     save_path = outdir / outname
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
+
+
+@task
+def plot_iperf(ctx, y: str = "transfer"):
+    df = utils.query_db(f"SELECT * FROM iperf")
+    df["combined"] = df.apply(
+        lambda row: f"{row['type']}"
+        + ("_v" if row["vhost"] else "")
+        + ("_r" if row["remote"] else ""),
+        axis=1,
+    )
+    fig, ax = plt.subplots()
+    sns.barplot(
+        data=df,
+        x="combined",
+        y=y,
+        ax=ax,
+        hue="pkt_size",
+        palette=palette,
+        edgecolor="black",
+    )
+    ax.set_xlabel("Config")
+    ax.set_ylabel("Throughput in GBytes")
+    plt.tight_layout()
+    plt.savefig(f"plot/iperf_{y}.pdf", bbox_inches="tight")
+
+
+@task
+def plot_memtier(ctx, y: str = "ops_per_sec"):
+    df = utils.query_db(f"SELECT * FROM memtier")
+    df["group"] = df.apply(
+        lambda row: f"{row['type']}"
+        + ("_v" if row["vhost"] else "")
+        + ("_r" if row["remote"] else ""),
+        axis=1,
+    )
+    fig, ax = plt.subplots()
+    sns.barplot(
+        data=df,
+        x="group",
+        y=y,
+        ax=ax,
+        hue="proto",
+        palette=palette,
+        edgecolor="black",
+    )
+    ax.set_xlabel("Config")
+    ax.set_ylabel("Operations/sec")
+    plt.tight_layout()
+    plt.savefig(f"plot/memtier_{y}.pdf", bbox_inches="tight")
+
+
+@task
+def plot_nginx(ctx, y: str = "lat_avg"):
+    df = utils.query_db(f"SELECT * FROM nginx")
+    df["group"] = df.apply(
+        lambda row: f"{row['type']}"
+        + ("_v" if row["vhost"] else "")
+        + ("_r" if row["remote"] else ""),
+        axis=1,
+    )
+    fig, ax = plt.subplots()
+    sns.barplot(
+        data=df,
+        x="group",
+        y=y,
+        ax=ax,
+        hue="tls",
+        palette=palette,
+        edgecolor="black",
+    )
+    ax.set_xlabel("Config")
+    ax.set_ylabel("Average latency in ms")
+    plt.tight_layout()
+    plt.savefig(f"plot/nginx_{y}.pdf", bbox_inches="tight")
