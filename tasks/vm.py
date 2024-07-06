@@ -704,6 +704,22 @@ def run_phoronix(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> Non
         vm.shutdown()
 
 
+def run_mlc(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu(pin_base)
+        vm.wait_for_ssh()
+        import memory
+
+        memory.run_mlc(name, vm)
+        vm.shutdown()
+
+
 def run_blender(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     repeat: int = kargs["config"].get("repeat", 1)
     resource: VMResource = kargs["config"]["resource"]
@@ -943,6 +959,8 @@ def do_action(action: str, **kwargs: Any) -> None:
         prepare_app(**kwargs)
     elif action == "run-phoronix":
         run_phoronix(**kwargs)
+    elif action == "run-mlc":
+        run_mlc(**kwargs)
     elif action == "run-blender":
         run_blender(**kwargs)
     elif action == "run-tensorflow":
