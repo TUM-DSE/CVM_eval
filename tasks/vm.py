@@ -896,6 +896,17 @@ def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
             storage.mount_disk(vm, "/dev/vdb", "/mnt", format=True)
             dbpath = "/mnt/test.db"
 
+            name += f"-{kargs['config']['virtio_blk_aio']}"
+            if not kargs["config"]["virtio_blk_direct"]:
+                name += f"-nodirect"
+            if not kargs["config"]["virtio_blk_iothread"]:
+                name += f"-noiothread"
+            if (
+                kargs["config"]["virtio_iommu"]
+                and "swiotlb" in kargs["config"]["extra_cmdline"]
+            ):
+                name += f"-swiotlb"
+
         from application import run_sqlite
 
         run_sqlite(name, vm, dbpath)
