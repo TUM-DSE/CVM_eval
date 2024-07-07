@@ -3,7 +3,7 @@
 set -x
 
 VM=${VM:-intel}
-DISKS=${VM:-nvme1n1}
+DISKS=${DISKS:-nvme1n1}
 
 SWIOTLB_OPTION=' --virtio-iommu --extra-cmdline "swiotlb=524288,force"'
 
@@ -20,6 +20,8 @@ do
         done
     done
 done
+
+exit
 
 for size in medium
 do
