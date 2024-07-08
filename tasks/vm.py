@@ -284,6 +284,11 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config("amd-direct")
     ssh_port = config.get("ssh_port", SSH_PORT)
     extra_cmdline = config.get("extra_cmdline", "")
+    if config["boot_prealloc"]:
+        prealloc = "on"
+    else:
+        prealloc = "off"
+    # XXX: the current QEMU/SNP version seems not support prealloc option
 
     qemu_cmd = f"""
     {vmconfig.qemu}
