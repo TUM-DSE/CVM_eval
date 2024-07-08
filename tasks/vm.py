@@ -397,6 +397,7 @@ def get_intel_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config(type)
     ssh_port = config["ssh_port"]
+    guest_cid = config["guest_cid"]
     if config["boot_prealloc"]:
         prealloc = "on"
     else:
@@ -423,7 +424,7 @@ def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
         -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
         -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
 
-        -device vhost-vsock-pci,guest-cid=3
+        -device vhost-vsock-pci,guest-cid={guest_cid}
     """
 
     return shlex.split(qemu_cmd)
@@ -432,6 +433,7 @@ def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
 def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config("tdx-direct")
     ssh_port = config["ssh_port"]
+    guest_cid = config["guest_cid"]
     extra_cmdline = config.get("extra_cmdline", "")
     if config["boot_prealloc"]:
         prealloc = "on"
@@ -479,7 +481,7 @@ def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
         -mon chardev=char0,mode=readline
         -device virtconsole,chardev=char0,id=vc0,nr=0
 
-        -device vhost-vsock-pci,guest-cid=3
+        -device vhost-vsock-pci,guest-cid={guest_cid}
     """
 
     return shlex.split(qemu_cmd)
@@ -1015,6 +1017,7 @@ def start(
     direct: bool = True,  # if True, do direct boot. otherwise boot from the disk
     action: str = "attach",
     ssh_port: int = SSH_PORT,
+    guest_cid: int = 11,  # Guest CID for vsock (only for TDX)
     pin: bool = True,  # if True, pin vCPUs
     pin_base: Optional[int] = None,  # pinning base
     extra_cmdline: str = "",  # extra kernel cmdline (only for direct boot)
