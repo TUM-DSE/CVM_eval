@@ -33,7 +33,7 @@ figwidth_full = 7
 FONTSIZE = 9
 
 palette = sns.color_palette("pastel")
-hatches = ["", "//", "x"]
+hatches = ["", "//", "x", "//x"]
 
 
 def read_json(file):
@@ -110,7 +110,7 @@ def read_result(name: str, label: str, jobname: str, date=None) -> pd.DataFrame:
     return df
 
 
-def plot_bw(df, outdir):
+def plot_bw(df, outdir, device=""):
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
 
     # read
@@ -195,19 +195,18 @@ def plot_bw(df, outdir):
     plt.xlabel("")
     plt.title("Higher is better ↑", fontsize=9, color="navy", weight="bold")
     plt.tight_layout()
-    outfile = Path(outdir) / "fio_bw.pdf"
+    outfile = Path(outdir) / f"fio_bw_{device}.pdf"
     plt.savefig(outfile, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"saved to {outfile}")
     plt.clf()
 
 
-def plot_iops(df, outdir):
+def plot_iops(df, outdir, device=""):
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
 
     ## randread
     iops = df[(df["jobname"] == "iops randread")]
-    ax = sns.barplot(
-        data=iops,
+    ax = sns.barplot( data=iops,
         x="jobname",
         y="read_iops_mean",
         hue="name",
@@ -319,13 +318,13 @@ def plot_iops(df, outdir):
     plt.xlabel("")
     plt.title("Higher is better ↑", fontsize=9, color="navy", weight="bold")
     plt.tight_layout()
-    outfile = Path(outdir) / "fio_iops.pdf"
+    outfile = Path(outdir) / f"fio_iops_{device}.pdf"
     plt.savefig(outfile, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"saved to {outfile}")
     plt.clf()
 
 
-def plot_latency(df, outdir):
+def plot_latency(df, outdir, device=""):
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
 
     ## read
@@ -454,7 +453,7 @@ def plot_latency(df, outdir):
     plt.xlabel("")
     plt.title("Lower is better ↓", fontsize=9, color="navy", weight="bold")
     plt.tight_layout()
-    outfile = Path(outdir) / "fio_latency.pdf"
+    outfile = Path(outdir) / f"fio_latency_{device}.pdf"
     plt.savefig(outfile, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"saved to {outfile}")
     plt.clf()
@@ -469,16 +468,23 @@ def plot_fio(
     aio="native",
     jobfile="libaio",
     outdir="plot",
+    device="nvme0n1",
 ):
-    vm_data = read_result(f"{vm}-direct-{size}-{aio}", vm, jobfile)
-    cvm_data = read_result(f"{cvm}-direct-{size}-{aio}", cvm, jobfile)
+    vm_data = read_result(f"{vm}-direct-{size}{device}-{aio}", "vm", jobfile)
+    swiotlb_data = read_result(f"{vm}-direct-{size}{device}-{aio}-swiotlb", "swiotlb", jobfile)
+    cvm_data = read_result(f"{cvm}-direct-{size}{device}-{aio}", "td", jobfile)
 
-    labels = [vm, cvm]
-    df = pd.concat([vm_data, cvm_data])
+    # labels = [vm, "swiotlb", cvm]
+    # labels = ["vm", "swiotlb", "td"]
+    #labels = ["vm", "swiotlb", "td", "td-poll"]
+    # df = pd.concat([vm_data, swiotlb_data, cvm_data])
+    #df = pd.concat([vm_data, swiotlb_data, cvm_data, cvm_poll_data])
+    df = pd.concat([vm_data, swiotlb_data, cvm_data])
+    print(df)
 
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
-    plot_bw(df, outdir)
-    plot_iops(df, outdir)
-    plot_latency(df, outdir)
+    plot_bw(df, outdir, device)
+    plot_iops(df, outdir, device)
+    plot_latency(df, outdir, device)

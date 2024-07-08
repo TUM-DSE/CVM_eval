@@ -78,7 +78,7 @@ def parse_result(name: str, date: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def load_data(vm: str, cvm: str, rel=True, size="large") -> pd.DataFrame:
+def load_data(vm: str, cvm: str, rel=True, size="numa") -> pd.DataFrame:
     vm_df = parse_result(f"{vm}-direct-{size}")
     cvm_df = parse_result(f"{cvm}-direct-{size}")
 
@@ -165,7 +165,7 @@ def plot_npb(
     cvm: str = "snp",
     outdir: str = "./plot",
     outname: str = "npb.pdf",
-    size: str = "large",
+    size: str = "numa",
 ):
     df = load_data(vm, cvm, rel=False, size=size)
     df["identifier"] = df["identifier"].map(

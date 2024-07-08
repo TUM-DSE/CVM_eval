@@ -29,7 +29,8 @@ figwidth_full = 7
 FONTSIZE = 9
 
 palette = sns.color_palette("pastel")
-hatches = ["", "//"]
+#hatches = ["", "//"]
+hatches = ["", "", "", "", "//", "////"]
 
 BENCH_RESULT_DIR = Path("./bench-result/network")
 
@@ -248,18 +249,30 @@ def plot_iperf(
     outname=None,
     size="medium",
 ):
-    def get_name(name):
+    def get_name(name, vhost=False, mq=mq, swiotlb=False):
         n = f"{name}-direct-{size}"
         if vhost:
             n += "-vhost"
         if mq:
             n += "-mq"
+        if swiotlb:
+            n += "-swiotlb"
         return n
 
-    df1 = parse_iperf_result(get_name(vm), vm, mode)
-    df2 = parse_iperf_result(get_name(cvm), cvm, mode)
-    # merge df using name as key
-    df = pd.concat([df1, df2])
+    #df1 = parse_iperf_result(get_name(vm), vm, mode)
+    #df2 = parse_iperf_result(get_name(cvm), cvm, mode)
+    ## merge df using name as key
+    #df = pd.concat([df1, df2])
+
+    dfs = []
+    dfs.append(parse_iperf_result(get_name(vm), "vm", mode))
+    dfs.append(parse_iperf_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb", mode))
+    dfs.append(parse_iperf_result(get_name(vm, vhost=True), f"vhost", mode))
+    dfs.append(parse_iperf_result(get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", mode))
+    dfs.append(parse_iperf_result(get_name(cvm), "td", mode))
+    dfs.append(parse_iperf_result(get_name(cvm, vhost=True), f"td-vhost", mode))
+    df = pd.concat(dfs)
+    print(df)
 
     # plot thropughput
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
@@ -296,9 +309,10 @@ def plot_iperf(
 
     # annotate values with .2f
     for container in ax.containers:
-        ax.bar_label(container, fmt="%.2f")
+        ax.bar_label(container, fmt="%.2f", fontsize=5)
 
     plt.tight_layout()
+    plt.legend(fontsize=5)
 
     if outname is None:
         outname = f"iperf_{mode}"
@@ -326,18 +340,24 @@ def plot_ping(
     outname=None,
     size="medium",
 ):
-    def get_name(name):
+    def get_name(name, vhost=False, mq=mq, swiotlb=False):
         n = f"{name}-direct-{size}"
         if vhost:
             n += "-vhost"
         if mq:
             n += "-mq"
+        if swiotlb:
+            n += "-swiotlb"
         return n
 
-    df1 = parse_ping_result(get_name(vm), vm)
-    df2 = parse_ping_result(get_name(cvm), cvm)
-    # merge df using name as key
-    df = pd.concat([df1, df2])
+    dfs = []
+    dfs.append(parse_ping_result(get_name(vm), "vm"))
+    dfs.append(parse_ping_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb"))
+    dfs.append(parse_ping_result(get_name(vm, vhost=True), f"vhost"))
+    dfs.append(parse_ping_result(get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb"))
+    dfs.append(parse_ping_result(get_name(cvm), "td"))
+    dfs.append(parse_ping_result(get_name(cvm, vhost=True), f"td-vhost"))
+    df = pd.concat(dfs)
     print(df)
 
     # plot thropughput
@@ -378,6 +398,7 @@ def plot_ping(
         ax.bar_label(container, fmt="%.2f")
 
     plt.tight_layout()
+    plt.legend(fontsize=5)
 
     if outname is None:
         outname = f"ping"
@@ -405,7 +426,7 @@ def plot_redis(
     outname=None,
     size="medium",
 ):
-    def get_name(name):
+    def get_name(name, vhost=False, mq=mq):
         n = f"{name}-direct-{size}"
         if vhost:
             n += "-vhost"
@@ -413,10 +434,12 @@ def plot_redis(
             n += "-mq"
         return n
 
-    df1 = parse_memtier_result(get_name(vm), vm, "redis")
-    df2 = parse_memtier_result(get_name(cvm), cvm, "redis")
-    ## merge df using name as key
-    df = pd.concat([df1, df2])
+    dfs = []
+    dfs.append(parse_memtier_result(get_name(vm), "vm", "redis"))
+    dfs.append(parse_memtier_result(get_name(vm, vhost=True), f"vm-vhost", "redis"))
+    dfs.append(parse_memtier_result(get_name(cvm), "td", "redis"))
+    dfs.append(parse_memtier_result(get_name(cvm, vhost=True), f"td-vhost", "redis"))
+    df = pd.concat(dfs)
     print(df)
 
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
@@ -483,7 +506,7 @@ def plot_memcached(
     outname=None,
     size="medium",
 ):
-    def get_name(name):
+    def get_name(name, vhost=False, mq=mq):
         n = f"{name}-direct-{size}"
         if vhost:
             n += "-vhost"
@@ -491,9 +514,12 @@ def plot_memcached(
             n += "-mq"
         return n
 
-    df1 = parse_memtier_result(get_name(vm), vm, "memcached")
-    df2 = parse_memtier_result(get_name(cvm), cvm, "memcached")
-    df = pd.concat([df1, df2])
+    dfs = []
+    dfs.append(parse_memtier_result(get_name(vm), "vm", "memcached"))
+    dfs.append(parse_memtier_result(get_name(vm, vhost=True), f"vm-vhost", "memcached"))
+    dfs.append(parse_memtier_result(get_name(cvm), "td", "memcached"))
+    dfs.append(parse_memtier_result(get_name(cvm, vhost=True), f"td-vhost", "memcached"))
+    df = pd.concat(dfs)
     print(df)
 
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
@@ -560,7 +586,7 @@ def plot_nginx(
     outname=None,
     size="medium",
 ):
-    def get_name(name):
+    def get_name(name, vhost=False, mq=mq):
         n = f"{name}-direct-{size}"
         if vhost:
             n += "-vhost"
@@ -568,10 +594,13 @@ def plot_nginx(
             n += "-mq"
         return n
 
-    df1 = parse_nginx_result(get_name(vm), vm)
-    df2 = parse_nginx_result(get_name(cvm), cvm)
+    dfs = []
+    dfs.append(parse_nginx_result(get_name(vm), "vm"))
+    dfs.append(parse_nginx_result(get_name(vm, vhost=True), f"vm-vhost"))
+    dfs.append(parse_nginx_result(get_name(cvm), "td"))
+    dfs.append(parse_nginx_result(get_name(cvm, vhost=True), f"td-vhost"))
     ## merge df using name as key
-    df = pd.concat([df1, df2])
+    df = pd.concat(dfs)
     print(df)
 
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))

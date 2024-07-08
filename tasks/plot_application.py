@@ -334,12 +334,16 @@ def plot_sqlite(
     vm="amd",
     cvm="snp",
     outdir="plot",
-    outname="sqlite.pdf",
+    outname="sqlite",
     size="medium",
+    aio="native",
+    device="nvme0n1",
 ):
-    vm_df = parse_sqlite_result(f"{vm}-direct-{size}", label=vm)
-    cvm_df = parse_sqlite_result(f"{cvm}-direct-{size}", label=cvm)
-    df = pd.concat([vm_df, cvm_df])
+    vm_df = parse_sqlite_result(f"{vm}-direct-{size}{device}-{aio}", label=vm)
+    swiotlb_df = parse_sqlite_result(f"{vm}-direct-{size}{device}-{aio}-swiotlb",
+                                     label="swiotlb")
+    cvm_df = parse_sqlite_result(f"{cvm}-direct-{size}{device}-{aio}", label=cvm)
+    df = pd.concat([vm_df, swiotlb_df, cvm_df])
 
     print(df)
 
@@ -383,6 +387,6 @@ def plot_sqlite(
 
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    save_path = outdir / outname
+    save_path = outdir / f"{outname}_{device}.pdf"
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
