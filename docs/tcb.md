@@ -2,6 +2,7 @@
 - Measure lines of code (LoC) and binary size of software components
 
 ## Linux kernel
+
 - See: https://github.com/gramineproject/gramine-tdx/discussions/11
 - In the first terminal
 ```
@@ -43,6 +44,23 @@ SUM:                          6682         490469         698306        2307755
 $ ls -lh ./arch/x86/boot/vmlinux.bin
 -rw-r--r-- 1 masa users 13M Jun  4 13:28 ./arch/x86/boot/vmlinux.bin
 ```
+- Linux 6.8 w/ defconfig, kvm_guest.config, TDX support
+```
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+C                             2929         375916         458749        1761784
+C/C++ Header                  3687         112192         234105         537134
+Assembly                        65           1357           4235           5300
+-------------------------------------------------------------------------------
+SUM:                          6681         489465         697089        2304218
+-------------------------------------------------------------------------------
+```
+- vmlinux size
+```
+$ ls -lh ./arch/x86/boot/vmlinux.bin
+-rw-r--r-- 1 sdp sdp 13M Jun 24 10:00 ./arch/x86/boot/vmlinux.bin
+```
 
 ## OVMF
 - Smae as the linux kernel measurement
@@ -71,6 +89,27 @@ $ ls -lh ./Build/OvmfX64/RELEASE_GCC5/FV/OVMF*.fd
 -rw-r--r-- 1 masa users 3.5M Jun  5 18:22 ./Build/OvmfX64/RELEASE_GCC5/FV/OVMF_CODE.fd
 -rw-r--r-- 1 masa users 4.0M Jun  5 18:22 ./Build/OvmfX64/RELEASE_GCC5/FV/OVMF.fd
 -rw-r--r-- 1 masa users 528K Apr  4 08:44 ./Build/OvmfX64/RELEASE_GCC5/FV/OVMF_VARS.fd
+```
+
+## TDVF
+- Same as OVMF
+- https://github.com/tianocore/edk2-staging/tree/TDVF (commit c229fca)
+```
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+C                             1660         130876         213334         590697
+C/C++ Header                  1505          64052         178642         173561
+-------------------------------------------------------------------------------
+SUM:                          3165         194928         391976         764258
+-------------------------------------------------------------------------------
+```
+- Size
+```
+$ ls -lh ./Build/OvmfX64/RELEASE_GCC5/FV/OVMF*.fd
+-rw-r--r-- 1 sdp sdp 4.0M Jun 24 09:41 ./Build/OvmfX64/RELEASE_GCC5/FV/OVMF.fd
+-rw-r--r-- 1 sdp sdp 3.5M Jun 24 09:41 ./Build/OvmfX64/RELEASE_GCC5/FV/OVMF_CODE.fd
+-rw-r--r-- 1 sdp sdp 528K Jun 24 09:41 ./Build/OvmfX64/RELEASE_GCC5/FV/OVMF_VARS.fd
 ```
 
 ## ASP firmware

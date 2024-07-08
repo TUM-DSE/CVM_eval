@@ -6,5 +6,8 @@ run threads="8":
     {{PYTHON}} ./pytorchexample.py {{threads}}
 
 prepare:
-    {{PYTHON}} ./download-pretrained-model.py
+    #!/usr/bin/env bash
+    if [ ! -f alexnet-pretrained.pt ]; then
+        {{PYTHON}} ./download-pretrained-model.py
+    fi
 

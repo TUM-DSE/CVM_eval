@@ -110,13 +110,13 @@ palette = [
 ]
 
 
-def load_data(vmfile: Path, snpfile: Path) -> pd.DataFrame:
+def load_data(vmfile: Path, cvmfile: Path) -> pd.DataFrame:
     vm = phoronix.parse_xml(vmfile)
-    snp = phoronix.parse_xml(snpfile)
+    cvm = phoronix.parse_xml(cvmfile)
 
     # merge two using identifier and benchmark_id as a key
-    data = pd.merge(vm, snp, on="benchmark_id", suffixes=("_vm", "_snp"))
-    data["relative"] = data["value_snp"] / data["value_vm"]
+    data = pd.merge(vm, cvm, on="benchmark_id", suffixes=("_vm", f"_{cvm}"))
+    data["relative"] = data[f"value_{cvm}"] / data["value_vm"]
 
     # drop rows if its benchmark_id is not in BENCHMARK_ID
     data = data[data["benchmark_id"].isin(BENCHMARK_ID)]
@@ -132,11 +132,30 @@ def load_data(vmfile: Path, snpfile: Path) -> pd.DataFrame:
     return data
 
 
+BENCH_RESULT_DIR = Path("./bench-result/phoronix")
+
+
+# bench mark path:
+# ./bench-result/phoronix/{name}/memory/{date}
+def get_file(name: str, date=None):
+    if date is None:
+        date = sorted(os.listdir(BENCH_RESULT_DIR / name / "memory"))[-1]
+    path = BENCH_RESULT_DIR / name / "memory" / date
+    return path
+
+
 @task
 def plot_phoronix_memory(
-    ctx: Any, vmfile: str, snpfile: str, outdir: str = "./", name: str = "memory.pdf"
+    ctx: Any,
+    vm: str = "amd",
+    cvm: str = "snp",
+    size="medium",
+    outdir: str = "./plot",
+    name: str = "memory.pdf",
 ):
-    data = load_data(Path(vmfile), Path(snpfile))
+    vmfile = get_file(f"{vm}-direct-{size}")
+    cvmfile = get_file(f"{cvm}-direct-{size}")
+    data = load_data(vmfile, cvmfile)
 
     # fig, ax = plt.subplots(figsize=(4.5, 4.0))
     fig, ax = plt.subplots()
@@ -146,7 +165,7 @@ def plot_phoronix_memory(
         data["relative"],
         color=palette,
         edgecolor="black",
-        label="SNP",
+        label=f"{cvm}",
     )
 
     # draw a line at 1.0 to indicate the baseline
@@ -179,3 +198,4 @@ def plot_phoronix_memory(
     outdir.mkdir(exist_ok=True, parents=True)
     outpath = outdir / name
     plt.savefig(outpath, format="pdf", pad_inches=0, bbox_inches="tight")
+    print(f"save {outpath}")

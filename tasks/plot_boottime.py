@@ -219,7 +219,12 @@ def plot_clustered_stacked(
 
 @task
 def plot_boottime(
-    ctx: Any, vm: str = "amd", cvm: str = "snp", outdir: str = "plot", sizes: list = []
+    ctx: Any,
+    vm: str = "amd",
+    cvm: str = "snp",
+    prealloc: bool = True,
+    outdir: str = "plot",
+    sizes: list = [],
 ) -> None:
     # to change sizes, use `--sizes` option multiple times. e.g.,
     # % inv boottime.plot-boottime --sizes small --sizes medium --sizes large
@@ -228,9 +233,12 @@ def plot_boottime(
     print(sizes)
     vm_ = {}
     cvm_ = {}
+    p = ""
+    if not prealloc:
+        p = "-no-prealloc"
     for size in sizes:
         vm_[size] = load_data(f"{vm}-direct-{size}")
-        cvm_[size] = load_data(f"{cvm}-direct-{size}")
+        cvm_[size] = load_data(f"{cvm}-direct-{size}{p}")
     df = create_df(vm_, cvm_, sizes)
     print(df)
 
@@ -245,6 +253,6 @@ def plot_boottime(
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     plt.savefig(
-        outdir / "boottime.pdf", format="pdf", pad_inches=0, bbox_inches="tight"
+        outdir / f"boottime{p}.pdf", format="pdf", pad_inches=0, bbox_inches="tight"
     )
-    print(f"Output written to {outdir}/boottime.pdf")
+    print(f"Output written to {outdir}/boottime{p}.pdf")
