@@ -255,6 +255,7 @@ start-intel-direct:
 # Utility commands
 
 ssh command="":
+    chmod 600 ./nix/ssh_key
     ssh -i nix/ssh_key \
         -o StrictHostKeyChecking=no \
         -o NoHostAuthenticationForLocalhost=yes \
