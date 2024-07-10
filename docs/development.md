@@ -61,6 +61,12 @@ inv vm.start --type snp --action run-phoronix
 
 ## File sharing
 The repository directory is mounted in `/share` in the guest using vritio-9p.
+We can also mount the directory manually:
+
+```
+mkdir -p /share
+mount -t 9p -o trans=virtio,version=9p2000.L share /share
+```
 
 ## Storage (virtio-blk)
 - `inv vm.start --virtio-blk <path>` command create a virtio-blk backed by the file `<path>`.
