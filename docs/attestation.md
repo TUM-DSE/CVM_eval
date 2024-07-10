@@ -153,19 +153,14 @@ No certificates were loaded by the host...
         - Note that Intel requested us to use PCCS to avoid stressing PCS
     - register the platform (on the host)
 - Check [the document of canonical/tdx](https://github.com/canonical/tdx?tab=readme-ov-file#8-setup-remote-attestation-on-host-os-and-inside-td)
+- Container images for QGS and PCCS are also available
+    - [cc-api/confidential-cloud-native-primitives/container](https://github.com/cc-api/confidential-cloud-native-primitives/tree/main/container)
 
-### Get the report and quote
-#### pytdxmeasure (deprecated)
-- https://github.com/intel/tdx-tools/tree/tdx-1.5/attestation/pytdxmeasure
-- On the guest
-```
-git clone https://github.com/intel/tdx-tools
-cd tdx-tools
-cd checkout -b tdx-1.5 origin/tdx-1.5
-cd attestation/pytdxmeasure
-./tdx_tdreport
-```
-- Now intel/tdx-tools repository is gone
+### Get a report and quote
+- [libtdx-attest-dev](https://github.com/intel/SGXDataCenterAttestationPrimitives/tree/main/QuoteGeneration/quote_wrapper/tdx_attest)
+- These use configfs-tsm
+    - [google/go-tdx-guest:tools/attest](https://github.com/google/go-tdx-guest/tree/main/tools/attest)
+    - [cc-api/cc-trusted-vmsdk](https://github.com/cc-api/cc-trusted-vmsdk)
 
 #### libtdx-attest-dev
 - libtdx-attest is a library to get a report and a quote
@@ -182,6 +177,19 @@ cd /usr/share/doc/libtdx-attest-dev/examples/
 ./test_tdx_attest
 # this saves report.bin and quote.dat if everything works fine
 ```
+
+#### pytdxmeasure (deprecated)
+- https://github.com/intel/tdx-tools/tree/tdx-1.5/attestation/pytdxmeasure
+- On the guest
+```
+git clone https://github.com/intel/tdx-tools
+cd tdx-tools
+cd checkout -b tdx-1.5 origin/tdx-1.5
+cd attestation/pytdxmeasure
+./tdx_tdreport
+```
+- Now intel/tdx-tools repository is gone
+
 
 ### Quote Verification
 - For verifying quotes, several tools available
@@ -243,12 +251,27 @@ go build check.go
 # check QGSD
 sudo systemctl status qgsd
 
-# check PCCS
-sudo systemctl status pccs
-
 # check platform registation
 sudo systemctl status mpa_registration_tool
 cat /var/log/mpa_registration.log
+```
+
+### Failed to verify quotes
+- Check PCCS
+```
+# this should show REST logs
+sudo systemctl status pccs
+
+# manually access PCCS
+curl -k -G "https://localhost:8081/sgx/certification/v4/qe/identity"
+```
+- Check the size of a quote
+    - In my environment, the size is around 4.9K.
+    - If the size is too small, then quote generation might have failed. Check
+      the QGS service logs.
+```
+# ls -lh quote.dat
+-rw-r--r-- 1 root root 4.9K Jul  8 18:09 quote.dat
 ```
 
 #### PCCS returns "Internal server errors"
