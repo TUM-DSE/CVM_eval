@@ -66,7 +66,11 @@ do
 done
 
 # apply the pcs.go patch to use the local pccs
+cd $THIS_DIR/go-tdx-guest
 git apply $THIS_DIR/pcs.go.patch
+git apply $THIS_DIR/pcs.check.go.patch
+git apply $THIS_DIR/pcs.verify.go.patch
+cd tools/check
 go build
 
 # Initialize total times for each command

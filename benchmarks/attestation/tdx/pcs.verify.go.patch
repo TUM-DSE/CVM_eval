@@ -1,0 +1,21 @@
+diff --git a/verify/verify.go b/verify/verify.go
+index 18173d0..96d1fdb 100644
+--- a/verify/verify.go
++++ b/verify/verify.go
+@@ -33,6 +33,7 @@ import (
+ 	"os"
+ 	"reflect"
+ 	"time"
++	"strings"
+ 
+ 	"github.com/google/go-tdx-guest/abi"
+ 	"github.com/google/go-tdx-guest/pcs"
+@@ -965,7 +966,7 @@ func checkTcbInfoTcbStatus(tcbInfo pcs.TcbInfo, tdQuoteBody *pb.TDQuoteBody, pck
+ 
+ func verifyTdQuoteBody(tdQuoteBody *pb.TDQuoteBody, tdQuoteBodyOptions *tdQuoteBodyOptions) error {
+ 	logger.V(2).Infof("FMSPC from PCK Certificate is %q, and FMSPC value from Intel PCS's reported TDX TCB info is %q", tdQuoteBodyOptions.pckCertExtensions.FMSPC, tdQuoteBodyOptions.tcbInfo.Fmspc)
+-	if tdQuoteBodyOptions.pckCertExtensions.FMSPC != tdQuoteBodyOptions.tcbInfo.Fmspc {
++	if tdQuoteBodyOptions.pckCertExtensions.FMSPC != strings.ToLower(tdQuoteBodyOptions.tcbInfo.Fmspc) {
+ 		return fmt.Errorf("FMSPC from PCK Certificate(%q) is not equal to FMSPC value from Intel PCS's reported TDX TCB info(%q)", tdQuoteBodyOptions.pckCertExtensions.FMSPC, tdQuoteBodyOptions.tcbInfo.Fmspc)
+ 	}
+
