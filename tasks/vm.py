@@ -944,12 +944,13 @@ def run_attestation_sev(
     name: str, qemu_cmd: List[str], pin: bool, **kargs: Any
 ) -> None:
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
         from attestation import run_attestation_sev
 
@@ -961,12 +962,13 @@ def run_attestation_tdx(
     name: str, qemu_cmd: List[str], pin: bool, **kargs: Any
 ) -> None:
     resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     vm: QemuVM
     with spawn_qemu(
         qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
     ) as vm:
         if pin:
-            vm.pin_vcpu()
+            vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
         from attestation import run_attestation_tdx
 
