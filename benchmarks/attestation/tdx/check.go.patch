@@ -1,0 +1,34 @@
+diff --git a/tools/check/check.go b/tools/check/check.go
+index 67e5391..b7ef0b8 100644
+--- a/tools/check/check.go
++++ b/tools/check/check.go
+@@ -407,6 +407,8 @@ func main() {
+ 	}
+ 
+ 	logger.V(1).Info("Verifying the TDX Quote from input")
++
++	startTimeVerify := time.Now()
+ 	if err := verify.TdxQuote(quote, sopts); err != nil {
+ 		// Make the exit code more helpful when there are network errors
+ 		// that affected the result.
+@@ -429,8 +431,10 @@ func main() {
+ 		}
+ 		dieWith(fmt.Errorf("could not verify the TDX Quote: %v", err), exitCode)
+ 	}
++	verifyDuration := time.Since(startTimeVerify).Nanoseconds()
+ 	logger.Info("TDX Quote verified successfully")
+ 
++	startTimeValidate := time.Now()
+ 	opts, err := validate.PolicyToOptions(config.Policy)
+ 	if err != nil {
+ 		die(err)
+@@ -438,5 +442,9 @@ func main() {
+ 	if err := validate.TdxQuote(quote, opts); err != nil {
+ 		dieWith(fmt.Errorf("error validating the TDX Quote: %v", err), exitPolicy)
+ 	}
++	validateDuration := time.Since(startTimeValidate).Nanoseconds()
+ 	logger.V(1).Info("TDX Quote validated successfully")
++
++	fmt.Printf("Verify duration: %d ns\n", verifyDuration)
++	fmt.Printf("Validate duration: %d ns\n", validateDuration)
+ }

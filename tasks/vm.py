@@ -940,7 +940,9 @@ def run_fio(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         vm.shutdown()
 
 
-def run_attestation(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+def run_attestation_sev(
+    name: str, qemu_cmd: List[str], pin: bool, **kargs: Any
+) -> None:
     resource: VMResource = kargs["config"]["resource"]
     vm: QemuVM
     with spawn_qemu(
@@ -949,9 +951,26 @@ def run_attestation(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> 
         if pin:
             vm.pin_vcpu()
         vm.wait_for_ssh()
-        from attestation import run_attestation
+        from attestation import run_attestation_sev
 
-        run_attestation(name, vm)
+        run_attestation_sev(name, vm)
+        vm.shutdown()
+
+
+def run_attestation_tdx(
+    name: str, qemu_cmd: List[str], pin: bool, **kargs: Any
+) -> None:
+    resource: VMResource = kargs["config"]["resource"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu()
+        vm.wait_for_ssh()
+        from attestation import run_attestation_tdx
+
+        run_attestation_tdx(name, vm)
         vm.shutdown()
 
 
@@ -994,8 +1013,10 @@ def do_action(action: str, **kwargs: Any) -> None:
         run_nginx(**kwargs)
     elif action == "run-ping":
         run_ping(**kwargs)
-    elif action == "run-attestation":
-        run_attestation(**kwargs)
+    elif action == "run-attestation-sev":
+        run_attestation_sev(**kwargs)
+    elif action == "run-attestation-tdx":
+        run_attestation_tdx(**kwargs)
     else:
         raise ValueError(f"Unknown action: {action}")
 
