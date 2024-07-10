@@ -1,0 +1,99 @@
+diff --git a/tools/check/check.go b/tools/check/check.go
+index 67e5391..2fc8bd0 100644
+--- a/tools/check/check.go
++++ b/tools/check/check.go
+@@ -407,6 +407,8 @@ func main() {
+ 	}
+ 
+ 	logger.V(1).Info("Verifying the TDX Quote from input")
++
++	startTimeVerify := time.Now()
+ 	if err := verify.TdxQuote(quote, sopts); err != nil {
+ 		// Make the exit code more helpful when there are network errors
+ 		// that affected the result.
+@@ -429,8 +431,10 @@ func main() {
+ 		}
+ 		dieWith(fmt.Errorf("could not verify the TDX Quote: %v", err), exitCode)
+ 	}
++	verifyDuration := time.Since(startTimeVerify).Nanoseconds()
+ 	logger.Info("TDX Quote verified successfully")
+ 
++	startTimeValidate := time.Now()
+ 	opts, err := validate.PolicyToOptions(config.Policy)
+ 	if err != nil {
+ 		die(err)
+@@ -438,5 +442,9 @@ func main() {
+ 	if err := validate.TdxQuote(quote, opts); err != nil {
+ 		dieWith(fmt.Errorf("error validating the TDX Quote: %v", err), exitPolicy)
+ 	}
++	validateDuration := time.Since(startTimeValidate).Nanoseconds()
+ 	logger.V(1).Info("TDX Quote validated successfully")
++
++	fmt.Printf("End-to-end Verify duration: %d ns\n", verifyDuration)
++	fmt.Printf("Validate duration: %d ns\n", validateDuration)
+ }
+diff --git a/verify/verify.go b/verify/verify.go
+index 18173d0..0254bc6 100644
+--- a/verify/verify.go
++++ b/verify/verify.go
+@@ -1039,6 +1039,7 @@ func verifyQeReport(qeReport *pb.EnclaveReport, qeReportOptions *qeReportOptions
+ }
+ 
+ func verifyQuote(quote *pb.QuoteV4, options *Options) error {
++	startTimeVerifyQuote:= time.Now()
+ 	chain := options.chain
+ 	collateral := options.collateral
+ 	pckCertExtensions := options.pckCertExtensions
+@@ -1107,7 +1108,8 @@ func verifyQuote(quote *pb.QuoteV4, options *Options) error {
+ 		}
+ 		logger.V(1).Info("QE Report verified successfully")
+ 	}
+-
++	verifyQuoteDuration := time.Since(startTimeVerifyQuote).Nanoseconds()
++	fmt.Printf("Verify Quote duration: %d ns\n", verifyQuoteDuration)
+ 	return nil
+ }
+ 
+@@ -1258,11 +1260,15 @@ func verifyEvidenceV4(quote *pb.QuoteV4, options *Options) error {
+ 	}
+ 
+ 	logger.V(1).Info("Verifying the PCK Certificate Chain in the quote")
++	startTimeVerifyPCK := time.Now()
+ 	if err := verifyPCKCertificationChain(options); err != nil {
+ 		return err
+ 	}
++	verifyPCKDuration := time.Since(startTimeVerifyPCK).Nanoseconds()
++	fmt.Printf("Verify PCK duration: %d ns\n", verifyPCKDuration)
+ 	logger.V(1).Info("PCK Certificate Chain successfully verified")
+ 
++	startTimeVerifyCollateral:= time.Now()
+ 	if options.GetCollateral {
+ 		logger.V(1).Info("Verifying the collaterals obtained from the Intel PCS")
+ 		if err := verifyCollateral(options); err != nil {
+@@ -1282,7 +1288,8 @@ func verifyEvidenceV4(quote *pb.QuoteV4, options *Options) error {
+ 		logger.V(1).Info("QE Identity API response verified successfully")
+ 		logger.V(1).Info("Collaterals verified successfully")
+ 	}
+-
++	verifyCollateralDuration := time.Since(startTimeVerifyCollateral).Nanoseconds()
++	fmt.Printf("Verify Collateral duration: %d ns\n", verifyCollateralDuration)
+ 	return verifyQuote(quote, options)
+ }
+ 
+@@ -1328,6 +1335,7 @@ func tdxQuoteV4(quote *pb.QuoteV4, options *Options) error {
+ 	logger.V(1).Info("PCK Certificate Chain extracted successfully")
+ 
+ 	var collateral *Collateral
++	startTimeRetrievingCollateral := time.Now()
+ 	if options.GetCollateral {
+ 
+ 		logger.V(1).Info("Obtaining collaterals using APIs from the Intel PCS")
+@@ -1341,6 +1349,8 @@ func tdxQuoteV4(quote *pb.QuoteV4, options *Options) error {
+ 		}
+ 		logger.V(1).Info("Collaterals successfully obtained using the APIs from the Intel PCS")
+ 	}
++	retrievingCollateralDuration := time.Since(startTimeRetrievingCollateral).Nanoseconds()
++	fmt.Printf("Retrieving Collateral duration: %d ns\n", retrievingCollateralDuration)
+ 	options.collateral = collateral
+ 	options.pckCertExtensions = exts
+ 	options.chain = chain
