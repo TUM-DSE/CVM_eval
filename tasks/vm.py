@@ -638,6 +638,31 @@ def ipython(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         embed()
 
 
+def ssh_cmd(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    """Start a VM and then send cmd via ssh
+    Example:
+
+    # we can have multiple ssh commands
+    inv vm.start --type intel --ssh-cmd "echo hi" --ssh-cmd "ls /" --action ssh-cmd
+    """
+    resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
+    cmds: [str] = kargs["config"]["ssh_cmd"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu(pin_base)
+        vm.wait_for_ssh()
+
+        for cmd in cmds:
+            cmd_ = shlex.split(cmd)
+            vm.ssh_cmd(cmd_)
+
+        vm.shutdown()
+
+
 def boottime(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     """Measure the boot time of a VM"""
     import boottime
@@ -967,6 +992,8 @@ def do_action(action: str, **kwargs: Any) -> None:
         start_and_attach(**kwargs)
     elif action == "ipython":
         ipython(**kwargs)
+    elif action == "ssh-cmd":
+        ssh_cmd(**kwargs)
     elif action == "boottime":
         boottime(**kwargs)
     elif action == "prepare":
@@ -1026,6 +1053,8 @@ def start(
     pin: bool = True,  # if True, pin vCPUs
     pin_base: Optional[int] = None,  # pinning base
     extra_cmdline: str = "",  # extra kernel cmdline (only for direct boot)
+    # ssh_cmd options
+    ssh_cmd: [str] = [],
     # boot eval options
     boot_trace: bool = True,
     boot_prealloc: bool = True,
