@@ -1,13 +1,16 @@
 # vim: set ft=make et :
 
+BASEDIR := "/root/attestation"
+
 prepare:
   #!/usr/bin/env bash
-  cd /share/benchmarks/attestation/sev/
+  mkdir -p {{BASEDIR}}
+  cd {{BASEDIR}}
   if [ ! -d snpguest ]
   then
     git clone https://github.com/virtee/snpguest.git
   fi
-  cd /share/benchmarks/attestation/sev/snpguest
+  cd {{BASEDIR}}/snpguest
   git checkout 0d77c10075c250c31219d8219b24eafcc428e2fb
   git checkout src/report.rs src/fetch.rs src/verify.rs && git apply /share/benchmarks/attestation/sev/snpguest.patch
   export RUST_BACKTRACE=1
