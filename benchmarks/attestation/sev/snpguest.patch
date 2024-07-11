@@ -1,38 +1,109 @@
-diff --git a/src/main.rs b/src/main.rs
-index eb7e7f4..ebe386c 100644
---- a/src/main.rs
-+++ b/src/main.rs
-@@ -21,6 +21,7 @@ use verify::VerifyCmd;
+diff --git a/src/fetch.rs b/src/fetch.rs
+index e37b492..4e4aadb 100644
+--- a/src/fetch.rs
++++ b/src/fetch.rs
+@@ -13,6 +13,8 @@ use sev::firmware::host::CertType;
  
- use anyhow::{Context, Result};
- use clap::{arg, Parser, Subcommand, ValueEnum};
+ use certs::{write_cert, CertFormat};
+ 
 +use std::time::Instant;
++
+ #[derive(Subcommand)]
+ pub enum FetchCmd {
+     /// Fetch the certificate authority (ARK & ASK) from the KDS.
+@@ -166,8 +168,11 @@ mod cert_authority {
  
- #[derive(Parser)]
- #[command(author, version, about, long_about = None)]
-@@ -73,6 +74,7 @@ fn main() -> Result<()> {
-     #[cfg(not(feature = "hyperv"))]
-     let hv = false;
+     // Fetch the ca from the kds and write it into the certs directory
+     pub fn fetch_ca(args: Args) -> Result<()> {
++        let start_time = Instant::now();
+         // Get certs from kds
+         let certificates = request_ca_kds(args.processor_model, &args.endorser)?;
++        let duration = start_time.elapsed().as_millis();
++        println!("Fetch CA executed in {} ms", duration);
+ 
+         // Create certs directory if missing
+         if !args.certs_dir.exists() {
+@@ -264,8 +269,11 @@ mod vcek {
+ 
+     // Function to request vcek from kds and write it into file
+     pub fn fetch_vcek(args: Args) -> Result<()> {
++        let start_time = Instant::now();
+         // Request vcek
+         let vcek = request_vcek_kds(args.processor_model, args.att_report_path)?;
++        let duration = start_time.elapsed().as_millis();
++        println!("Fetch VCEK executed in {} ms", duration);
+ 
+         if !args.certs_dir.exists() {
+             fs::create_dir(&args.certs_dir).context("Could not create certs folder")?;
+diff --git a/src/report.rs b/src/report.rs
+index 4531b46..e7dcd0c 100644
+--- a/src/report.rs
++++ b/src/report.rs
+@@ -13,6 +13,8 @@ use anyhow::{anyhow, Result};
+ use rand::{thread_rng, RngCore};
+ use sev::firmware::guest::{AttestationReport, Firmware};
+ 
++use std::time::Instant;
++
+ // Read a bin-formatted attestation report.
+ pub fn read_report(att_report_path: PathBuf) -> Result<AttestationReport, anyhow::Error> {
+     let attestation_file = fs::File::open(att_report_path)?;
+@@ -115,8 +117,10 @@ pub fn get_report(args: ReportArgs, hv: bool) -> Result<()> {
+         Some(bytes)
+     };
  
 +    let start_time = Instant::now();
-     let status = match snpguest.cmd {
-         SnpGuestCmd::Report(args) => report::get_report(args, hv),
-         SnpGuestCmd::Certificates(args) => certs::get_ext_certs(args),
-@@ -82,6 +84,7 @@ fn main() -> Result<()> {
-         SnpGuestCmd::Key(args) => key::get_derived_key(args),
-         SnpGuestCmd::Ok => ok::cmd(snpguest.quiet),
-     };
+     let report = request_hardware_report(data, args.vmpl)?;
+-
 +    let duration = start_time.elapsed().as_millis();
++    println!("Report generation executed in {} ms", duration);
+     /*
+      * Serialize and write attestation report.
+      */
+diff --git a/src/verify.rs b/src/verify.rs
+index 79e8a63..ab4e098 100644
+--- a/src/verify.rs
++++ b/src/verify.rs
+@@ -13,6 +13,8 @@ use std::{
+ use openssl::{ecdsa::EcdsaSig, sha::Sha384};
+ use sev::certs::snp::Chain;
  
-     if let Err(ref e) = status {
-         if !snpguest.quiet {
-@@ -92,5 +95,9 @@ fn main() -> Result<()> {
-         }
-     }
- 
-+    if !snpguest.quiet {
-+        println!("Command executed in {} ms", duration);
-+    }
++use std::time::Instant;
 +
-     status
+ #[derive(Subcommand)]
+ pub enum VerifyCmd {
+     /// Verify the certificate chain.
+@@ -75,6 +77,7 @@ mod certificate_chain {
+         }
+         .try_into()?;
+ 
++        let start_time = Instant::now();
+         let ark = cert_chain.ca.ark;
+         let ask = cert_chain.ca.ask;
+         let vek = cert_chain.vek;
+@@ -138,6 +141,8 @@ mod certificate_chain {
+                 _ => return Err(anyhow::anyhow!("Failed to verify VEK certificate: {:?}", e)),
+             },
+         }
++        let duration = start_time.elapsed().as_millis();
++        println!("Verify Certs executed in {} ms", duration);
+         Ok(())
+     }
  }
+@@ -391,6 +396,7 @@ mod attestation {
+         // Get VEK and grab its public key
+         let vek = convert_path_to_cert(&vek_path, vek_type)?;
+ 
++        let start_time = Instant::now();
+         if args.tcb || args.signature {
+             if args.tcb {
+                 verify_attestation_tcb(vek.clone(), att_report, quiet)?;
+@@ -402,6 +408,8 @@ mod attestation {
+             verify_attestation_tcb(vek.clone(), att_report, quiet)?;
+             verify_attestation_signature(vek, att_report, quiet)?;
+         }
++        let duration = start_time.elapsed().as_millis();
++        println!("Verify attestation executed in {} ms", duration);
+ 
+         Ok(())
+     }

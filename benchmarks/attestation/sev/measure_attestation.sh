@@ -41,23 +41,23 @@ do
     for (( i=1; i<=repeats; i++ ))
     do
         output_report=$(${SNPGUEST} report $ATT_DIR/attestation-report.bin $ATT_DIR/attestation-request-data --random)
-        time_report=$(echo "$output_report" | grep "Command executed in" | awk '{print $4}')
+        time_report=$(echo "$output_report" | grep "Report generation executed in" | awk '{print $5}')
         total_time_report[$cert_type]=$((total_time_report[$cert_type] + time_report))
 
         output_fetch_ca=$(${SNPGUEST} fetch ca $cert_type genoa $ATT_DIR/${cert_type}-certs-kds --endorser vcek)
-        time_fetch_ca=$(echo "$output_fetch_ca" | grep "Command executed in" | awk '{print $4}')
+        time_fetch_ca=$(echo "$output_fetch_ca" | grep "Fetch CA executed in" | awk '{print $5}')
         total_time_fetch_ca[$cert_type]=$((total_time_fetch_ca[$cert_type] + time_fetch_ca))
 
         output_fetch_vcek=$(${SNPGUEST} fetch vcek $cert_type genoa $ATT_DIR/${cert_type}-certs-kds $ATT_DIR/attestation-report.bin)
-        time_fetch_vcek=$(echo "$output_fetch_vcek" | grep "Command executed in" | awk '{print $4}')
+        time_fetch_vcek=$(echo "$output_fetch_vcek" | grep "CFetch VCEK executed in" | awk '{print $5}')
         total_time_fetch_vcek[$cert_type]=$((total_time_fetch_vcek[$cert_type] + time_fetch_vcek))
 
         output_verify_certs=$(${SNPGUEST} verify certs $ATT_DIR/${cert_type}-certs-kds)
-        time_verify_certs=$(echo "$output_verify_certs" | grep "Command executed in" | awk '{print $4}')
+        time_verify_certs=$(echo "$output_verify_certs" | grep "Verify Certs executed in" | awk '{print $5}')
         total_time_verify_certs[$cert_type]=$((total_time_verify_certs[$cert_type] + time_verify_certs))
 
         output_verify_attestation=$(${SNPGUEST} verify attestation $ATT_DIR/${cert_type}-certs-kds $ATT_DIR/attestation-report.bin)
-        time_verify_attestation=$(echo "$output_verify_attestation" | grep "Command executed in" | awk '{print $4}')
+        time_verify_attestation=$(echo "$output_verify_attestation" | grep "Verify attestation executed in" | awk '{print $5}')
         total_time_verify_attestation[$cert_type]=$((total_time_verify_attestation[$cert_type] + time_verify_attestation))
         
         # To avoid a potential rate-limit from the AMD service
