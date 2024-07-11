@@ -72,7 +72,16 @@ def load_data(name):
 
 
 @task
-def plot_vmexit(ctx: Any, vm="amd", cvm="snp", outdir="plot"):
+def plot_vmexit(ctx: Any, cvm="snp", outdir="plot"):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
     vm_data = load_data(vm)
     cvm_data = load_data(cvm)
     print(vm_data)
@@ -102,7 +111,7 @@ def plot_vmexit(ctx: Any, vm="amd", cvm="snp", outdir="plot"):
     ]
 
     data = pd.DataFrame(
-        {f"{vm}": vm_val, f"{cvm}": cvm_val, f"{cvm}*": cvm_opt_val}, index=index
+        {f"{vm_label}": vm_val, f"{cvm_label}": cvm_val, f"{cvm_label}*": cvm_opt_val}, index=index
     )
 
     # create bar plot

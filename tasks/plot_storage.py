@@ -462,7 +462,6 @@ def plot_latency(df, outdir, device=""):
 @task
 def plot_fio(
     ctx: Any,
-    vm="amd",
     cvm="snp",
     size="medium",
     aio="native",
@@ -470,9 +469,18 @@ def plot_fio(
     outdir="plot",
     device="nvme0n1",
 ):
-    vm_data = read_result(f"{vm}-direct-{size}{device}-{aio}", "vm", jobfile)
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
+    vm_data = read_result(f"{vm}-direct-{size}{device}-{aio}", vm_label, jobfile)
     swiotlb_data = read_result(f"{vm}-direct-{size}{device}-{aio}-swiotlb", "swiotlb", jobfile)
-    cvm_data = read_result(f"{cvm}-direct-{size}{device}-{aio}", "td", jobfile)
+    cvm_data = read_result(f"{cvm}-direct-{size}{device}-{aio}", cvm_label, jobfile)
 
     # labels = [vm, "swiotlb", cvm]
     # labels = ["vm", "swiotlb", "td"]

@@ -220,29 +220,39 @@ def plot_clustered_stacked(
 @task
 def plot_boottime(
     ctx: Any,
-    vm: str = "amd",
     cvm: str = "snp",
     prealloc: bool = True,
     outdir: str = "plot",
     sizes: list = [],
+    labels: list = [],
 ) -> None:
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
     # to change sizes, use `--sizes` option multiple times. e.g.,
     # % inv boottime.plot-boottime --sizes small --sizes medium --sizes large
     if len(sizes) == 0:
         sizes = ["small", "medium", "large", "numa"]
+        labels = ["small", "medium", "large", "xlarge"]
     print(sizes)
     vm_ = {}
     cvm_ = {}
     p = ""
     if not prealloc:
         p = "-no-prealloc"
-    for size in sizes:
-        vm_[size] = load_data(f"{vm}-direct-{size}")
-        cvm_[size] = load_data(f"{cvm}-direct-{size}{p}")
-    df = create_df(vm_, cvm_, sizes)
+    for size, label in zip(sizes, labels):
+        vm_[label] = load_data(f"{vm}-direct-{size}")
+        cvm_[label] = load_data(f"{cvm}-direct-{size}{p}")
+    df = create_df(vm_, cvm_, labels)
     print(df)
 
-    ax = plot_clustered_stacked(df, [vm, cvm], color=palette)
+    ax = plot_clustered_stacked(df, [vm_label, cvm_label], color=palette)
 
     ax.set_ylabel("Time (s)")
     ax.set_xlabel("")

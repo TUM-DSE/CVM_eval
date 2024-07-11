@@ -107,11 +107,17 @@ def load_data(vm: str, cvm: str, rel=True, size="numa") -> pd.DataFrame:
 @task
 def plot_npb_rel(
     ctx: Any,
-    vm: str = "amd",
     cvm: str = "snp",
     outdir: str = "./plot",
     name: str = "npb_rel.pdf",
 ):
+    if cvm == "snp":
+        vm = "amd"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        cvm_label = "td"
+
     data = load_data(vm, cvm)
 
     # fig, ax = plt.subplots(figsize=(4.5, 4.0))
@@ -122,7 +128,7 @@ def plot_npb_rel(
         data["relative"],
         color=palette,
         edgecolor="black",
-        label=cvm,
+        label=cvm_label,
     )
 
     # draw a line at 1.0 to indicate the baseline
@@ -161,15 +167,23 @@ def plot_npb_rel(
 @task
 def plot_npb(
     ctx: Any,
-    vm: str = "amd",
     cvm: str = "snp",
     outdir: str = "./plot",
-    outname: str = "npb.pdf",
+    outname: str = "npb",
     size: str = "numa",
 ):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
     df = load_data(vm, cvm, rel=False, size=size)
     df["identifier"] = df["identifier"].map(
-        {f"{vm}-direct-{size}": vm, f"{cvm}-direct-{size}": cvm}
+        {f"{vm}-direct-{size}": vm_label, f"{cvm}-direct-{size}": cvm_label}
     )
     df["benchmark_id"] = df["benchmark_id"].map(
         {i: j for i, j in zip(BENCHMARK_ID, LABELS)}
@@ -219,6 +233,6 @@ def plot_npb(
 
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    save_path = outdir / outname
+    save_path = outdir / f"{outname}_{size}.pdf"
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")

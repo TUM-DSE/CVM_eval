@@ -240,7 +240,6 @@ def parse_nginx_result(name: str, label: str, date=None) -> pd.DataFrame:
 @task
 def plot_iperf(
     ctx,
-    vm="amd",
     cvm="snp",
     mode="udp",
     vhost=False,
@@ -249,6 +248,15 @@ def plot_iperf(
     outname=None,
     size="medium",
 ):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
     def get_name(name, vhost=False, mq=mq, swiotlb=False):
         n = f"{name}-direct-{size}"
         if vhost:
@@ -265,12 +273,12 @@ def plot_iperf(
     #df = pd.concat([df1, df2])
 
     dfs = []
-    dfs.append(parse_iperf_result(get_name(vm), "vm", mode))
+    dfs.append(parse_iperf_result(get_name(vm), vm_label, mode))
     dfs.append(parse_iperf_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb", mode))
     dfs.append(parse_iperf_result(get_name(vm, vhost=True), f"vhost", mode))
     dfs.append(parse_iperf_result(get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", mode))
-    dfs.append(parse_iperf_result(get_name(cvm), "td", mode))
-    dfs.append(parse_iperf_result(get_name(cvm, vhost=True), f"td-vhost", mode))
+    dfs.append(parse_iperf_result(get_name(cvm), cvm_label, mode))
+    dfs.append(parse_iperf_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", mode))
     df = pd.concat(dfs)
     print(df)
 
@@ -332,7 +340,6 @@ def plot_iperf(
 @task
 def plot_ping(
     ctx,
-    vm="amd",
     cvm="snp",
     vhost=False,
     mq=False,
@@ -340,6 +347,15 @@ def plot_ping(
     outname=None,
     size="medium",
 ):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
     def get_name(name, vhost=False, mq=mq, swiotlb=False):
         n = f"{name}-direct-{size}"
         if vhost:
@@ -351,12 +367,12 @@ def plot_ping(
         return n
 
     dfs = []
-    dfs.append(parse_ping_result(get_name(vm), "vm"))
+    dfs.append(parse_ping_result(get_name(vm), vm_label))
     dfs.append(parse_ping_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb"))
     dfs.append(parse_ping_result(get_name(vm, vhost=True), f"vhost"))
     dfs.append(parse_ping_result(get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb"))
-    dfs.append(parse_ping_result(get_name(cvm), "td"))
-    dfs.append(parse_ping_result(get_name(cvm, vhost=True), f"td-vhost"))
+    dfs.append(parse_ping_result(get_name(cvm), cvm_label))
+    dfs.append(parse_ping_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost"))
     df = pd.concat(dfs)
     print(df)
 
@@ -418,7 +434,6 @@ def plot_ping(
 @task
 def plot_redis(
     ctx,
-    vm="amd",
     cvm="snp",
     vhost=False,
     mq=False,
@@ -426,6 +441,15 @@ def plot_redis(
     outname=None,
     size="medium",
 ):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
     def get_name(name, vhost=False, mq=mq):
         n = f"{name}-direct-{size}"
         if vhost:
@@ -435,10 +459,10 @@ def plot_redis(
         return n
 
     dfs = []
-    dfs.append(parse_memtier_result(get_name(vm), "vm", "redis"))
-    dfs.append(parse_memtier_result(get_name(vm, vhost=True), f"vm-vhost", "redis"))
-    dfs.append(parse_memtier_result(get_name(cvm), "td", "redis"))
-    dfs.append(parse_memtier_result(get_name(cvm, vhost=True), f"td-vhost", "redis"))
+    dfs.append(parse_memtier_result(get_name(vm), vm_label, "redis"))
+    dfs.append(parse_memtier_result(get_name(vm, vhost=True), f"vhost", "redis"))
+    dfs.append(parse_memtier_result(get_name(cvm), cvm_label, "redis"))
+    dfs.append(parse_memtier_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", "redis"))
     df = pd.concat(dfs)
     print(df)
 
@@ -498,7 +522,6 @@ def plot_redis(
 @task
 def plot_memcached(
     ctx,
-    vm="amd",
     cvm="snp",
     vhost=False,
     mq=False,
@@ -506,6 +529,15 @@ def plot_memcached(
     outname=None,
     size="medium",
 ):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
     def get_name(name, vhost=False, mq=mq):
         n = f"{name}-direct-{size}"
         if vhost:
@@ -515,10 +547,10 @@ def plot_memcached(
         return n
 
     dfs = []
-    dfs.append(parse_memtier_result(get_name(vm), "vm", "memcached"))
-    dfs.append(parse_memtier_result(get_name(vm, vhost=True), f"vm-vhost", "memcached"))
-    dfs.append(parse_memtier_result(get_name(cvm), "td", "memcached"))
-    dfs.append(parse_memtier_result(get_name(cvm, vhost=True), f"td-vhost", "memcached"))
+    dfs.append(parse_memtier_result(get_name(vm), vm_label, "memcached"))
+    dfs.append(parse_memtier_result(get_name(vm, vhost=True), f"vhost", "memcached"))
+    dfs.append(parse_memtier_result(get_name(cvm), cvm_label, "memcached"))
+    dfs.append(parse_memtier_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", "memcached"))
     df = pd.concat(dfs)
     print(df)
 
@@ -578,7 +610,6 @@ def plot_memcached(
 @task
 def plot_nginx(
     ctx,
-    vm="amd",
     cvm="snp",
     vhost=False,
     mq=False,
@@ -586,6 +617,15 @@ def plot_nginx(
     outname=None,
     size="medium",
 ):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
     def get_name(name, vhost=False, mq=mq):
         n = f"{name}-direct-{size}"
         if vhost:
@@ -595,10 +635,10 @@ def plot_nginx(
         return n
 
     dfs = []
-    dfs.append(parse_nginx_result(get_name(vm), "vm"))
-    dfs.append(parse_nginx_result(get_name(vm, vhost=True), f"vm-vhost"))
-    dfs.append(parse_nginx_result(get_name(cvm), "td"))
-    dfs.append(parse_nginx_result(get_name(cvm, vhost=True), f"td-vhost"))
+    dfs.append(parse_nginx_result(get_name(vm), vm_label))
+    dfs.append(parse_nginx_result(get_name(vm, vhost=True), f"vhost"))
+    dfs.append(parse_nginx_result(get_name(cvm), cvm_label))
+    dfs.append(parse_nginx_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost"))
     ## merge df using name as key
     df = pd.concat(dfs)
     print(df)

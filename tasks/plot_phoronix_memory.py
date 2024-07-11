@@ -147,12 +147,20 @@ def get_file(name: str, date=None):
 @task
 def plot_phoronix_memory(
     ctx: Any,
-    vm: str = "amd",
     cvm: str = "snp",
     size="medium",
     outdir: str = "./plot",
-    name: str = "memory.pdf",
+    name: str = "memory",
 ):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
     vmfile = get_file(f"{vm}-direct-{size}")
     cvmfile = get_file(f"{cvm}-direct-{size}")
     data = load_data(vmfile, cvmfile)
@@ -165,7 +173,7 @@ def plot_phoronix_memory(
         data["relative"],
         color=palette,
         edgecolor="black",
-        label=f"{cvm}",
+        label=f"{cvm_label}",
     )
 
     # draw a line at 1.0 to indicate the baseline
@@ -196,6 +204,6 @@ def plot_phoronix_memory(
 
     outdir = Path(outdir)
     outdir.mkdir(exist_ok=True, parents=True)
-    outpath = outdir / name
+    outpath = outdir / f"{name}_{size}.pdf"
     plt.savefig(outpath, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"save {outpath}")

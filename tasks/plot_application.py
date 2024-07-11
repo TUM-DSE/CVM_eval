@@ -192,42 +192,52 @@ def parse_sqlite_result(
 @task
 def plot_application(
     ctx,
-    vm="amd",
     cvm="snp",
     outdir="plot",
     outname="application.pdf",
     sizes=[],
+    labels=[],
 ):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
     if len(sizes) == 0:
         sizes = ["small", "medium", "large", "numa"]
+        labels = ["small", "medium", "large", "xlarge"]
 
     # create a data frame like
     # | VM | Size | Application | Time |
     # |----|------|-------------|------|
     # |    |      |             |      |
     data = []
-    for vmname in [vm, cvm]:
-        for size in sizes:
+    for vmname, vmlabel in zip([vm, cvm], [vm_label, cvm_label]):
+        for size, label in zip(sizes, labels):
             data.append(
                 {
-                    "VM": vmname,
-                    "Size": size,
+                    "VM": vmlabel,
+                    "Size": label,
                     "Application": "Blender",
                     "Time": parse_blender_result(f"{vmname}-direct-{size}"),
                 },
             )
             data.append(
                 {
-                    "VM": vmname,
-                    "Size": size,
+                    "VM": vmlabel,
+                    "Size": label,
                     "Application": "Tensorflow",
                     "Time": parse_tensorflow_result(f"{vmname}-direct-{size}"),
                 },
             )
             data.append(
                 {
-                    "VM": vmname,
-                    "Size": size,
+                    "VM": vmlabel,
+                    "Size": label,
                     "Application": "Pytorch",
                     "Time": parse_pytorch_result(f"{vmname}-direct-{size}"),
                 },
@@ -331,7 +341,6 @@ def plot_application(
 @task
 def plot_sqlite(
     ctx,
-    vm="amd",
     cvm="snp",
     outdir="plot",
     outname="sqlite",
@@ -339,10 +348,19 @@ def plot_sqlite(
     aio="native",
     device="nvme0n1",
 ):
-    vm_df = parse_sqlite_result(f"{vm}-direct-{size}{device}-{aio}", label=vm)
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
+    vm_df = parse_sqlite_result(f"{vm}-direct-{size}{device}-{aio}", label=vm_label)
     swiotlb_df = parse_sqlite_result(f"{vm}-direct-{size}{device}-{aio}-swiotlb",
                                      label="swiotlb")
-    cvm_df = parse_sqlite_result(f"{cvm}-direct-{size}{device}-{aio}", label=cvm)
+    cvm_df = parse_sqlite_result(f"{cvm}-direct-{size}{device}-{aio}", label=cvm_label)
     df = pd.concat([vm_df, swiotlb_df, cvm_df])
 
     print(df)
