@@ -1,5 +1,5 @@
 diff --git a/src/fetch.rs b/src/fetch.rs
-index e37b492..4e4aadb 100644
+index e37b492..b10b613 100644
 --- a/src/fetch.rs
 +++ b/src/fetch.rs
 @@ -13,6 +13,8 @@ use sev::firmware::host::CertType;
@@ -18,8 +18,8 @@ index e37b492..4e4aadb 100644
 +        let start_time = Instant::now();
          // Get certs from kds
          let certificates = request_ca_kds(args.processor_model, &args.endorser)?;
-+        let duration = start_time.elapsed().as_millis();
-+        println!("Fetch CA executed in {} ms", duration);
++        let duration = start_time.elapsed().as_micros();
++        println!("Fetch CA executed in {} us", duration);
  
          // Create certs directory if missing
          if !args.certs_dir.exists() {
@@ -30,13 +30,13 @@ index e37b492..4e4aadb 100644
 +        let start_time = Instant::now();
          // Request vcek
          let vcek = request_vcek_kds(args.processor_model, args.att_report_path)?;
-+        let duration = start_time.elapsed().as_millis();
-+        println!("Fetch VCEK executed in {} ms", duration);
++        let duration = start_time.elapsed().as_micros();
++        println!("Fetch VCEK executed in {} us", duration);
  
          if !args.certs_dir.exists() {
              fs::create_dir(&args.certs_dir).context("Could not create certs folder")?;
 diff --git a/src/report.rs b/src/report.rs
-index 4531b46..e7dcd0c 100644
+index 4531b46..0f308c4 100644
 --- a/src/report.rs
 +++ b/src/report.rs
 @@ -13,6 +13,8 @@ use anyhow::{anyhow, Result};
@@ -55,13 +55,13 @@ index 4531b46..e7dcd0c 100644
 +    let start_time = Instant::now();
      let report = request_hardware_report(data, args.vmpl)?;
 -
-+    let duration = start_time.elapsed().as_millis();
-+    println!("Report generation executed in {} ms", duration);
++    let duration = start_time.elapsed().as_micros();
++    println!("Report generation executed in {} us", duration);
      /*
       * Serialize and write attestation report.
       */
 diff --git a/src/verify.rs b/src/verify.rs
-index 79e8a63..ab4e098 100644
+index 79e8a63..b48748b 100644
 --- a/src/verify.rs
 +++ b/src/verify.rs
 @@ -13,6 +13,8 @@ use std::{
@@ -85,8 +85,8 @@ index 79e8a63..ab4e098 100644
                  _ => return Err(anyhow::anyhow!("Failed to verify VEK certificate: {:?}", e)),
              },
          }
-+        let duration = start_time.elapsed().as_millis();
-+        println!("Verify Certs executed in {} ms", duration);
++        let duration = start_time.elapsed().as_micros();
++        println!("Verify Certs executed in {} us", duration);
          Ok(())
      }
  }
@@ -102,8 +102,8 @@ index 79e8a63..ab4e098 100644
              verify_attestation_tcb(vek.clone(), att_report, quiet)?;
              verify_attestation_signature(vek, att_report, quiet)?;
          }
-+        let duration = start_time.elapsed().as_millis();
-+        println!("Verify attestation executed in {} ms", duration);
++        let duration = start_time.elapsed().as_micros();
++        println!("Verify attestation executed in {} us", duration);
  
          Ok(())
      }

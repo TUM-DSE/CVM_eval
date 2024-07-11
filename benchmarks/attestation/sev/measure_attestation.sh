@@ -73,7 +73,7 @@ do
 done
 
 # Print the results in a table format
-echo -e "\nAverage Execution Times (in milliseconds) for $repeats repeats:"
+echo -e "\nAverage Execution Times (in microseconds) for $repeats repeats:"
 printf "%-30s %-10s %-10s\n" "Command" "DER" "PEM"
 printf "%-30s %-10s %-10s\n" "-----------------------------" "----------" "----------"
 printf "%-30s %-10d %-10d\n" "snpguest report" ${avg_time_report[der]} ${avg_time_report[pem]}
