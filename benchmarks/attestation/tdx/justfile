@@ -1,0 +1,22 @@
+# vim: set ft=make et :
+
+prepare:
+  #!/usr/bin/env bash
+  cd /root/
+  if [ ! -d tdx ]
+  then
+    git clone https://github.com/canonical/tdx.git
+  fi
+  cd /root/tdx
+  # git checkout c77442616fc4220328e24d41c252922cd8354c35
+  git checkout 6499bb1988d78c0c236921c67aa8d5926f00c49f
+  cd /root/tdx/attestation
+  ./setup-attestation-guest.sh
+  # copy the test_tdx_attest.c file with the embedded measurements' code
+  cp /share/benchmarks/attestation/tdx/test_tdx_attest.c /usr/share/doc/libtdx-attest-dev/examples/
+
+run:
+  chmod +x /share/benchmarks/attestation/tdx/measure_attestation.sh
+  bash /share/benchmarks/attestation/tdx/measure_attestation.sh
+  # copy out the generated quote for the verification measurements
+  cp /usr/share/doc/libtdx-attest-dev/examples/quote.dat /share/benchmarks/attestation/tdx/
