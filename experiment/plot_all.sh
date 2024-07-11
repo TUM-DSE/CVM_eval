@@ -40,10 +40,10 @@ inv network.plot-ping --cvm $CVM
 inv network.plot-ping --cvm $CVM --mq
 inv network.plot-iperf --cvm $CVM --mode udp
 inv network.plot-iperf --cvm $CVM --mode tcp
-inv network.plot-iperf --cvm $CVM --mode tcp --pkt 128k
+inv network.plot-iperf --cvm $CVM --mode tcp --pkt 128K
 inv network.plot-iperf --cvm $CVM --mode udp --mq
 inv network.plot-iperf --cvm $CVM --mode tcp --mq
-inv network.plot-iperf --cvm $CVM --mode tcp --mq --pkt 128k
+inv network.plot-iperf --cvm $CVM --mode tcp --mq --pkt 128K
 
 inv network.plot-nginx --cvm $CVM
 inv network.plot-redis --cvm $CVM
