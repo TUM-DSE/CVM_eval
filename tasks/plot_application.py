@@ -30,6 +30,7 @@ FONTSIZE = 9
 
 palette = sns.color_palette("pastel")
 hatches = ["", "//"]
+hatches2 = ["", "", "//"]
 
 BENCH_RESULT_DIR = Path("./bench-result/application")
 
@@ -386,7 +387,7 @@ def plot_sqlite(
     bars = ax.patches
     hs = []
     num_x = 4
-    for hatch in hatches:
+    for hatch in hatches2:
         hs.extend([hatch] * num_x)
     num_legend = len(bars) - len(hs)
     hs.extend([""] * num_legend)

@@ -1,15 +1,18 @@
 #!/bin/bash
+
 set -x
+
+# auto detect if possible
+lscpu | grep -q AMD-V > /dev/null
+if [ $? -eq 0 ]; then
+    CVM=${CVM:-"snp"}
+else
+    CVM=${CVM:-"tdx"}
+fi
+
 set -e
 set -u
 set -o pipefail
-
-lscpu | grep -q AMD-V > /dev/null
-if [ $? -eq 0 ]; then
-    CVM="snp"
-else
-    CVM="tdx"
-fi
 
 inv boottime.plot-boottime --cvm $CVM
 if [ "$CVM" == "tdx" ]; then
@@ -37,8 +40,10 @@ inv network.plot-ping --cvm $CVM
 inv network.plot-ping --cvm $CVM --mq
 inv network.plot-iperf --cvm $CVM --mode udp
 inv network.plot-iperf --cvm $CVM --mode tcp
+inv network.plot-iperf --cvm $CVM --mode tcp --pkt 128k
 inv network.plot-iperf --cvm $CVM --mode udp --mq
 inv network.plot-iperf --cvm $CVM --mode tcp --mq
+inv network.plot-iperf --cvm $CVM --mode tcp --mq --pkt 128k
 
 inv network.plot-nginx --cvm $CVM
 inv network.plot-redis --cvm $CVM

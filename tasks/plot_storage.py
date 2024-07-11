@@ -33,7 +33,8 @@ figwidth_full = 7
 FONTSIZE = 9
 
 palette = sns.color_palette("pastel")
-hatches = ["", "//", "x", "//x"]
+#hatches = ["", "//", "x", "//x"]
+hatches = ["", "", "//"]
 
 
 def read_json(file):

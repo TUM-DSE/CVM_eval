@@ -31,18 +31,21 @@ FONTSIZE = 9
 palette = sns.color_palette("pastel")
 #hatches = ["", "//"]
 hatches = ["", "", "", "", "//", "////"]
+hatches2 = ["", "", "//", "////"]
 
 BENCH_RESULT_DIR = Path("./bench-result/network")
 
 
 # bench mark path:
 # ./bench-result/network/iperf/{name}/{date}
-def parse_iperf_result(name: str, label: str, mode: str, date=None) -> pd.DataFrame:
+def parse_iperf_result(name: str, label: str, mode: str, date=None, pkt=None) -> pd.DataFrame:
     # create df like the following
     # | VM | pkt size | throughput |
     # |----|----------|------------|
     # |    |          |            |
-    if mode == "udp":
+    if pkt is not None:
+        pktsize = [pkt]
+    elif mode == "udp":
         pktsize = [64, 128, 256, 512, 1024, 1460]
     elif mode == "tcp":
         pktsize = [64, 128, 256, 512, 1024, "32K", "128K"]
@@ -82,10 +85,13 @@ def parse_iperf_result(name: str, label: str, mode: str, date=None) -> pd.DataFr
     return df
 
 
-def parse_ping_result(name: str, label: str, date=None) -> pd.DataFrame:
-    pktsize = [64, 128, 256, 512, 1024, 1460]
-    # pktsize_actual = [56, 120, 248, 504, 1016, 1462]
-    pktsize_actual = [64, 128, 256, 512, 1024, 1460]
+def parse_ping_result(name: str, label: str, date=None, all=False) -> pd.DataFrame:
+    if all:
+        pktsize = [64, 128, 256, 512, 1024, 1460]
+        pktsize_actual = [64, 128, 256, 512, 1024, 1460]
+    else:
+        pktsize = [64]
+        pktsize_actual = [64]
     pktsize_ = []
     lats = []
 
@@ -247,6 +253,7 @@ def plot_iperf(
     outdir="plot",
     outname=None,
     size="medium",
+    pkt=None,
 ):
     if cvm == "snp":
         vm = "amd"
@@ -273,12 +280,12 @@ def plot_iperf(
     #df = pd.concat([df1, df2])
 
     dfs = []
-    dfs.append(parse_iperf_result(get_name(vm), vm_label, mode))
-    dfs.append(parse_iperf_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb", mode))
-    dfs.append(parse_iperf_result(get_name(vm, vhost=True), f"vhost", mode))
-    dfs.append(parse_iperf_result(get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", mode))
-    dfs.append(parse_iperf_result(get_name(cvm), cvm_label, mode))
-    dfs.append(parse_iperf_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", mode))
+    dfs.append(parse_iperf_result(get_name(vm), vm_label, mode, pkt=pkt))
+    dfs.append(parse_iperf_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb", mode, pkt=pkt))
+    dfs.append(parse_iperf_result(get_name(vm, vhost=True), f"vhost", mode, pkt=pkt))
+    dfs.append(parse_iperf_result(get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", mode, pkt=pkt))
+    dfs.append(parse_iperf_result(get_name(cvm), cvm_label, mode, pkt=pkt))
+    dfs.append(parse_iperf_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", mode, pkt=pkt))
     df = pd.concat(dfs)
     print(df)
 
@@ -293,7 +300,11 @@ def plot_iperf(
         palette=palette,
         edgecolor="black",
     )
-    ax.set_xlabel("Packet Size (byte)")
+    if pkt is not None:
+        ax.set_xticklabels([])
+        ax.set_xlabel(f"Buffer Size {pkt} byte")
+    else:
+        ax.set_xlabel("Packet Size (byte)")
     ax.set_ylabel("Throughput (Gbps)")
     ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
 
@@ -328,6 +339,8 @@ def plot_iperf(
             outname += "_vhost"
         if mq:
             outname += "_mq"
+        if pkt is not None:
+            outname += f"_{pkt}"
         outname += "_throughput.pdf"
 
     outdir = Path(outdir)
@@ -346,6 +359,7 @@ def plot_ping(
     outdir="plot",
     outname=None,
     size="medium",
+    all=False,
 ):
     if cvm == "snp":
         vm = "amd"
@@ -367,12 +381,12 @@ def plot_ping(
         return n
 
     dfs = []
-    dfs.append(parse_ping_result(get_name(vm), vm_label))
-    dfs.append(parse_ping_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb"))
-    dfs.append(parse_ping_result(get_name(vm, vhost=True), f"vhost"))
-    dfs.append(parse_ping_result(get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb"))
-    dfs.append(parse_ping_result(get_name(cvm), cvm_label))
-    dfs.append(parse_ping_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost"))
+    dfs.append(parse_ping_result(get_name(vm), vm_label, all=all))
+    dfs.append(parse_ping_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb", all=all))
+    dfs.append(parse_ping_result(get_name(vm, vhost=True), f"vhost", all=all))
+    dfs.append(parse_ping_result(get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", all=all))
+    dfs.append(parse_ping_result(get_name(cvm), cvm_label, all=all))
+    dfs.append(parse_ping_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", all=all))
     df = pd.concat(dfs)
     print(df)
 
@@ -387,7 +401,11 @@ def plot_ping(
         palette=palette,
         edgecolor="black",
     )
-    ax.set_xlabel("Packet Size (byte)")
+    if not all:
+        ax.set_xticklabels([])
+        ax.set_xlabel("Ping (64 byte)")
+    else:
+        ax.set_xlabel("Packet Size (byte)")
     ax.set_ylabel("Latency (ms)")
     ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
 
@@ -411,7 +429,7 @@ def plot_ping(
 
     # annotate values with .2f
     for container in ax.containers:
-        ax.bar_label(container, fmt="%.2f")
+        ax.bar_label(container, fmt="%.3f")
 
     plt.tight_layout()
     plt.legend(fontsize=5)
@@ -422,6 +440,8 @@ def plot_ping(
             outname += "_vhost"
         if mq:
             outname += "_mq"
+        if all:
+            outname += "_all"
         outname += ".pdf"
 
     outdir = Path(outdir)
@@ -487,7 +507,7 @@ def plot_redis(
     bars = ax.patches
     hs = []
     num_x = 4
-    for hatch in hatches:
+    for hatch in hatches2:
         hs.extend([hatch] * num_x)
     num_legend = len(bars) - len(hs)
     hs.extend([""] * num_legend)
@@ -575,7 +595,7 @@ def plot_memcached(
     bars = ax.patches
     hs = []
     num_x = 4
-    for hatch in hatches:
+    for hatch in hatches2:
         hs.extend([hatch] * num_x)
     num_legend = len(bars) - len(hs)
     hs.extend([""] * num_legend)
@@ -664,7 +684,7 @@ def plot_nginx(
     bars = ax.patches
     hs = []
     num_x = 2
-    for hatch in hatches:
+    for hatch in hatches2:
         hs.extend([hatch] * num_x)
     num_legend = len(bars) - len(hs)
     hs.extend([""] * num_legend)
