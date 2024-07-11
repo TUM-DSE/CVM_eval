@@ -32,7 +32,10 @@ figwidth_full = 7
 
 FONTSIZE = 9
 
-palette = sns.color_palette("pastel")
+pastel = sns.color_palette("pastel")
+vm_col = pastel[0]
+cvm_col = pastel[2]
+palette = [vm_col, cvm_col]
 hatches = ["", "//"]
 
 BENCHMARK_ID = [
@@ -63,8 +66,6 @@ LABELS = [
 ]
 
 assert len(BENCHMARK_ID) == len(LABELS)
-
-palette = sns.color_palette("pastel")
 
 BENCH_RESULT_DIR = Path("./bench-result/phoronix/")
 

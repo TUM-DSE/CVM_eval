@@ -28,10 +28,20 @@ figwidth_full = 7
 
 FONTSIZE = 9
 
-palette = sns.color_palette("pastel")
+pastel = sns.color_palette("pastel")
+#palette = sns.color_palette("pastel")
+vm_col = pastel[0]
+swiotlb_col = pastel[1]
+vhost_col = pastel[4]
+vshot_swiotlb_col = pastel[5]
+cvm_col = pastel[2]
+cvm_vhost_col = pastel[3]
+palette = [vm_col, swiotlb_col, vhost_col, vshot_swiotlb_col, cvm_col, cvm_vhost_col]
 #hatches = ["", "//"]
-hatches = ["", "", "", "", "//", "////"]
-hatches2 = ["", "", "//", "////"]
+hatches = ["", "", "", "", "//", "//"]
+
+palette2 = [vm_col, vhost_col, cvm_col, cvm_vhost_col]
+hatches2 = ["", "", "//", "//"]
 
 BENCH_RESULT_DIR = Path("./bench-result/network")
 
@@ -323,7 +333,8 @@ def plot_iperf(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
+    plt.legend(fontsize=5)
+    for patch in ax.get_legend().get_patches()[4:]:
         patch.set_hatch("//")
 
     # annotate values with .2f
@@ -331,7 +342,6 @@ def plot_iperf(
         ax.bar_label(container, fmt="%.2f", fontsize=5)
 
     plt.tight_layout()
-    plt.legend(fontsize=5)
 
     if outname is None:
         outname = f"iperf_{mode}"
@@ -424,7 +434,9 @@ def plot_ping(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
+    print(ax.get_legend().get_patches())
+    plt.legend(fontsize=5)
+    for patch in ax.get_legend().get_patches()[4:]:
         patch.set_hatch("//")
 
     # annotate values with .2f
@@ -432,7 +444,6 @@ def plot_ping(
         ax.bar_label(container, fmt="%.3f")
 
     plt.tight_layout()
-    plt.legend(fontsize=5)
 
     if outname is None:
         outname = f"ping"
@@ -493,7 +504,7 @@ def plot_redis(
         hue="name",
         data=df,
         ax=ax,
-        palette=palette,
+        palette=palette2,
         edgecolor="black",
     )
     ax.set_xlabel("")
@@ -515,7 +526,7 @@ def plot_redis(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
+    for patch in ax.get_legend().get_patches()[2:]:
         patch.set_hatch("//")
 
     # annotate values with .2f
@@ -581,7 +592,7 @@ def plot_memcached(
         hue="name",
         data=df,
         ax=ax,
-        palette=palette,
+        palette=palette2,
         edgecolor="black",
     )
     ax.set_xlabel("")
@@ -603,7 +614,8 @@ def plot_memcached(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
+    #for patch in ax.get_legend().get_patches()[1::2]:
+    for patch in ax.get_legend().get_patches()[2:]:
         patch.set_hatch("//")
 
     # annotate values with .2f
@@ -670,7 +682,7 @@ def plot_nginx(
         hue="name",
         data=df,
         ax=ax,
-        palette=palette,
+        palette=palette2,
         edgecolor="black",
     )
     ax.set_xlabel("")
@@ -692,7 +704,7 @@ def plot_nginx(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
+    for patch in ax.get_legend().get_patches()[2:]:
         patch.set_hatch("//")
 
     # annotate values with .2f

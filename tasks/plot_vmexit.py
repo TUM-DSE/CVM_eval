@@ -30,7 +30,11 @@ figwidth_full = 7
 
 FONTSIZE = 9
 
-palette = sns.color_palette("pastel")
+pastel = sns.color_palette("pastel")
+vm_col = pastel[0]
+cvm_col = pastel[2]
+cvm_opt_col = pastel[3]
+palette = [vm_col, cvm_col, cvm_opt_col]
 hatches = ["", "//", "x"]
 
 # bench mark path:

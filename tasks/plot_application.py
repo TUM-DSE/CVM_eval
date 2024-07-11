@@ -28,7 +28,12 @@ figwidth_full = 7
 
 FONTSIZE = 9
 
-palette = sns.color_palette("pastel")
+pastel = sns.color_palette("pastel")
+vm_col = pastel[0]
+swiotlb_col = pastel[1]
+cvm_col = pastel[2]
+palette = [vm_col, cvm_col]
+palette2 = [vm_col, swiotlb_col, cvm_col]
 hatches = ["", "//"]
 hatches2 = ["", "", "//"]
 
@@ -373,7 +378,7 @@ def plot_sqlite(
         hue="name",
         data=df,
         ax=ax,
-        palette=palette,
+        palette=palette2,
         edgecolor="black",
     )
     ax.set_xlabel("")
@@ -395,7 +400,7 @@ def plot_sqlite(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
+    for patch in ax.get_legend().get_patches()[2:]:
         patch.set_hatch("//")
 
     # annotate values with .2f

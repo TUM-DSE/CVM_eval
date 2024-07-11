@@ -32,7 +32,11 @@ figwidth_full = 7
 
 FONTSIZE = 9
 
-palette = sns.color_palette("pastel")
+pastel = sns.color_palette("pastel")
+vm_col = pastel[0]
+swiotlb_col = pastel[1]
+cvm_col = pastel[2]
+palette = [vm_col, swiotlb_col, cvm_col]
 #hatches = ["", "//", "x", "//x"]
 hatches = ["", "", "//"]
 
