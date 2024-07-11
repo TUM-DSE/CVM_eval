@@ -1,0 +1,21 @@
+diff --git a/tools/check/check.go b/tools/check/check.go
+index 67e5391..f922fc2 100644
+--- a/tools/check/check.go
++++ b/tools/check/check.go
+@@ -25,6 +25,8 @@ import (
+ 	"strconv"
+ 	"strings"
+ 	"time"
++	"net/http"
++	"crypto/tls"
+ 
+ 	"github.com/google/go-sev-guest/tools/lib/cmdline"
+ 	"github.com/google/go-tdx-guest/abi"
+@@ -366,6 +368,7 @@ func populateConfig() error {
+ }
+ 
+ func main() {
++	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+ 	logger.Init("", false, false, os.Stdout)
+ 	flag.Parse()
+ 	cmdline.Parse("auto")

@@ -2,16 +2,16 @@
 
 prepare:
   #!/usr/bin/env bash
-  cd /share/benchmarks/attestation
+  cd /share/benchmarks/attestation/sev/
   if [ ! -d snpguest ]
   then
     git clone https://github.com/virtee/snpguest.git
   fi
-  cd /share/benchmarks/attestation/snpguest
+  cd /share/benchmarks/attestation/sev/snpguest
   git checkout 0d77c10075c250c31219d8219b24eafcc428e2fb
   export RUST_BACKTRACE=1
   cargo build -r
 
 run:
-  chmod +x /share/benchmarks/attestation/measure_attestation.sh
-  bash /share/benchmarks/attestation/measure_attestation.sh
+  chmod +x /share/benchmarks/attestation/sev/measure_attestation.sh
+  bash /share/benchmarks/attestation/sev/measure_attestation.sh

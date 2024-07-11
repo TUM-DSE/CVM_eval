@@ -4,7 +4,7 @@
 repeats=10
 
 # snpguest executable path
-SNPGUEST="/share/benchmarks/attestation/snpguest/target/release/snpguest"
+SNPGUEST="/share/benchmarks/attestation/sev/snpguest/target/release/snpguest"
 
 # Directory for attestation files
 ATT_DIR="/root/attestation"
