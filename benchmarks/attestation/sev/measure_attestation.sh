@@ -4,7 +4,7 @@
 repeats=10
 
 # snpguest executable path
-SNPGUEST="/share/benchmarks/attestation/sev/snpguest/target/release/snpguest"
+SNPGUEST="/root/attestation/snpguest/target/release/snpguest"
 
 # Directory for attestation files
 ATT_DIR="/root/attestation"
@@ -27,6 +27,8 @@ measure_time() {
     echo $elapsed
 }
 
+num_fetch=0
+
 # Execute the commands for each certificate type
 for cert_type in "${cert_types[@]}"
 do      
@@ -40,35 +42,46 @@ do
     # Execute the commands $repeats times
     for (( i=1; i<=repeats; i++ ))
     do
-        time_report=$(measure_time $SNPGUEST report $ATT_DIR/attestation-report.bin $ATT_DIR/attestation-request-data --random)
+        output_report=$(${SNPGUEST} report $ATT_DIR/attestation-report.bin $ATT_DIR/attestation-request-data --random)
+        time_report=$(echo "$output_report" | grep "Report generation executed in" | awk '{print $5}')
         total_time_report[$cert_type]=$((total_time_report[$cert_type] + time_report))
 
-        time_fetch_ca=$(measure_time $SNPGUEST fetch ca $cert_type genoa $ATT_DIR/${cert_type}-certs-kds --endorser vcek)
-        total_time_fetch_ca[$cert_type]=$((total_time_fetch_ca[$cert_type] + time_fetch_ca))
+        if [ $i -le 1 ]; then
+            # only fetch CA and VCEK once
 
-        time_fetch_vcek=$(measure_time $SNPGUEST fetch vcek $cert_type genoa $ATT_DIR/${cert_type}-certs-kds $ATT_DIR/attestation-report.bin)
-        total_time_fetch_vcek[$cert_type]=$((total_time_fetch_vcek[$cert_type] + time_fetch_vcek))
+            output_fetch_ca=$(${SNPGUEST} fetch ca $cert_type genoa $ATT_DIR/${cert_type}-certs-kds --endorser vcek)
+            time_fetch_ca=$(echo "$output_fetch_ca" | grep "Fetch CA executed in" | awk '{print $5}')
+            total_time_fetch_ca[$cert_type]=$((total_time_fetch_ca[$cert_type] + time_fetch_ca))
 
-        time_verify_certs=$(measure_time $SNPGUEST verify certs $ATT_DIR/${cert_type}-certs-kds)
+            output_fetch_vcek=$(${SNPGUEST} fetch vcek $cert_type genoa $ATT_DIR/${cert_type}-certs-kds $ATT_DIR/attestation-report.bin)
+            time_fetch_vcek=$(echo "$output_fetch_vcek" | grep "Fetch VCEK executed in" | awk '{print $5}')
+            total_time_fetch_vcek[$cert_type]=$((total_time_fetch_vcek[$cert_type] + time_fetch_vcek))
+
+            num_fetch=$((num_fetch + 1))
+        fi
+
+        output_verify_certs=$(${SNPGUEST} verify certs $ATT_DIR/${cert_type}-certs-kds)
+        time_verify_certs=$(echo "$output_verify_certs" | grep "Verify Certs executed in" | awk '{print $5}')
         total_time_verify_certs[$cert_type]=$((total_time_verify_certs[$cert_type] + time_verify_certs))
 
-        time_verify_attestation=$(measure_time $SNPGUEST verify attestation $ATT_DIR/${cert_type}-certs-kds $ATT_DIR/attestation-report.bin)
+        output_verify_attestation=$(${SNPGUEST} verify attestation $ATT_DIR/${cert_type}-certs-kds $ATT_DIR/attestation-report.bin)
+        time_verify_attestation=$(echo "$output_verify_attestation" | grep "Verify attestation executed in" | awk '{print $5}')
         total_time_verify_attestation[$cert_type]=$((total_time_verify_attestation[$cert_type] + time_verify_attestation))
         
         # To avoid a potential rate-limit from the AMD service
-        sleep 1
+        sleep 10
     done
 
     # Calculate average times for each certificate type
     avg_time_report[$cert_type]=$((total_time_report[$cert_type] / repeats))
-    avg_time_fetch_ca[$cert_type]=$((total_time_fetch_ca[$cert_type] / repeats))
-    avg_time_fetch_vcek[$cert_type]=$((total_time_fetch_vcek[$cert_type] / repeats))
+    avg_time_fetch_ca[$cert_type]=$((total_time_fetch_ca[$cert_type] / num_fetch))
+    avg_time_fetch_vcek[$cert_type]=$((total_time_fetch_vcek[$cert_type] / num_fetch))
     avg_time_verify_certs[$cert_type]=$((total_time_verify_certs[$cert_type] / repeats))
     avg_time_verify_attestation[$cert_type]=$((total_time_verify_attestation[$cert_type] / repeats))
 done
 
 # Print the results in a table format
-echo -e "\nAverage Execution Times (in milliseconds) for $repeats repeats:"
+echo -e "\nAverage Execution Times (in microseconds) for $repeats repeats:"
 printf "%-30s %-10s %-10s\n" "Command" "DER" "PEM"
 printf "%-30s %-10s %-10s\n" "-----------------------------" "----------" "----------"
 printf "%-30s %-10d %-10d\n" "snpguest report" ${avg_time_report[der]} ${avg_time_report[pem]}
