@@ -40,23 +40,28 @@ do
     # Execute the commands $repeats times
     for (( i=1; i<=repeats; i++ ))
     do
-        time_report=$(measure_time $SNPGUEST report $ATT_DIR/attestation-report.bin $ATT_DIR/attestation-request-data --random)
+        output_report=$(${SNPGUEST} report $ATT_DIR/attestation-report.bin $ATT_DIR/attestation-request-data --random)
+        time_report=$(echo "$output_report" | grep "Command executed in" | awk '{print $4}')
         total_time_report[$cert_type]=$((total_time_report[$cert_type] + time_report))
 
-        time_fetch_ca=$(measure_time $SNPGUEST fetch ca $cert_type genoa $ATT_DIR/${cert_type}-certs-kds --endorser vcek)
+        output_fetch_ca=$(${SNPGUEST} fetch ca $cert_type genoa $ATT_DIR/${cert_type}-certs-kds --endorser vcek)
+        time_fetch_ca=$(echo "$output_fetch_ca" | grep "Command executed in" | awk '{print $4}')
         total_time_fetch_ca[$cert_type]=$((total_time_fetch_ca[$cert_type] + time_fetch_ca))
 
-        time_fetch_vcek=$(measure_time $SNPGUEST fetch vcek $cert_type genoa $ATT_DIR/${cert_type}-certs-kds $ATT_DIR/attestation-report.bin)
+        output_fetch_vcek=$(${SNPGUEST} fetch vcek $cert_type genoa $ATT_DIR/${cert_type}-certs-kds $ATT_DIR/attestation-report.bin)
+        time_fetch_vcek=$(echo "$output_fetch_vcek" | grep "Command executed in" | awk '{print $4}')
         total_time_fetch_vcek[$cert_type]=$((total_time_fetch_vcek[$cert_type] + time_fetch_vcek))
 
-        time_verify_certs=$(measure_time $SNPGUEST verify certs $ATT_DIR/${cert_type}-certs-kds)
+        output_verify_certs=$(${SNPGUEST} verify certs $ATT_DIR/${cert_type}-certs-kds)
+        time_verify_certs=$(echo "$output_verify_certs" | grep "Command executed in" | awk '{print $4}')
         total_time_verify_certs[$cert_type]=$((total_time_verify_certs[$cert_type] + time_verify_certs))
 
-        time_verify_attestation=$(measure_time $SNPGUEST verify attestation $ATT_DIR/${cert_type}-certs-kds $ATT_DIR/attestation-report.bin)
+        output_verify_attestation=$(${SNPGUEST} verify attestation $ATT_DIR/${cert_type}-certs-kds $ATT_DIR/attestation-report.bin)
+        time_verify_attestation=$(echo "$output_verify_attestation" | grep "Command executed in" | awk '{print $4}')
         total_time_verify_attestation[$cert_type]=$((total_time_verify_attestation[$cert_type] + time_verify_attestation))
         
         # To avoid a potential rate-limit from the AMD service
-        sleep 1
+        sleep 10
     done
 
     # Calculate average times for each certificate type

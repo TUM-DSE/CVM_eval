@@ -9,6 +9,7 @@ prepare:
   fi
   cd /share/benchmarks/attestation/sev/snpguest
   git checkout 0d77c10075c250c31219d8219b24eafcc428e2fb
+  git checkout src/main.rs && git apply /share/benchmarks/attestation/sev/snpguest.patch
   export RUST_BACKTRACE=1
   cargo build -r
 

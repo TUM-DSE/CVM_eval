@@ -1,0 +1,38 @@
+diff --git a/src/main.rs b/src/main.rs
+index eb7e7f4..ebe386c 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -21,6 +21,7 @@ use verify::VerifyCmd;
+ 
+ use anyhow::{Context, Result};
+ use clap::{arg, Parser, Subcommand, ValueEnum};
++use std::time::Instant;
+ 
+ #[derive(Parser)]
+ #[command(author, version, about, long_about = None)]
+@@ -73,6 +74,7 @@ fn main() -> Result<()> {
+     #[cfg(not(feature = "hyperv"))]
+     let hv = false;
+ 
++    let start_time = Instant::now();
+     let status = match snpguest.cmd {
+         SnpGuestCmd::Report(args) => report::get_report(args, hv),
+         SnpGuestCmd::Certificates(args) => certs::get_ext_certs(args),
+@@ -82,6 +84,7 @@ fn main() -> Result<()> {
+         SnpGuestCmd::Key(args) => key::get_derived_key(args),
+         SnpGuestCmd::Ok => ok::cmd(snpguest.quiet),
+     };
++    let duration = start_time.elapsed().as_millis();
+ 
+     if let Err(ref e) = status {
+         if !snpguest.quiet {
+@@ -92,5 +95,9 @@ fn main() -> Result<()> {
+         }
+     }
+ 
++    if !snpguest.quiet {
++        println!("Command executed in {} ms", duration);
++    }
++
+     status
+ }
