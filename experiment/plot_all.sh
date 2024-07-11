@@ -4,7 +4,12 @@ set -e
 set -u
 set -o pipefail
 
-CVM=${CVM:-tdx}
+lscpu | grep -q AMD-V > /dev/null
+if [ $? -eq 0 ]; then
+    CVM="snp"
+else
+    CVM="tdx"
+fi
 
 inv boottime.plot-boottime --cvm $CVM
 if [ "$CVM" == "tdx" ]; then
@@ -14,17 +19,19 @@ inv vmexit.plot-vmexit --cvm $CVM
 
 inv phoronix.plot-phoronix-memory --cvm $CVM --size medium
 inv phoronix.plot-phoronix-memory --cvm $CVM --size large
-inv npb.plot-npb --cvm $CVM --size medium
+#inv npb.plot-npb --cvm $CVM --size medium
 inv npb.plot-npb --cvm $CVM --size large
 inv npb.plot-npb --cvm $CVM --size numa
 
 inv app.plot-application --cvm $CVM
-inv app.plot-application --cvm $CVM --outname "application_vnuma.pdf" --sizes small --sizes medium --sizes large --sizes numa --sizes vnuma --labels small --labels medium --labels large --labels xlarge --labels vnuma
-inv app.plot-sqlite --cvm $CVM --device nvme0n1
 inv app.plot-sqlite --cvm $CVM --device nvme1n1
-
-inv storage.plot-fio --cvm $CVM --device nvme0n1
 inv storage.plot-fio --cvm $CVM --device nvme1n1
+
+if [ "$CVM" == "tdx" ]; then
+    inv app.plot-application --cvm $CVM --outname "application_vnuma.pdf" --sizes small --sizes medium --sizes large --sizes numa --sizes vnuma --labels small --labels medium --labels large --labels xlarge --labels vnuma
+    inv app.plot-sqlite --cvm $CVM --device nvme0n1
+    inv storage.plot-fio --cvm $CVM --device nvme0n1
+fi
 
 inv network.plot-ping --cvm $CVM
 inv network.plot-ping --cvm $CVM --mq
