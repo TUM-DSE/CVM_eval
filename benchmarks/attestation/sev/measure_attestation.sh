@@ -27,6 +27,8 @@ measure_time() {
     echo $elapsed
 }
 
+num_fetch=0
+
 # Execute the commands for each certificate type
 for cert_type in "${cert_types[@]}"
 do      
@@ -44,13 +46,19 @@ do
         time_report=$(echo "$output_report" | grep "Report generation executed in" | awk '{print $5}')
         total_time_report[$cert_type]=$((total_time_report[$cert_type] + time_report))
 
-        output_fetch_ca=$(${SNPGUEST} fetch ca $cert_type genoa $ATT_DIR/${cert_type}-certs-kds --endorser vcek)
-        time_fetch_ca=$(echo "$output_fetch_ca" | grep "Fetch CA executed in" | awk '{print $5}')
-        total_time_fetch_ca[$cert_type]=$((total_time_fetch_ca[$cert_type] + time_fetch_ca))
+        if [ $i -le 1 ]; then
+            # only fetch CA and VCEK once
 
-        output_fetch_vcek=$(${SNPGUEST} fetch vcek $cert_type genoa $ATT_DIR/${cert_type}-certs-kds $ATT_DIR/attestation-report.bin)
-        time_fetch_vcek=$(echo "$output_fetch_vcek" | grep "CFetch VCEK executed in" | awk '{print $5}')
-        total_time_fetch_vcek[$cert_type]=$((total_time_fetch_vcek[$cert_type] + time_fetch_vcek))
+            output_fetch_ca=$(${SNPGUEST} fetch ca $cert_type genoa $ATT_DIR/${cert_type}-certs-kds --endorser vcek)
+            time_fetch_ca=$(echo "$output_fetch_ca" | grep "Fetch CA executed in" | awk '{print $5}')
+            total_time_fetch_ca[$cert_type]=$((total_time_fetch_ca[$cert_type] + time_fetch_ca))
+
+            output_fetch_vcek=$(${SNPGUEST} fetch vcek $cert_type genoa $ATT_DIR/${cert_type}-certs-kds $ATT_DIR/attestation-report.bin)
+            time_fetch_vcek=$(echo "$output_fetch_vcek" | grep "Fetch VCEK executed in" | awk '{print $5}')
+            total_time_fetch_vcek[$cert_type]=$((total_time_fetch_vcek[$cert_type] + time_fetch_vcek))
+
+            num_fetch=$((num_fetch + 1))
+        fi
 
         output_verify_certs=$(${SNPGUEST} verify certs $ATT_DIR/${cert_type}-certs-kds)
         time_verify_certs=$(echo "$output_verify_certs" | grep "Verify Certs executed in" | awk '{print $5}')
@@ -66,8 +74,8 @@ do
 
     # Calculate average times for each certificate type
     avg_time_report[$cert_type]=$((total_time_report[$cert_type] / repeats))
-    avg_time_fetch_ca[$cert_type]=$((total_time_fetch_ca[$cert_type] / repeats))
-    avg_time_fetch_vcek[$cert_type]=$((total_time_fetch_vcek[$cert_type] / repeats))
+    avg_time_fetch_ca[$cert_type]=$((total_time_fetch_ca[$cert_type] / num_fetch))
+    avg_time_fetch_vcek[$cert_type]=$((total_time_fetch_vcek[$cert_type] / num_fetch))
     avg_time_verify_certs[$cert_type]=$((total_time_verify_certs[$cert_type] / repeats))
     avg_time_verify_attestation[$cert_type]=$((total_time_verify_attestation[$cert_type] / repeats))
 done
