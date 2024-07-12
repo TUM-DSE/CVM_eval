@@ -195,7 +195,8 @@ def plot_clustered_stacked(
         h[:n_col],
         l[:n_col],
         ncol=4,
-        bbox_to_anchor=[0.60, -0.20],
+        #bbox_to_anchor=[0.60, -0.20],
+        #bbox_to_anchor=[0.60, 0.00],
         labelspacing=0.2,
         columnspacing=0.5,
         handletextpad=0.2,
@@ -207,7 +208,7 @@ def plot_clustered_stacked(
             n,
             labels,
             ncol=2,
-            bbox_to_anchor=[1.0, -0.20],
+            bbox_to_anchor=[1.0, -0.15],
             labelspacing=0.2,
             columnspacing=0.5,
             handletextpad=0.2,
@@ -278,3 +279,64 @@ def plot_boottime(
         outdir / f"boottime{p}.pdf", format="pdf", pad_inches=0, bbox_inches="tight"
     )
     print(f"Output written to {outdir}/boottime{p}.pdf")
+
+@task
+def plot_boottime2(
+    ctx: Any,
+    cvm: str = "snp",
+    cpu: bool = False,
+    prealloc: bool = True,
+    outdir: str = "plot",
+) -> None:
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+        memsize = [8, 16, 32, 64, 128, 256]
+        cpusize = [1, 8, 16, 28, 32, 56, 64]
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+        memsize = [8, 16, 32, 64, 128, 256]
+        cpusize = [1, 8, 16, 28, 56]
+
+    vm_ = {}
+    cvm_ = {}
+    p = ""
+    if not prealloc:
+        p = "-no-prealloc"
+    if cpu:
+        for cpu in cpusize:
+            vm_[cpu] = load_data(f"{vm}-direct-boot-cpu{cpu}")
+            cvm_[cpu] = load_data(f"{cvm}-direct-boot-cpu{cpu}{p}")
+        df = create_df(vm_, cvm_, cpusize)
+    else:
+        for mem in memsize:
+            vm_[mem] = load_data(f"{vm}-direct-boot-mem{mem}")
+            cvm_[mem] = load_data(f"{cvm}-direct-boot-mem{mem}{p}")
+        df = create_df(vm_, cvm_, memsize)
+    print(df)
+
+    ax = plot_clustered_stacked(df, [vm_label, cvm_label], color=palette)
+
+    ax.set_ylabel("Time (s)")
+    if cpu:
+        ax.set_xlabel("Number of CPUs")
+    else:
+        ax.set_xlabel("Memory size (GB)")
+    ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
+    # sns.despine()
+    plt.tight_layout()
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    if cpu:
+        outname = f"boottime{p}_cpu.pdf"
+    else:
+        outname = f"boottime{p}_memory.pdf"
+
+    plt.savefig(
+        outdir / outname, format="pdf", pad_inches=0, bbox_inches="tight"
+    )
+    print(f"Output written to {outdir}/{outname}")
