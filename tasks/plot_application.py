@@ -200,9 +200,10 @@ def plot_application(
     ctx,
     cvm="snp",
     outdir="plot",
-    outname="application.pdf",
+    outname="application",
     sizes=[],
     labels=[],
+    rel=True,
 ):
     if cvm == "snp":
         vm = "amd"
@@ -215,7 +216,8 @@ def plot_application(
 
     if len(sizes) == 0:
         sizes = ["small", "medium", "large", "numa"]
-        labels = ["small", "medium", "large", "xlarge"]
+        #labels = ["small", "medium", "large", "xlarge"]
+        labels = ["S", "M", "L", "X"]
 
     # create a data frame like
     # | VM | Size | Application | Time |
@@ -280,6 +282,52 @@ def plot_application(
         edgecolor="black",
     )
 
+    # calc relative values
+    # type vm is the baseline
+    for i, app in enumerate(["Blender", "Pytorch", "Tensorflow"]):
+        vm_index = df[(df["VM"] == vm_label) & (df["Application"] == app)]["Time"].values
+        cvm_index = df[(df["VM"] == cvm_label) & (df["Application"] == app)]["Time"].values
+        if app == "Tensorflow":
+            vm_index[0] = 1
+            cvm_index[0] = 1
+        relative = cvm_index / vm_index
+        if i == 2:
+            geoman = np.prod(relative[1:]) ** (1 / len(relative[1:]))
+        else:
+            geomean = np.exp(np.mean(np.log(relative)))
+        if app == "Tensorflow":
+            overhead = (1 - geomean) * 100
+        else:
+            overhead = (geomean - 1) * 100
+        print(f"{app}: {relative}")
+        print(f"Geometric mean of relative values for {app}: {geomean}")
+        print(f"Overhead for {app}: {overhead:.2f}%")
+
+        if rel:
+            # plot rel using right axis
+            if i == 2:
+                # don't plot relative value for small
+                relative[0] = np.nan
+            ax2 = ax[i].twinx()
+            ax2.plot(
+                labels,
+                relative,
+                color="gray",
+                marker="o",
+                markersize=1,
+                label="Relative",
+            )
+            if i == 2:
+                ax2.set_ylabel("Relative Performance", color="black", fontsize=5)
+                ax2.tick_params(axis="y", labelcolor="black")
+            else:
+                # remove ylabel
+                ax2.set_ylabel("")
+
+            ax2.set_ylim([0, 1.5])
+            # draw 1.0 line
+            ax2.axhline(y=1.0, color="black", linestyle="--", linewidth=0.5)
+
     # set hatch
     # note: we should set hatch before removing legends (if do so)
     for i in range(3):
@@ -308,6 +356,12 @@ def plot_application(
     ax[0].set_xlabel("")
     ax[1].set_xlabel("")
     ax[2].set_xlabel("")
+
+    # rotate xticklabels
+    #rotation = 0
+    #ax[0].set_xticklabels(labels, fontsize=6, rotation=rotation, ha="right")
+    #ax[1].set_xticklabels(labels, fontsize=6, rotation=rotation, ha="right")
+    #ax[2].set_xticklabels(labels, fontsize=6, rotation=rotation, ha="right")
 
     # remove legend
     ax[1].get_legend().remove()
@@ -339,7 +393,10 @@ def plot_application(
     plt.tight_layout()
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    save_path = outdir / outname
+    if rel:
+        save_path = outdir / f"{outname}_rel.pdf"
+    else:
+        save_path = outdir / f"{outname}.pdf"
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
 
