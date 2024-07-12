@@ -66,6 +66,41 @@ VMRESOURCES["intel"]["vnuma"] = VMResource(
     ],
 )
 
+VMRESOURCES["amd"]["boot-mem8"] = VMResource(cpu=8, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["amd"]["boot-mem16"] = VMResource(
+    cpu=8, memory=16, numa_node=[0], pin_base=8
+)
+VMRESOURCES["amd"]["boot-mem32"] = VMResource(
+    cpu=8, memory=32, numa_node=[0], pin_base=8
+)
+VMRESOURCES["amd"]["boot-mem64"] = VMResource(
+    cpu=8, memory=64, numa_node=[0], pin_base=8
+)
+VMRESOURCES["amd"]["boot-mem128"] = VMResource(
+    cpu=8, memory=128, numa_node=[0], pin_base=8
+)
+VMRESOURCES["amd"]["boot-mem256"] = VMResource(
+    cpu=8, memory=256, numa_node=[0], pin_base=8
+)
+
+VMRESOURCES["amd"]["boot-cpu1"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["amd"]["boot-cpu8"] = VMResource(cpu=8, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["amd"]["boot-cpu16"] = VMResource(
+    cpu=16, memory=8, numa_node=[0], pin_base=8
+)
+VMRESOURCES["amd"]["boot-cpu28"] = VMResource(
+    cpu=28, memory=8, numa_node=[0], pin_base=0
+)
+VMRESOURCES["amd"]["boot-cpu32"] = VMResource(
+    cpu=32, memory=8, numa_node=[0], pin_base=0
+)
+VMRESOURCES["amd"]["boot-cpu56"] = VMResource(
+    cpu=56, memory=8, numa_node=[0, 1], pin_base=0
+)
+VMRESOURCES["amd"]["boot-cpu64"] = VMResource(
+    cpu=64, memory=8, numa_node=[0, 1], pin_base=0
+)
+
 VMRESOURCES["intel"]["boot-mem8"] = VMResource(
     cpu=8, memory=8, numa_node=[0], pin_base=8
 )
