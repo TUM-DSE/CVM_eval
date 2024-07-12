@@ -215,8 +215,8 @@ def plot_unixbench(
     plt.tight_layout()
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    if rel:
-        save_path = outdir / f"{outname}_{size}_{disk}_rel.pdf"
+    if not rel:
+        save_path = outdir / f"{outname}_{size}_{disk}_norel.pdf"
     else:
         save_path = outdir / f"{outname}_{size}_{disk}.pdf"
     plt.savefig(save_path, bbox_inches="tight")

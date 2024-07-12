@@ -393,8 +393,8 @@ def plot_application(
     plt.tight_layout()
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    if rel:
-        save_path = outdir / f"{outname}_rel.pdf"
+    if not rel:
+        save_path = outdir / f"{outname}_norel.pdf"
     else:
         save_path = outdir / f"{outname}.pdf"
     plt.savefig(save_path, bbox_inches="tight")

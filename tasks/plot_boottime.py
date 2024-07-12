@@ -308,12 +308,12 @@ def plot_boottime2(
         p = "-no-prealloc"
     if cpu:
         for cpu in cpusize:
-            vm_[cpu] = load_data(f"{vm}-direct-boot-cpu{cpu}")
+            vm_[cpu] = load_data(f"{vm}-direct-boot-cpu{cpu}tme-bypass")
             cvm_[cpu] = load_data(f"{cvm}-direct-boot-cpu{cpu}{p}")
         df = create_df(vm_, cvm_, cpusize)
     else:
         for mem in memsize:
-            vm_[mem] = load_data(f"{vm}-direct-boot-mem{mem}")
+            vm_[mem] = load_data(f"{vm}-direct-boot-mem{mem}tme-bypass")
             cvm_[mem] = load_data(f"{cvm}-direct-boot-mem{mem}{p}")
         df = create_df(vm_, cvm_, memsize)
     print(df)
@@ -322,7 +322,7 @@ def plot_boottime2(
 
     ax.set_ylabel("Time (s)")
     if cpu:
-        ax.set_xlabel("Number of CPUs")
+        ax.set_xlabel("Number of vCPUs")
     else:
         ax.set_xlabel("Memory size (GB)")
     ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
