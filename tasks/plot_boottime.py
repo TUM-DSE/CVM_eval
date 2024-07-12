@@ -195,8 +195,8 @@ def plot_clustered_stacked(
         h[:n_col],
         l[:n_col],
         ncol=4,
-        #bbox_to_anchor=[0.60, -0.20],
-        #bbox_to_anchor=[0.60, 0.00],
+        # bbox_to_anchor=[0.60, -0.20],
+        # bbox_to_anchor=[0.60, 0.00],
         labelspacing=0.2,
         columnspacing=0.5,
         handletextpad=0.2,
@@ -262,14 +262,14 @@ def plot_boottime(
     ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
 
     # plot memory size
-    #ax2 = ax.twinx()
-    #ax2.plot(memsize)
-    #ax2.set_ylabel("Memory size (GB)")
-    #ax2.set_yticks(np.arange(0, 2 * len(memsize), 2))
-    #ax2.set_yticklabels(memsize)
-    #ax2.set_ylim(ax.get_ylim())
-    #ax2.yaxis.set_ticks_position("right")
-    #ax2.yaxis.set_label_position("right")
+    # ax2 = ax.twinx()
+    # ax2.plot(memsize)
+    # ax2.set_ylabel("Memory size (GB)")
+    # ax2.set_yticks(np.arange(0, 2 * len(memsize), 2))
+    # ax2.set_yticklabels(memsize)
+    # ax2.set_ylim(ax.get_ylim())
+    # ax2.yaxis.set_ticks_position("right")
+    # ax2.yaxis.set_label_position("right")
 
     # sns.despine()
     plt.tight_layout()
@@ -279,6 +279,7 @@ def plot_boottime(
         outdir / f"boottime{p}.pdf", format="pdf", pad_inches=0, bbox_inches="tight"
     )
     print(f"Output written to {outdir}/boottime{p}.pdf")
+
 
 @task
 def plot_boottime2(
@@ -293,7 +294,8 @@ def plot_boottime2(
         vm_label = "vm"
         cvm_label = "snp"
         memsize = [8, 16, 32, 64, 128, 256]
-        cpusize = [1, 8, 16, 28, 32, 56, 64]
+        # cpusize = [1, 8, 16, 28, 32, 56, 64]
+        cpusize = [1, 8, 16, 28, 56]
     else:
         vm = "intel"
         vm_label = "vm"
@@ -308,12 +310,12 @@ def plot_boottime2(
         p = "-no-prealloc"
     if cpu:
         for cpu in cpusize:
-            vm_[cpu] = load_data(f"{vm}-direct-boot-cpu{cpu}tme-bypass")
+            vm_[cpu] = load_data(f"{vm}-direct-boot-cpu{cpu}")
             cvm_[cpu] = load_data(f"{cvm}-direct-boot-cpu{cpu}{p}")
         df = create_df(vm_, cvm_, cpusize)
     else:
         for mem in memsize:
-            vm_[mem] = load_data(f"{vm}-direct-boot-mem{mem}tme-bypass")
+            vm_[mem] = load_data(f"{vm}-direct-boot-mem{mem}")
             cvm_[mem] = load_data(f"{cvm}-direct-boot-mem{mem}{p}")
         df = create_df(vm_, cvm_, memsize)
     print(df)
@@ -336,7 +338,5 @@ def plot_boottime2(
     else:
         outname = f"boottime{p}_memory.pdf"
 
-    plt.savefig(
-        outdir / outname, format="pdf", pad_inches=0, bbox_inches="tight"
-    )
+    plt.savefig(outdir / outname, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"Output written to {outdir}/{outname}")
