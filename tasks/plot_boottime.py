@@ -230,10 +230,12 @@ def plot_boottime(
         vm = "amd"
         vm_label = "vm"
         cvm_label = "snp"
+        memsize = [8, 64, 256, 512]
     else:
         vm = "intel"
         vm_label = "vm"
         cvm_label = "td"
+        memsize = [8, 64, 128, 256]
 
     # to change sizes, use `--sizes` option multiple times. e.g.,
     # % inv boottime.plot-boottime --sizes small --sizes medium --sizes large
@@ -256,8 +258,18 @@ def plot_boottime(
 
     ax.set_ylabel("Time (s)")
     ax.set_xlabel("")
-
     ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
+
+    # plot memory size
+    #ax2 = ax.twinx()
+    #ax2.plot(memsize)
+    #ax2.set_ylabel("Memory size (GB)")
+    #ax2.set_yticks(np.arange(0, 2 * len(memsize), 2))
+    #ax2.set_yticklabels(memsize)
+    #ax2.set_ylim(ax.get_ylim())
+    #ax2.yaxis.set_ticks_position("right")
+    #ax2.yaxis.set_label_position("right")
+
     # sns.despine()
     plt.tight_layout()
     outdir = Path(outdir)
