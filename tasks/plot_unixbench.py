@@ -91,7 +91,7 @@ System Call Overhead                          15000.0   13710090.9   9140.1
     if date is None:
         files = os.listdir(path)
         # remove if file contains extension (e.g., .html)
-        files = [f for f in files if "." not in f]
+        files = [f for f in files if "." not in f and Path(path / f).is_file()]
         date = sorted(files)[-1]
     path = path / date
 
@@ -159,7 +159,8 @@ def plot_unixbench(
         edgecolor="black",
     )
     ax.set_xlabel("")
-    ax.set_xticklabels(SHORT_NAME, fontsize=5, rotation=45, ha="right")
+    ax.set_xticklabels(SHORT_NAME, fontsize=5, rotation=30, ha="right")
+    #ax.set_xticklabels(SHORT_NAME, fontsize=5)
     ax.set_ylabel("Benchmark Index [K]")
     ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
 
@@ -176,6 +177,21 @@ def plot_unixbench(
     overhead = (1 - geometric_mean) * 100
     print(f"Geometric mean of relative values: {geometric_mean}")
     print(f"Overhead: {overhead:.2f}%")
+
+    # calc geomean of exel and process
+    exel = relative[2]
+    process = relative[8]
+    geomean = (exel * process) ** (1/2)
+    overhead = (1 - geomean) * 100
+    print(f"Geometric mean of Exel and Process: {geomean}")
+    print(f"Overhead: {overhead:.2f}%")
+
+    others = relative[[0, 1, 3, 4, 5, 6, 7, 9, 10, 11]]
+    geomean = np.prod(others) ** (1/len(others))
+    overhead = (1 - geomean) * 100
+    print(f"Geometric mean of other benchmarks: {geomean}")
+    print(f"Overhead: {overhead:.2f}%")
+
 
     if rel:
         # plot relative values using the right axis
