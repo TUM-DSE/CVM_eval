@@ -172,6 +172,7 @@ def plot_npb(
     outdir: str = "./plot",
     outname: str = "npb",
     size: str = "numa",
+    rel: bool = True,
 ):
     if cvm == "snp":
         vm = "amd"
@@ -208,6 +209,33 @@ def plot_npb(
     ax.set_ylabel("Throughput [G op/s]")
     ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
 
+    # calculat relative values for each benchmark
+    # type vm is the baseline
+    vm_index = df[df["identifier"] == vm_label]["value"].values
+    cvm_index = df[df["identifier"] == cvm_label]["value"].values
+    relative = cvm_index / vm_index
+    print(relative)
+    # geomean
+    geomean = np.exp(np.mean(np.log(relative)))
+    overhead = (1 - geomean) * 100
+    print(f"Geometric mean of relative values: {geomean}")
+    print(f"Overhead: {overhead:.2f}%")
+
+    if rel:
+        # plot rel using right axis
+        ax2 = ax.twinx()
+        ax2.plot(
+            LABELS,
+            relative,
+            color="gray",
+            marker="o",
+            markersize=1,
+            label="Relative",
+        )
+        ax2.set_ylabel("Relative value", fontsize=5)
+        ax2.set_ylim(0, 1.5)
+        ax2.axhline(y=1, color="black", linestyle="--", linewidth=0.5)
+
     # remove legend title
     ax.get_legend().set_title("")
 
@@ -234,6 +262,9 @@ def plot_npb(
 
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    save_path = outdir / f"{outname}_{size}.pdf"
+    if rel:
+        save_path = outdir / f"{outname}_{size}_rel.pdf"
+    else:
+        save_path = outdir / f"{outname}_{size}.pdf"
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
