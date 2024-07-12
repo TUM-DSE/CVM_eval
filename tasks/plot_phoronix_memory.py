@@ -165,6 +165,13 @@ def plot_phoronix_memory(
     cvmfile = get_file(f"{cvm}-direct-{size}")
     data = load_data(vmfile, cvmfile)
 
+    # print relative values
+    print(data)
+    # calc geometric mean
+    geomean = data["relative"].prod() ** (1 / len(data))
+    print(f"geometric mean: {geomean}")
+    print(f"overhead: {(1-geomean)*100}")
+
     # fig, ax = plt.subplots(figsize=(4.5, 4.0))
     fig, ax = plt.subplots()
 
