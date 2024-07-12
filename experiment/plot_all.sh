@@ -15,23 +15,36 @@ set -u
 set -o pipefail
 
 inv boottime.plot-boottime --cvm $CVM
+inv boottime.plot-boottime2 --cvm $CVM
+inv boottime.plot-boottime2 --cvm $CVM --cpu
 if [ "$CVM" == "tdx" ]; then
     inv boottime.plot-boottime --cvm $CVM --no-prealloc
+    inv boottime.plot-boottime2 --cvm $CVM --no-prealloc
+    inv boottime.plot-boottime2 --cvm $CVM --no-prealloc --cpu
 fi
+exit
 inv vmexit.plot-vmexit --cvm $CVM
 
 inv phoronix.plot-phoronix-memory --cvm $CVM --size medium
 inv phoronix.plot-phoronix-memory --cvm $CVM --size large
 #inv npb.plot-npb --cvm $CVM --size medium
+inv npb.plot-npb --cvm $CVM --size medium
+inv npb.plot-npb --cvm $CVM --size medium --no-rel
 inv npb.plot-npb --cvm $CVM --size large
+inv npb.plot-npb --cvm $CVM --size large --no-rel
 inv npb.plot-npb --cvm $CVM --size numa
+inv npb.plot-npb --cvm $CVM --size numa --no-rel
+inv unixbench.plot-unixbench --cvm $CVM --size medium
+inv unixbench.plot-unixbench --cvm $CVM --size medium --no-rel
 
 inv app.plot-application --cvm $CVM
+inv app.plot-application --cvm $CVM --no-rel
 inv app.plot-sqlite --cvm $CVM --device nvme1n1
 inv storage.plot-fio --cvm $CVM --device nvme1n1
 
 if [ "$CVM" == "tdx" ]; then
     inv app.plot-application --cvm $CVM --outname "application_vnuma.pdf" --sizes small --sizes medium --sizes large --sizes numa --sizes vnuma --labels small --labels medium --labels large --labels xlarge --labels vnuma
+    inv app.plot-application --cvm $CVM --outname "application_vnuma.pdf" --sizes small --sizes medium --sizes large --sizes numa --sizes vnuma --labels small --labels medium --labels large --labels xlarge --labels vnuma --no-rel
     inv app.plot-sqlite --cvm $CVM --device nvme0n1
     inv storage.plot-fio --cvm $CVM --device nvme0n1
 fi
