@@ -253,7 +253,7 @@ def plot_application(
     df = pd.DataFrame(data)
     print(df)
 
-    fig, ax = plt.subplots(1, 3, figsize=(figwidth_full, 2.0), sharey=False)
+    fig, ax = plt.subplots(1, 3, figsize=(figwidth_full, 1.7), sharey=False)
     sns.barplot(
         data=df[df["Application"] == "Blender"],
         x="Size",

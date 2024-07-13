@@ -201,6 +201,7 @@ def plot_clustered_stacked(
         columnspacing=0.5,
         handletextpad=0.2,
         fontsize=7,
+        loc="upper left",
     )
     if labels is not None:
         # l2 = plt.legend(n, labels, loc=[1.01, 0.1])
@@ -215,6 +216,32 @@ def plot_clustered_stacked(
             fontsize=7,
         )
     axe.add_artist(l1)
+
+    # calculate the total time
+    vm_total_time = (dfall[0]["QEMU"] + dfall[0]["OVMF"] + dfall[0]["Linux"] + dfall[0]["Init"]).values
+    cvm_total_time = (dfall[1]["QEMU"] + dfall[1]["OVMF"] + dfall[1]["Linux"] + dfall[1]["Init"]).values
+    # put the total time on the top of the bar
+    for i in range(len(vm_total_time)):
+        p = axe.patches[i]
+        axe.text(
+            p.get_x() + p.get_width() / 2.0,
+            vm_total_time[i] + 0.1,
+            f"{vm_total_time[i]:.2f}",
+            ha="center",
+            va="bottom",
+            fontsize=5,
+        )
+    for i in range(len(cvm_total_time)):
+        p = axe.patches[i + len(vm_total_time)]
+        axe.text(
+            p.get_x() + 0.3 + p.get_width() / 2.0,
+            cvm_total_time[i] + 0.1,
+            f"{cvm_total_time[i]:.2f}",
+            ha="center",
+            va="bottom",
+            fontsize=5,
+        )
+
     return axe
 
 
