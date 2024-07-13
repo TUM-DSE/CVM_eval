@@ -3,8 +3,11 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from subprocess import CalledProcessError
+
+from invoke import task
+import numpy as np
 
 from config import PROJECT_ROOT
 from qemu import QemuVm
@@ -34,3 +37,25 @@ def run_mlc(
         f.write("\n".join(lines))
 
     print(f"Results saved in {outputdir_host}")
+
+
+@task
+def show_mmap_result(cx: Any, cvm: str = "snp", size: str = "medium"):
+    """Parse mmap measure log and show the result"""
+    if cvm == "snp":
+        vm = "amd"
+    else:
+        vm = "intel"
+
+    RESULT_DIR = PROJECT_ROOT / f"bench-result/memory/mmap-time"
+
+    for v in [vm, cvm]:
+        for n in ["1st", "2nd"]:
+            log = RESULT_DIR / f"{v}-direct-{size}/{n}.txt"
+            result = []
+            with open(log, "r") as f:
+                lines = f.readlines()
+                result = [float(line) for line in lines]
+            print(
+                f"{v},{n},{np.median(result):.3f},{np.mean(result):.3f},{np.std(result):.3f}"
+            )
