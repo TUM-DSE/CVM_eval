@@ -22,12 +22,10 @@ if [ "$CVM" == "tdx" ]; then
     inv boottime.plot-boottime2 --cvm $CVM --no-prealloc
     inv boottime.plot-boottime2 --cvm $CVM --no-prealloc --cpu
 fi
-exit
 inv vmexit.plot-vmexit --cvm $CVM
 
 inv phoronix.plot-phoronix-memory --cvm $CVM --size medium
 inv phoronix.plot-phoronix-memory --cvm $CVM --size large
-#inv npb.plot-npb --cvm $CVM --size medium
 inv npb.plot-npb --cvm $CVM --size medium
 inv npb.plot-npb --cvm $CVM --size medium --no-rel
 inv npb.plot-npb --cvm $CVM --size large
