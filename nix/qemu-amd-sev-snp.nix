@@ -13,6 +13,7 @@ qemu_full.overrideAttrs (new: old: {
     #sha256 = "sha256-51BEYF7P5GteCrWOp7nKPjUDxXFq8KDxMAC5f5TNO2I=";
     fetchSubmodules = true;
   };
+  patches = [];
   dontStrip = true;
   gtkSupport = false;
   dontWrapGapps = true;
