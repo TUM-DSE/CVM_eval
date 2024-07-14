@@ -28,8 +28,14 @@ figwidth_full = 7
 
 FONTSIZE = 9
 
-palette = sns.color_palette("pastel")
+pastel = sns.color_palette("pastel")
+vm_col = pastel[0]
+swiotlb_col = pastel[1]
+cvm_col = pastel[2]
+palette = [vm_col, cvm_col]
+palette2 = [vm_col, swiotlb_col, cvm_col]
 hatches = ["", "//"]
+hatches2 = ["", "", "//"]
 
 BENCH_RESULT_DIR = Path("./bench-result/application")
 
@@ -192,42 +198,54 @@ def parse_sqlite_result(
 @task
 def plot_application(
     ctx,
-    vm="amd",
     cvm="snp",
     outdir="plot",
-    outname="application.pdf",
+    outname="application",
     sizes=[],
+    labels=[],
+    rel=True,
 ):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
     if len(sizes) == 0:
         sizes = ["small", "medium", "large", "numa"]
+        #labels = ["small", "medium", "large", "xlarge"]
+        labels = ["S", "M", "L", "X"]
 
     # create a data frame like
     # | VM | Size | Application | Time |
     # |----|------|-------------|------|
     # |    |      |             |      |
     data = []
-    for vmname in [vm, cvm]:
-        for size in sizes:
+    for vmname, vmlabel in zip([vm, cvm], [vm_label, cvm_label]):
+        for size, label in zip(sizes, labels):
             data.append(
                 {
-                    "VM": vmname,
-                    "Size": size,
+                    "VM": vmlabel,
+                    "Size": label,
                     "Application": "Blender",
                     "Time": parse_blender_result(f"{vmname}-direct-{size}"),
                 },
             )
             data.append(
                 {
-                    "VM": vmname,
-                    "Size": size,
+                    "VM": vmlabel,
+                    "Size": label,
                     "Application": "Tensorflow",
                     "Time": parse_tensorflow_result(f"{vmname}-direct-{size}"),
                 },
             )
             data.append(
                 {
-                    "VM": vmname,
-                    "Size": size,
+                    "VM": vmlabel,
+                    "Size": label,
                     "Application": "Pytorch",
                     "Time": parse_pytorch_result(f"{vmname}-direct-{size}"),
                 },
@@ -235,7 +253,7 @@ def plot_application(
     df = pd.DataFrame(data)
     print(df)
 
-    fig, ax = plt.subplots(1, 3, figsize=(figwidth_full, 2.0), sharey=False)
+    fig, ax = plt.subplots(1, 3, figsize=(figwidth_full, 1.7), sharey=False)
     sns.barplot(
         data=df[df["Application"] == "Blender"],
         x="Size",
@@ -263,6 +281,52 @@ def plot_application(
         palette=palette,
         edgecolor="black",
     )
+
+    # calc relative values
+    # type vm is the baseline
+    for i, app in enumerate(["Blender", "Pytorch", "Tensorflow"]):
+        vm_index = df[(df["VM"] == vm_label) & (df["Application"] == app)]["Time"].values
+        cvm_index = df[(df["VM"] == cvm_label) & (df["Application"] == app)]["Time"].values
+        if app == "Tensorflow":
+            vm_index[0] = 1
+            cvm_index[0] = 1
+        relative = cvm_index / vm_index
+        if i == 2:
+            geoman = np.prod(relative[1:]) ** (1 / len(relative[1:]))
+        else:
+            geomean = np.exp(np.mean(np.log(relative)))
+        if app == "Tensorflow":
+            overhead = (1 - geomean) * 100
+        else:
+            overhead = (geomean - 1) * 100
+        print(f"{app}: {relative}")
+        print(f"Geometric mean of relative values for {app}: {geomean}")
+        print(f"Overhead for {app}: {overhead:.2f}%")
+
+        if rel:
+            # plot rel using right axis
+            if i == 2:
+                # don't plot relative value for small
+                relative[0] = np.nan
+            ax2 = ax[i].twinx()
+            ax2.plot(
+                labels,
+                relative,
+                color="gray",
+                marker="o",
+                markersize=1,
+                label="Relative",
+            )
+            if i == 2:
+                ax2.set_ylabel("Relative Performance", color="black", fontsize=5)
+                ax2.tick_params(axis="y", labelcolor="black")
+            else:
+                # remove ylabel
+                ax2.set_ylabel("")
+
+            ax2.set_ylim([0, 1.5])
+            # draw 1.0 line
+            ax2.axhline(y=1.0, color="black", linestyle="--", linewidth=0.5)
 
     # set hatch
     # note: we should set hatch before removing legends (if do so)
@@ -292,6 +356,12 @@ def plot_application(
     ax[0].set_xlabel("")
     ax[1].set_xlabel("")
     ax[2].set_xlabel("")
+
+    # rotate xticklabels
+    #rotation = 0
+    #ax[0].set_xticklabels(labels, fontsize=6, rotation=rotation, ha="right")
+    #ax[1].set_xticklabels(labels, fontsize=6, rotation=rotation, ha="right")
+    #ax[2].set_xticklabels(labels, fontsize=6, rotation=rotation, ha="right")
 
     # remove legend
     ax[1].get_legend().remove()
@@ -323,7 +393,10 @@ def plot_application(
     plt.tight_layout()
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    save_path = outdir / outname
+    if not rel:
+        save_path = outdir / f"{outname}_norel.pdf"
+    else:
+        save_path = outdir / f"{outname}.pdf"
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
 
@@ -331,15 +404,27 @@ def plot_application(
 @task
 def plot_sqlite(
     ctx,
-    vm="amd",
     cvm="snp",
     outdir="plot",
-    outname="sqlite.pdf",
+    outname="sqlite",
     size="medium",
+    aio="native",
+    device="nvme0n1",
 ):
-    vm_df = parse_sqlite_result(f"{vm}-direct-{size}", label=vm)
-    cvm_df = parse_sqlite_result(f"{cvm}-direct-{size}", label=cvm)
-    df = pd.concat([vm_df, cvm_df])
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
+    vm_df = parse_sqlite_result(f"{vm}-direct-{size}{device}-{aio}", label=vm_label)
+    swiotlb_df = parse_sqlite_result(f"{vm}-direct-{size}{device}-{aio}-swiotlb",
+                                     label="swiotlb")
+    cvm_df = parse_sqlite_result(f"{cvm}-direct-{size}{device}-{aio}", label=cvm_label)
+    df = pd.concat([vm_df, swiotlb_df, cvm_df])
 
     print(df)
 
@@ -350,7 +435,7 @@ def plot_sqlite(
         hue="name",
         data=df,
         ax=ax,
-        palette=palette,
+        palette=palette2,
         edgecolor="black",
     )
     ax.set_xlabel("")
@@ -364,7 +449,7 @@ def plot_sqlite(
     bars = ax.patches
     hs = []
     num_x = 4
-    for hatch in hatches:
+    for hatch in hatches2:
         hs.extend([hatch] * num_x)
     num_legend = len(bars) - len(hs)
     hs.extend([""] * num_legend)
@@ -372,7 +457,7 @@ def plot_sqlite(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
+    for patch in ax.get_legend().get_patches()[2:]:
         patch.set_hatch("//")
 
     # annotate values with .2f
@@ -383,6 +468,6 @@ def plot_sqlite(
 
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    save_path = outdir / outname
+    save_path = outdir / f"{outname}_{device}.pdf"
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")

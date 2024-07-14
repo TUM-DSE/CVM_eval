@@ -52,14 +52,21 @@ just ssh                # ssh to the vm
 ```
 # start normal vm on AMD machine
 inv vm.start --type amd --size small
-# start snp vm (snp requires sudo)
-sudo inv vm.start --type snp
+# start snp vm (NOTE: snp requires root)
+sudo su && nix develop
+inv vm.start --type snp
 # start snp vm, run phoronix benchmark
-sudo inv vm.start --type snp --action run-phoronix
+inv vm.start --type snp --action run-phoronix
 ```
 
 ## File sharing
 The repository directory is mounted in `/share` in the guest using vritio-9p.
+We can also mount the directory manually:
+
+```
+mkdir -p /share
+mount -t 9p -o trans=virtio,version=9p2000.L share /share
+```
 
 ## Storage (virtio-blk)
 - `inv vm.start --virtio-blk <path>` command create a virtio-blk backed by the file `<path>`.
@@ -70,6 +77,14 @@ The repository directory is mounted in `/share` in the guest using vritio-9p.
 - See [network.md](./network.md) for the detail.
 
 ## QA
+### VM failes to boot (`inv vm.start` fails)
+- SNP requires root. Also some operations (e.g., using a disk for virtio-blk) require root.
+- Try `sudo su && nix develop && inv vm.start --type snp [...]`
+- Also, `inv` command does not show qemu error messages. Try manually run QEMU
+  to see the error message.
+    - `inv vm.start` prints QEMU command line. We can copy and use it
+        - When running QEMU command manually, change QMP path accordingly (e.g., /tmp/qmp.sock)
+
 ### `sudo inv ...` fails
 - While some inv commands needs root, sometimes `sudo inv ...` does not work due to missing python libraries
 - You can first become root (`sudo su`) then `nix develop`. Then the shell has all dependencies.
@@ -77,5 +92,3 @@ The repository directory is mounted in `/share` in the guest using vritio-9p.
 ### nix-shell env does not work for some reason
 - Try `nix-shell --repair`
 
-### nix-shell env rebuilds packages every day
-- See: https://discourse.nixos.org/t/why-is-my-nix-shell-rebuilding-every-day-solved/15528/5

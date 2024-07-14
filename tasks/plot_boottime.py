@@ -195,11 +195,13 @@ def plot_clustered_stacked(
         h[:n_col],
         l[:n_col],
         ncol=4,
-        bbox_to_anchor=[0.60, -0.20],
+        # bbox_to_anchor=[0.60, -0.20],
+        # bbox_to_anchor=[0.60, 0.00],
         labelspacing=0.2,
         columnspacing=0.5,
         handletextpad=0.2,
         fontsize=7,
+        loc="upper left",
     )
     if labels is not None:
         # l2 = plt.legend(n, labels, loc=[1.01, 0.1])
@@ -207,47 +209,95 @@ def plot_clustered_stacked(
             n,
             labels,
             ncol=2,
-            bbox_to_anchor=[1.0, -0.20],
+            bbox_to_anchor=[1.0, -0.15],
             labelspacing=0.2,
             columnspacing=0.5,
             handletextpad=0.2,
             fontsize=7,
         )
     axe.add_artist(l1)
+
+    # calculate the total time
+    vm_total_time = (dfall[0]["QEMU"] + dfall[0]["OVMF"] + dfall[0]["Linux"] + dfall[0]["Init"]).values
+    cvm_total_time = (dfall[1]["QEMU"] + dfall[1]["OVMF"] + dfall[1]["Linux"] + dfall[1]["Init"]).values
+    # put the total time on the top of the bar
+    for i in range(len(vm_total_time)):
+        p = axe.patches[i]
+        axe.text(
+            p.get_x() + p.get_width() / 2.0,
+            vm_total_time[i] + 0.1,
+            f"{vm_total_time[i]:.2f}",
+            ha="center",
+            va="bottom",
+            fontsize=5,
+        )
+    for i in range(len(cvm_total_time)):
+        p = axe.patches[i + len(vm_total_time)]
+        axe.text(
+            p.get_x() + 0.3 + p.get_width() / 2.0,
+            cvm_total_time[i] + 0.1,
+            f"{cvm_total_time[i]:.2f}",
+            ha="center",
+            va="bottom",
+            fontsize=5,
+        )
+
     return axe
 
 
 @task
 def plot_boottime(
     ctx: Any,
-    vm: str = "amd",
     cvm: str = "snp",
     prealloc: bool = True,
     outdir: str = "plot",
     sizes: list = [],
+    labels: list = [],
 ) -> None:
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+        memsize = [8, 64, 256, 512]
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+        memsize = [8, 64, 128, 256]
+
     # to change sizes, use `--sizes` option multiple times. e.g.,
     # % inv boottime.plot-boottime --sizes small --sizes medium --sizes large
     if len(sizes) == 0:
         sizes = ["small", "medium", "large", "numa"]
+        labels = ["small", "medium", "large", "xlarge"]
     print(sizes)
     vm_ = {}
     cvm_ = {}
     p = ""
     if not prealloc:
         p = "-no-prealloc"
-    for size in sizes:
-        vm_[size] = load_data(f"{vm}-direct-{size}")
-        cvm_[size] = load_data(f"{cvm}-direct-{size}{p}")
-    df = create_df(vm_, cvm_, sizes)
+    for size, label in zip(sizes, labels):
+        vm_[label] = load_data(f"{vm}-direct-{size}")
+        cvm_[label] = load_data(f"{cvm}-direct-{size}{p}")
+    df = create_df(vm_, cvm_, labels)
     print(df)
 
-    ax = plot_clustered_stacked(df, [vm, cvm], color=palette)
+    ax = plot_clustered_stacked(df, [vm_label, cvm_label], color=palette)
 
     ax.set_ylabel("Time (s)")
     ax.set_xlabel("")
-
     ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
+
+    # plot memory size
+    # ax2 = ax.twinx()
+    # ax2.plot(memsize)
+    # ax2.set_ylabel("Memory size (GB)")
+    # ax2.set_yticks(np.arange(0, 2 * len(memsize), 2))
+    # ax2.set_yticklabels(memsize)
+    # ax2.set_ylim(ax.get_ylim())
+    # ax2.yaxis.set_ticks_position("right")
+    # ax2.yaxis.set_label_position("right")
+
     # sns.despine()
     plt.tight_layout()
     outdir = Path(outdir)
@@ -256,3 +306,64 @@ def plot_boottime(
         outdir / f"boottime{p}.pdf", format="pdf", pad_inches=0, bbox_inches="tight"
     )
     print(f"Output written to {outdir}/boottime{p}.pdf")
+
+
+@task
+def plot_boottime2(
+    ctx: Any,
+    cvm: str = "snp",
+    cpu: bool = False,
+    prealloc: bool = True,
+    outdir: str = "plot",
+) -> None:
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+        memsize = [8, 16, 32, 64, 128, 256]
+        # cpusize = [1, 8, 16, 28, 32, 56, 64]
+        cpusize = [1, 8, 16, 28, 56]
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+        memsize = [8, 16, 32, 64, 128, 256]
+        cpusize = [1, 8, 16, 28, 56]
+
+    vm_ = {}
+    cvm_ = {}
+    p = ""
+    if not prealloc:
+        p = "-no-prealloc"
+    if cpu:
+        for cpu in cpusize:
+            vm_[cpu] = load_data(f"{vm}-direct-boot-cpu{cpu}")
+            cvm_[cpu] = load_data(f"{cvm}-direct-boot-cpu{cpu}{p}")
+        df = create_df(vm_, cvm_, cpusize)
+    else:
+        for mem in memsize:
+            vm_[mem] = load_data(f"{vm}-direct-boot-mem{mem}")
+            cvm_[mem] = load_data(f"{cvm}-direct-boot-mem{mem}{p}")
+        df = create_df(vm_, cvm_, memsize)
+    print(df)
+
+    ax = plot_clustered_stacked(df, [vm_label, cvm_label], color=palette)
+
+    ax.set_ylabel("Time (s)")
+    if cpu:
+        ax.set_xlabel("Number of vCPUs")
+    else:
+        ax.set_xlabel("Memory size (GB)")
+    ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
+    # sns.despine()
+    plt.tight_layout()
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    if cpu:
+        outname = f"boottime{p}_cpu.pdf"
+    else:
+        outname = f"boottime{p}_memory.pdf"
+
+    plt.savefig(outdir / outname, format="pdf", pad_inches=0, bbox_inches="tight")
+    print(f"Output written to {outdir}/{outname}")

@@ -28,20 +28,34 @@ figwidth_full = 7
 
 FONTSIZE = 9
 
-palette = sns.color_palette("pastel")
-hatches = ["", "//"]
+pastel = sns.color_palette("pastel")
+#palette = sns.color_palette("pastel")
+vm_col = pastel[0]
+swiotlb_col = pastel[1]
+vhost_col = pastel[4]
+vshot_swiotlb_col = pastel[5]
+cvm_col = pastel[2]
+cvm_vhost_col = pastel[3]
+palette = [vm_col, swiotlb_col, vhost_col, vshot_swiotlb_col, cvm_col, cvm_vhost_col]
+#hatches = ["", "//"]
+hatches = ["", "", "", "", "//", "//"]
+
+palette2 = [vm_col, vhost_col, cvm_col, cvm_vhost_col]
+hatches2 = ["", "", "//", "//"]
 
 BENCH_RESULT_DIR = Path("./bench-result/network")
 
 
 # bench mark path:
 # ./bench-result/network/iperf/{name}/{date}
-def parse_iperf_result(name: str, label: str, mode: str, date=None) -> pd.DataFrame:
+def parse_iperf_result(name: str, label: str, mode: str, date=None, pkt=None) -> pd.DataFrame:
     # create df like the following
     # | VM | pkt size | throughput |
     # |----|----------|------------|
     # |    |          |            |
-    if mode == "udp":
+    if pkt is not None:
+        pktsize = [pkt]
+    elif mode == "udp":
         pktsize = [64, 128, 256, 512, 1024, 1460]
     elif mode == "tcp":
         pktsize = [64, 128, 256, 512, 1024, "32K", "128K"]
@@ -81,10 +95,13 @@ def parse_iperf_result(name: str, label: str, mode: str, date=None) -> pd.DataFr
     return df
 
 
-def parse_ping_result(name: str, label: str, date=None) -> pd.DataFrame:
-    pktsize = [64, 128, 256, 512, 1024, 1460]
-    # pktsize_actual = [56, 120, 248, 504, 1016, 1462]
-    pktsize_actual = [64, 128, 256, 512, 1024, 1460]
+def parse_ping_result(name: str, label: str, date=None, all=False) -> pd.DataFrame:
+    if all:
+        pktsize = [64, 128, 256, 512, 1024, 1460]
+        pktsize_actual = [64, 128, 256, 512, 1024, 1460]
+    else:
+        pktsize = [64]
+        pktsize_actual = [64]
     pktsize_ = []
     lats = []
 
@@ -239,7 +256,6 @@ def parse_nginx_result(name: str, label: str, date=None) -> pd.DataFrame:
 @task
 def plot_iperf(
     ctx,
-    vm="amd",
     cvm="snp",
     mode="udp",
     vhost=False,
@@ -247,19 +263,41 @@ def plot_iperf(
     outdir="plot",
     outname=None,
     size="medium",
+    pkt=None,
 ):
-    def get_name(name):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
+    def get_name(name, vhost=False, mq=mq, swiotlb=False):
         n = f"{name}-direct-{size}"
         if vhost:
             n += "-vhost"
         if mq:
             n += "-mq"
+        if swiotlb:
+            n += "-swiotlb"
         return n
 
-    df1 = parse_iperf_result(get_name(vm), vm, mode)
-    df2 = parse_iperf_result(get_name(cvm), cvm, mode)
-    # merge df using name as key
-    df = pd.concat([df1, df2])
+    #df1 = parse_iperf_result(get_name(vm), vm, mode)
+    #df2 = parse_iperf_result(get_name(cvm), cvm, mode)
+    ## merge df using name as key
+    #df = pd.concat([df1, df2])
+
+    dfs = []
+    dfs.append(parse_iperf_result(get_name(vm), vm_label, mode, pkt=pkt))
+    dfs.append(parse_iperf_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb", mode, pkt=pkt))
+    dfs.append(parse_iperf_result(get_name(vm, vhost=True), f"vhost", mode, pkt=pkt))
+    dfs.append(parse_iperf_result(get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", mode, pkt=pkt))
+    dfs.append(parse_iperf_result(get_name(cvm), cvm_label, mode, pkt=pkt))
+    dfs.append(parse_iperf_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", mode, pkt=pkt))
+    df = pd.concat(dfs)
+    print(df)
 
     # plot thropughput
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
@@ -272,7 +310,11 @@ def plot_iperf(
         palette=palette,
         edgecolor="black",
     )
-    ax.set_xlabel("Packet Size (byte)")
+    if pkt is not None:
+        ax.set_xticklabels([])
+        ax.set_xlabel(f"Buffer Size {pkt} byte")
+    else:
+        ax.set_xlabel("Packet Size (byte)")
     ax.set_ylabel("Throughput (Gbps)")
     ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
 
@@ -291,12 +333,13 @@ def plot_iperf(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
+    plt.legend(fontsize=5)
+    for patch in ax.get_legend().get_patches()[4:]:
         patch.set_hatch("//")
 
     # annotate values with .2f
     for container in ax.containers:
-        ax.bar_label(container, fmt="%.2f")
+        ax.bar_label(container, fmt="%.2f", fontsize=5)
 
     plt.tight_layout()
 
@@ -306,6 +349,8 @@ def plot_iperf(
             outname += "_vhost"
         if mq:
             outname += "_mq"
+        if pkt is not None:
+            outname += f"_{pkt}"
         outname += "_throughput.pdf"
 
     outdir = Path(outdir)
@@ -318,26 +363,41 @@ def plot_iperf(
 @task
 def plot_ping(
     ctx,
-    vm="amd",
     cvm="snp",
     vhost=False,
     mq=False,
     outdir="plot",
     outname=None,
     size="medium",
+    all=False,
 ):
-    def get_name(name):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
+    def get_name(name, vhost=False, mq=mq, swiotlb=False):
         n = f"{name}-direct-{size}"
         if vhost:
             n += "-vhost"
         if mq:
             n += "-mq"
+        if swiotlb:
+            n += "-swiotlb"
         return n
 
-    df1 = parse_ping_result(get_name(vm), vm)
-    df2 = parse_ping_result(get_name(cvm), cvm)
-    # merge df using name as key
-    df = pd.concat([df1, df2])
+    dfs = []
+    dfs.append(parse_ping_result(get_name(vm), vm_label, all=all))
+    dfs.append(parse_ping_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb", all=all))
+    dfs.append(parse_ping_result(get_name(vm, vhost=True), f"vhost", all=all))
+    dfs.append(parse_ping_result(get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", all=all))
+    dfs.append(parse_ping_result(get_name(cvm), cvm_label, all=all))
+    dfs.append(parse_ping_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", all=all))
+    df = pd.concat(dfs)
     print(df)
 
     # plot thropughput
@@ -351,7 +411,11 @@ def plot_ping(
         palette=palette,
         edgecolor="black",
     )
-    ax.set_xlabel("Packet Size (byte)")
+    if not all:
+        ax.set_xticklabels([])
+        ax.set_xlabel("Ping (64 byte)")
+    else:
+        ax.set_xlabel("Packet Size (byte)")
     ax.set_ylabel("Latency (ms)")
     ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
 
@@ -370,12 +434,14 @@ def plot_ping(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
+    print(ax.get_legend().get_patches())
+    plt.legend(fontsize=5)
+    for patch in ax.get_legend().get_patches()[4:]:
         patch.set_hatch("//")
 
     # annotate values with .2f
     for container in ax.containers:
-        ax.bar_label(container, fmt="%.2f")
+        ax.bar_label(container, fmt="%.3f")
 
     plt.tight_layout()
 
@@ -385,6 +451,8 @@ def plot_ping(
             outname += "_vhost"
         if mq:
             outname += "_mq"
+        if all:
+            outname += "_all"
         outname += ".pdf"
 
     outdir = Path(outdir)
@@ -397,7 +465,6 @@ def plot_ping(
 @task
 def plot_redis(
     ctx,
-    vm="amd",
     cvm="snp",
     vhost=False,
     mq=False,
@@ -405,7 +472,16 @@ def plot_redis(
     outname=None,
     size="medium",
 ):
-    def get_name(name):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
+    def get_name(name, vhost=False, mq=mq):
         n = f"{name}-direct-{size}"
         if vhost:
             n += "-vhost"
@@ -413,10 +489,12 @@ def plot_redis(
             n += "-mq"
         return n
 
-    df1 = parse_memtier_result(get_name(vm), vm, "redis")
-    df2 = parse_memtier_result(get_name(cvm), cvm, "redis")
-    ## merge df using name as key
-    df = pd.concat([df1, df2])
+    dfs = []
+    dfs.append(parse_memtier_result(get_name(vm), vm_label, "redis"))
+    dfs.append(parse_memtier_result(get_name(vm, vhost=True), f"vhost", "redis"))
+    dfs.append(parse_memtier_result(get_name(cvm), cvm_label, "redis"))
+    dfs.append(parse_memtier_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", "redis"))
+    df = pd.concat(dfs)
     print(df)
 
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
@@ -426,7 +504,7 @@ def plot_redis(
         hue="name",
         data=df,
         ax=ax,
-        palette=palette,
+        palette=palette2,
         edgecolor="black",
     )
     ax.set_xlabel("")
@@ -440,7 +518,7 @@ def plot_redis(
     bars = ax.patches
     hs = []
     num_x = 4
-    for hatch in hatches:
+    for hatch in hatches2:
         hs.extend([hatch] * num_x)
     num_legend = len(bars) - len(hs)
     hs.extend([""] * num_legend)
@@ -448,7 +526,7 @@ def plot_redis(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
+    for patch in ax.get_legend().get_patches()[2:]:
         patch.set_hatch("//")
 
     # annotate values with .2f
@@ -475,7 +553,6 @@ def plot_redis(
 @task
 def plot_memcached(
     ctx,
-    vm="amd",
     cvm="snp",
     vhost=False,
     mq=False,
@@ -483,7 +560,16 @@ def plot_memcached(
     outname=None,
     size="medium",
 ):
-    def get_name(name):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
+    def get_name(name, vhost=False, mq=mq):
         n = f"{name}-direct-{size}"
         if vhost:
             n += "-vhost"
@@ -491,9 +577,12 @@ def plot_memcached(
             n += "-mq"
         return n
 
-    df1 = parse_memtier_result(get_name(vm), vm, "memcached")
-    df2 = parse_memtier_result(get_name(cvm), cvm, "memcached")
-    df = pd.concat([df1, df2])
+    dfs = []
+    dfs.append(parse_memtier_result(get_name(vm), vm_label, "memcached"))
+    dfs.append(parse_memtier_result(get_name(vm, vhost=True), f"vhost", "memcached"))
+    dfs.append(parse_memtier_result(get_name(cvm), cvm_label, "memcached"))
+    dfs.append(parse_memtier_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", "memcached"))
+    df = pd.concat(dfs)
     print(df)
 
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
@@ -503,7 +592,7 @@ def plot_memcached(
         hue="name",
         data=df,
         ax=ax,
-        palette=palette,
+        palette=palette2,
         edgecolor="black",
     )
     ax.set_xlabel("")
@@ -517,7 +606,7 @@ def plot_memcached(
     bars = ax.patches
     hs = []
     num_x = 4
-    for hatch in hatches:
+    for hatch in hatches2:
         hs.extend([hatch] * num_x)
     num_legend = len(bars) - len(hs)
     hs.extend([""] * num_legend)
@@ -525,7 +614,8 @@ def plot_memcached(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
+    #for patch in ax.get_legend().get_patches()[1::2]:
+    for patch in ax.get_legend().get_patches()[2:]:
         patch.set_hatch("//")
 
     # annotate values with .2f
@@ -552,7 +642,6 @@ def plot_memcached(
 @task
 def plot_nginx(
     ctx,
-    vm="amd",
     cvm="snp",
     vhost=False,
     mq=False,
@@ -560,7 +649,16 @@ def plot_nginx(
     outname=None,
     size="medium",
 ):
-    def get_name(name):
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+
+    def get_name(name, vhost=False, mq=mq):
         n = f"{name}-direct-{size}"
         if vhost:
             n += "-vhost"
@@ -568,10 +666,13 @@ def plot_nginx(
             n += "-mq"
         return n
 
-    df1 = parse_nginx_result(get_name(vm), vm)
-    df2 = parse_nginx_result(get_name(cvm), cvm)
+    dfs = []
+    dfs.append(parse_nginx_result(get_name(vm), vm_label))
+    dfs.append(parse_nginx_result(get_name(vm, vhost=True), f"vhost"))
+    dfs.append(parse_nginx_result(get_name(cvm), cvm_label))
+    dfs.append(parse_nginx_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost"))
     ## merge df using name as key
-    df = pd.concat([df1, df2])
+    df = pd.concat(dfs)
     print(df)
 
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
@@ -581,7 +682,7 @@ def plot_nginx(
         hue="name",
         data=df,
         ax=ax,
-        palette=palette,
+        palette=palette2,
         edgecolor="black",
     )
     ax.set_xlabel("")
@@ -595,7 +696,7 @@ def plot_nginx(
     bars = ax.patches
     hs = []
     num_x = 2
-    for hatch in hatches:
+    for hatch in hatches2:
         hs.extend([hatch] * num_x)
     num_legend = len(bars) - len(hs)
     hs.extend([""] * num_legend)
@@ -603,7 +704,7 @@ def plot_nginx(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
+    for patch in ax.get_legend().get_patches()[2:]:
         patch.set_hatch("//")
 
     # annotate values with .2f

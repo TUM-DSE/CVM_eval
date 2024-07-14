@@ -65,6 +65,77 @@ VMRESOURCES["intel"]["vnuma"] = VMResource(
         NodeInfo(cpus="28-55", mem=128, dist=[]),
     ],
 )
+
+VMRESOURCES["amd"]["boot-mem8"] = VMResource(cpu=8, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["amd"]["boot-mem16"] = VMResource(
+    cpu=8, memory=16, numa_node=[0], pin_base=8
+)
+VMRESOURCES["amd"]["boot-mem32"] = VMResource(
+    cpu=8, memory=32, numa_node=[0], pin_base=8
+)
+VMRESOURCES["amd"]["boot-mem64"] = VMResource(
+    cpu=8, memory=64, numa_node=[0], pin_base=8
+)
+VMRESOURCES["amd"]["boot-mem128"] = VMResource(
+    cpu=8, memory=128, numa_node=[0], pin_base=8
+)
+VMRESOURCES["amd"]["boot-mem256"] = VMResource(
+    cpu=8, memory=256, numa_node=[0], pin_base=8
+)
+
+VMRESOURCES["amd"]["boot-cpu1"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["amd"]["boot-cpu8"] = VMResource(cpu=8, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["amd"]["boot-cpu16"] = VMResource(
+    cpu=16, memory=8, numa_node=[0], pin_base=8
+)
+VMRESOURCES["amd"]["boot-cpu28"] = VMResource(
+    cpu=28, memory=8, numa_node=[0], pin_base=0
+)
+VMRESOURCES["amd"]["boot-cpu32"] = VMResource(
+    cpu=32, memory=8, numa_node=[0], pin_base=0
+)
+VMRESOURCES["amd"]["boot-cpu56"] = VMResource(
+    cpu=56, memory=8, numa_node=[0, 1], pin_base=0
+)
+VMRESOURCES["amd"]["boot-cpu64"] = VMResource(
+    cpu=64, memory=8, numa_node=[0, 1], pin_base=0
+)
+
+VMRESOURCES["intel"]["boot-mem8"] = VMResource(
+    cpu=8, memory=8, numa_node=[0], pin_base=8
+)
+VMRESOURCES["intel"]["boot-mem16"] = VMResource(
+    cpu=8, memory=16, numa_node=[0], pin_base=8
+)
+VMRESOURCES["intel"]["boot-mem32"] = VMResource(
+    cpu=8, memory=32, numa_node=[0], pin_base=8
+)
+VMRESOURCES["intel"]["boot-mem64"] = VMResource(
+    cpu=8, memory=64, numa_node=[0], pin_base=8
+)
+VMRESOURCES["intel"]["boot-mem128"] = VMResource(
+    cpu=8, memory=128, numa_node=[0], pin_base=8
+)
+VMRESOURCES["intel"]["boot-mem256"] = VMResource(
+    cpu=8, memory=256, numa_node=[0, 1], pin_base=8
+)
+
+VMRESOURCES["intel"]["boot-cpu1"] = VMResource(
+    cpu=1, memory=8, numa_node=[0], pin_base=8
+)
+VMRESOURCES["intel"]["boot-cpu8"] = VMResource(
+    cpu=8, memory=8, numa_node=[0], pin_base=8
+)
+VMRESOURCES["intel"]["boot-cpu16"] = VMResource(
+    cpu=16, memory=8, numa_node=[0], pin_base=0
+)
+VMRESOURCES["intel"]["boot-cpu28"] = VMResource(
+    cpu=28, memory=8, numa_node=[0], pin_base=0
+)
+VMRESOURCES["intel"]["boot-cpu56"] = VMResource(
+    cpu=56, memory=8, numa_node=[0, 1], pin_base=0
+)
+
 VMRESOURCES["snp"] = VMRESOURCES["amd"]
 VMRESOURCES["tdx"] = VMRESOURCES["intel"]
 VMRESOURCES["tdx-ubuntu"] = VMRESOURCES["intel"]
@@ -284,6 +355,11 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config("amd-direct")
     ssh_port = config.get("ssh_port", SSH_PORT)
     extra_cmdline = config.get("extra_cmdline", "")
+    if config["boot_prealloc"]:
+        prealloc = "on"
+    else:
+        prealloc = "off"
+    # XXX: the current QEMU/SNP version seems not support prealloc option
 
     qemu_cmd = f"""
     {vmconfig.qemu}
@@ -397,6 +473,7 @@ def get_intel_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config(type)
     ssh_port = config["ssh_port"]
+    guest_cid = config["guest_cid"]
     if config["boot_prealloc"]:
         prealloc = "on"
     else:
@@ -423,7 +500,7 @@ def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
         -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
         -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
 
-        -device vhost-vsock-pci,guest-cid=3
+        -device vhost-vsock-pci,guest-cid={guest_cid}
     """
 
     return shlex.split(qemu_cmd)
@@ -432,6 +509,7 @@ def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
 def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config("tdx-direct")
     ssh_port = config["ssh_port"]
+    guest_cid = config["guest_cid"]
     extra_cmdline = config.get("extra_cmdline", "")
     if config["boot_prealloc"]:
         prealloc = "on"
@@ -479,7 +557,7 @@ def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
         -mon chardev=char0,mode=readline
         -device virtconsole,chardev=char0,id=vc0,nr=0
 
-        -device vhost-vsock-pci,guest-cid=3
+        -device vhost-vsock-pci,guest-cid={guest_cid}
     """
 
     return shlex.split(qemu_cmd)
@@ -629,6 +707,31 @@ def ipython(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         from IPython import embed
 
         embed()
+
+
+def ssh_cmd(qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    """Start a VM and then send cmd via ssh
+    Example:
+
+    # we can have multiple ssh commands
+    inv vm.start --type intel --ssh-cmd "echo hi" --ssh-cmd "ls /" --action ssh-cmd
+    """
+    resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
+    cmds: [str] = kargs["config"]["ssh_cmd"]
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu(pin_base)
+        vm.wait_for_ssh()
+
+        for cmd in cmds:
+            cmd_ = shlex.split(cmd)
+            vm.ssh_cmd(cmd_)
+
+        vm.shutdown()
 
 
 def boottime(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
@@ -981,6 +1084,8 @@ def do_action(action: str, **kwargs: Any) -> None:
         start_and_attach(**kwargs)
     elif action == "ipython":
         ipython(**kwargs)
+    elif action == "ssh-cmd":
+        ssh_cmd(**kwargs)
     elif action == "boottime":
         boottime(**kwargs)
     elif action == "prepare":
@@ -1038,9 +1143,12 @@ def start(
     direct: bool = True,  # if True, do direct boot. otherwise boot from the disk
     action: str = "attach",
     ssh_port: int = SSH_PORT,
+    guest_cid: int = 11,  # Guest CID for vsock (only for TDX)
     pin: bool = True,  # if True, pin vCPUs
     pin_base: Optional[int] = None,  # pinning base
     extra_cmdline: str = "",  # extra kernel cmdline (only for direct boot)
+    # ssh_cmd options
+    ssh_cmd: [str] = [],
     # boot eval options
     boot_trace: bool = True,
     boot_prealloc: bool = True,
