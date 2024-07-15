@@ -7,11 +7,21 @@ qemu_full.overrideAttrs (new: old: {
     repo = "qemu";
     # branch: snp-latest-20240515
     rev = "fb924a5139bff1d31520e007ef97b616af1e22a1";
-    sha256 = "sha256-bwCvsRC0wRyra9xL/drAq+slp1fbfMIQinj/PXGH0Sk=";
+    sha256 = "sha256-U8OnhfPa3vV5fbLMZBiBw4GJSZRVnZbmFV6gYntpdk0=";
     # branch: snp-latest-20231110
     #rev = "fe4c9e8e7e7ddac4b19c4366c1f105ffc4a78482";
     #sha256 = "sha256-51BEYF7P5GteCrWOp7nKPjUDxXFq8KDxMAC5f5TNO2I=";
     fetchSubmodules = true;
+    postFetch = ''
+	cd "$out"
+	(
+		for p in subprojects/*.wrap; do 
+			${pkgs.meson}/bin/meson subprojects download "$(basename "$p" .wrap)"
+			rm -rf subprojects/$(basename "$p" .wrap/.git)
+		done
+	)
+	find subprojects -type d -name .git -prune -execdir rm -r {} +
+    '';
   };
   patches = [];
   dontStrip = true;
