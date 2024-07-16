@@ -102,8 +102,12 @@ def show_mlc_result(cx: Any, cvm: str = "snp", size: str = "medium"):
 
     print(f"lat diff: {cvm_lat - vm_lat:.3f}")
     bw_overhead = cvm_bw / vm_bw
+    percent_overhead = (1 - bw_overhead) * 100
     geomean = np.prod(bw_overhead) ** (1 / len(bw_overhead))
     overhead = (1 - geomean) * 100
+    geomen_bw_overhead = np.prod(bw_overhead) ** (1 / len(bw_overhead))
+    print(percent_overhead)
+    print((1-geomen_bw_overhead)*100)
     print(f"bw diff: {bw_overhead}, {geomean:.3f}, {overhead:.3f}%")
 
 

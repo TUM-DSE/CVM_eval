@@ -17,11 +17,11 @@ set -o pipefail
 inv boottime.plot-boottime --cvm $CVM
 inv boottime.plot-boottime2 --cvm $CVM
 inv boottime.plot-boottime2 --cvm $CVM --cpu
-if [ "$CVM" == "tdx" ]; then
-    inv boottime.plot-boottime --cvm $CVM --no-prealloc
-    inv boottime.plot-boottime2 --cvm $CVM --no-prealloc
-    inv boottime.plot-boottime2 --cvm $CVM --no-prealloc --cpu
-fi
+inv boottime.plot-boottime --cvm $CVM --no-prealloc
+inv boottime.plot-boottime2 --cvm $CVM --no-prealloc
+inv boottime.plot-boottime2 --cvm $CVM --no-prealloc --cpu
+inv boottime.plot-boottime3 --cvm $CVM
+inv boottime.plot-boottime3 --cvm $CVM --cpu
 inv vmexit.plot-vmexit --cvm $CVM
 
 inv phoronix.plot-phoronix-memory --cvm $CVM --size medium
