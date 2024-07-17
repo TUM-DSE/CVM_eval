@@ -8,6 +8,7 @@ from subprocess import CalledProcessError
 
 from invoke import task
 import numpy as np
+import pandas as pd
 
 from config import PROJECT_ROOT
 from qemu import QemuVm
@@ -39,9 +40,8 @@ def run_mlc(
     print(f"Results saved in {outputdir_host}")
 
 
-def parse_mlc_result(base_dir: Path, date: Optional[str] = None):
-    """Parse the mlc result and return a DataFrame
-
+def parse_mlc_result_sub(name: str, file: Path):
+    """
     Exmaple:
 
     Intel(R) Memory Latency Checker - v3.11a
@@ -63,14 +63,10 @@ def parse_mlc_result(base_dir: Path, date: Optional[str] = None):
     Stream-triad like:	108632.0
     """
 
-    if date is None:
-        date = sorted([d for d in base_dir.iterdir() if d.is_dir()])[-1].name
-    result_file = base_dir / date / "mlc.log"
-
     # XXX: this assumes one NUMA node environment!
 
     # extract idle latencies and peak injeciton memory bandwidth
-    with open(result_file, "r") as f:
+    with open(file, "r") as f:
         lines = f.readlines()
         idle_latencies = []
         peak_bandwidths = []
@@ -82,40 +78,103 @@ def parse_mlc_result(base_dir: Path, date: Optional[str] = None):
                     float(l.strip().split("\t")[1]) for l in lines[i + 4 : i + 9]
                 ]
 
-    return idle_latencies, np.array(peak_bandwidths)
+    # create dataframe
+    # | name | random_access_latency | bw_all_read | bw_3_1 | bw_2_1 | bw_1_1 | bw_stream |
+
+    df = pd.DataFrame(
+        {
+            "name": [name],
+            "random_access_latency": [idle_latencies],
+            "bw_all_read": [peak_bandwidths[0]],
+            "bw_3_1": [peak_bandwidths[1]],
+            "bw_2_1": [peak_bandwidths[2]],
+            "bw_1_1": [peak_bandwidths[3]],
+            "bw_stream": [peak_bandwidths[4]],
+        }
+    )
+
+    return df
+
+
+def parse_mlc_result(
+    label: str, base_dir: Path, date: Optional[str] = None, max_num: int = 10
+):
+    """Parse the mlc result and return a DataFrame"""
+
+    fs = []
+    if date is None:
+        files = sorted([d for d in base_dir.iterdir() if d.is_dir()])[:10]
+        for f in files:
+            fs.append(f / "mlc.log")
+    else:
+        fs.append(base_dir / date / "mlc.log")
+
+    # parse file and create a dataframe
+    dfs = []
+    for f in fs:
+        name = f.parent.name
+        df = parse_mlc_result_sub(name, f)
+        dfs.append(df)
+    # concate result
+    result = pd.concat(dfs, ignore_index=True)
+
+    return result
 
 
 @task
-def show_mlc_result(cx: Any, cvm: str = "snp", size: str = "medium", tmebypass: bool = False):
+def show_mlc_result(
+    cx: Any, cvm: str = "snp", size: str = "medium", tmebypass: bool = False
+):
     p = ""
     if cvm == "snp":
         vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
     else:
         vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
         if tmebypass:
             p = "-tmebypass"
 
     RESULT_DIR = PROJECT_ROOT / f"bench-result/memory/mlc"
 
-    vm_lat, vm_bw = parse_mlc_result(RESULT_DIR / f"{vm}-direct-{size}{p}")
-    cvm_lat, cvm_bw = parse_mlc_result(RESULT_DIR / f"{cvm}-direct-{size}")
+    vm_df = parse_mlc_result(vm_label, RESULT_DIR / f"{vm}-direct-{size}{p}")
+    cvm_df = parse_mlc_result(cvm_label, RESULT_DIR / f"{cvm}-direct-{size}")
 
-    print(f"{vm},{vm_lat},{vm_bw}")
-    print(f"{cvm},{cvm_lat},{cvm_bw}")
+    print(vm_df)
+    print(cvm_df)
 
-    print(f"lat diff: {cvm_lat - vm_lat:.3f}")
-    bw_overhead = cvm_bw / vm_bw
-    percent_overhead = (1 - bw_overhead) * 100
-    geomean = np.prod(bw_overhead) ** (1 / len(bw_overhead))
-    overhead = (1 - geomean) * 100
-    geomen_bw_overhead = np.prod(bw_overhead) ** (1 / len(bw_overhead))
-    print(percent_overhead)
-    print((1-geomen_bw_overhead)*100)
-    print(f"bw diff: {bw_overhead}, {geomean:.3f}, {overhead:.3f}%")
+    # latency difference (using median)
+    vm_lat_median = vm_df["random_access_latency"].median()
+    cvm_lat_median = cvm_df["random_access_latency"].median()
+    print(
+        f"random access latency: {vm_lat_median:.3f}, {cvm_lat_median:.3f}, {cvm_lat_median - vm_lat_median:.3f} us"
+    )
+
+    # bw overhead using median
+    vm_bw = (
+        vm_df[["bw_all_read", "bw_3_1", "bw_2_1", "bw_1_1", "bw_stream"]]
+        .median()
+        .values
+    )
+    cvm_bw = (
+        cvm_df[["bw_all_read", "bw_3_1", "bw_2_1", "bw_1_1", "bw_stream"]]
+        .median()
+        .values
+    )
+    print(f"vm_bw: {vm_bw}")
+    print(f"cvm_bw: {cvm_bw}")
+    overhead = (1 - cvm_bw / vm_bw) * 100
+    print(f"bw diff: {overhead}")
+    geo_mean = np.prod(cvm_bw / vm_bw) ** (1 / len(cvm_bw))
+    print(f"geomean: {geo_mean:.3f}, {(1 - geo_mean)*100:.3f}%")
 
 
 @task
-def show_mmap_result(cx: Any, cvm: str = "snp", size: str = "medium", tmebypass: bool = False):
+def show_mmap_result(
+    cx: Any, cvm: str = "snp", size: str = "medium", tmebypass: bool = False
+):
     """Parse mmap measure log and show the result"""
     p = ""
     if cvm == "snp":
