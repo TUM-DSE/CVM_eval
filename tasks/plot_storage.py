@@ -473,7 +473,12 @@ def plot_fio(
     jobfile="libaio",
     outdir="plot",
     device="nvme0n1",
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
+
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
