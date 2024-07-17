@@ -36,7 +36,7 @@ def mount_disk(vm: QemuVm, dev: str, mountpoint: str = "/mnt", format="no") -> b
 
     if format == "auto":
         # try mount
-        output = vm.ssh_cmd(["sudo", "mount", dev, mountpoint])
+        output = vm.ssh_cmd(["sudo", "mount", dev, mountpoint], check=False)
         if output.returncode == 0:
             print(f"[mount disk] mount {dev} to {mountpoint}")
             return True
@@ -46,10 +46,10 @@ def mount_disk(vm: QemuVm, dev: str, mountpoint: str = "/mnt", format="no") -> b
     elif format == "yes":
         vm.ssh_cmd(["sudo", "mkfs.ext4", dev])
 
-    vm.ssh_cmd(["sudo", "mount", dev, mountpoint])
+    vm.ssh_cmd(["sudo", "mount", dev, mountpoint], check=False)
     if output.returncode == 0:
         print(f"[mount disk] mount {dev} to {mountpoint}")
         return True
     else:
-        print(f"[mount disk] mount {dev} to {mountpoint} failed")
+        print(f"[mount disk] mount {dev} to {mountpoint} failed: {output.returncode}")
         return False
