@@ -171,10 +171,14 @@ def plot_npb(
     cvm: str = "snp",
     outdir: str = "./plot",
     outname: str = "npb",
-    size: str = "numa",
+    size: str = "medium",
     rel: bool = True,
     tmebypass: bool = False,
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
     p = ""
     if cvm == "snp":
         vm = "amd"
@@ -237,7 +241,7 @@ def plot_npb(
             label="Relative",
         )
         ax2.set_ylabel("Relative value", fontsize=5)
-        ax2.set_ylim(0, 1.5)
+        ax2.set_ylim(0.8, 1.1)
         ax2.axhline(y=1, color="black", linestyle="--", linewidth=0.5)
 
     # remove legend title

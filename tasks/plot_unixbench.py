@@ -70,21 +70,22 @@ SHORT_NAME = [
     "Syscall",
 ]
 
+
 def parse_result(type: str, name: str, date: Optional[str] = None) -> pd.DataFrame:
-    """ Example format
-System Benchmarks Index Values               BASELINE       RESULT    INDEX
-Dhrystone 2 using register variables         116700.0  263721433.8  22598.2
-Double-Precision Whetstone                       55.0      39234.1   7133.5
-Execl Throughput                                 43.0      20736.3   4822.4
-File Copy 1024 bufsize 2000 maxblocks          3960.0   10207871.1  25777.5
-File Copy 256 bufsize 500 maxblocks            1655.0    2950460.3  17827.6
-File Copy 4096 bufsize 8000 maxblocks          5800.0   27915051.7  48129.4
-Pipe Throughput                               12440.0   15274023.1  12278.2
-Pipe-based Context Switching                   4000.0    1954459.3   4886.1
-Process Creation                                126.0      47407.7   3762.5
-Shell Scripts (1 concurrent)                     42.4      19512.3   4602.0
-Shell Scripts (8 concurrent)                      6.0       2887.3   4812.2
-System Call Overhead                          15000.0   13710090.9   9140.1
+    """Example format
+    System Benchmarks Index Values               BASELINE       RESULT    INDEX
+    Dhrystone 2 using register variables         116700.0  263721433.8  22598.2
+    Double-Precision Whetstone                       55.0      39234.1   7133.5
+    Execl Throughput                                 43.0      20736.3   4822.4
+    File Copy 1024 bufsize 2000 maxblocks          3960.0   10207871.1  25777.5
+    File Copy 256 bufsize 500 maxblocks            1655.0    2950460.3  17827.6
+    File Copy 4096 bufsize 8000 maxblocks          5800.0   27915051.7  48129.4
+    Pipe Throughput                               12440.0   15274023.1  12278.2
+    Pipe-based Context Switching                   4000.0    1954459.3   4886.1
+    Process Creation                                126.0      47407.7   3762.5
+    Shell Scripts (1 concurrent)                     42.4      19512.3   4602.0
+    Shell Scripts (8 concurrent)                      6.0       2887.3   4812.2
+    System Call Overhead                          15000.0   13710090.9   9140.1
     """
 
     path = BENCH_RESULT_DIR / name
@@ -111,15 +112,17 @@ System Call Overhead                          15000.0   13710090.9   9140.1
             # find line that starts with any of BENCHMARKNAME
             for i, bench in enumerate(BENHCMARK_NAME):
                 if line.startswith(bench):
-                    results = line[len(bench):].strip().split()
+                    results = line[len(bench) :].strip().split()
                     index = float(results[2]) / 1000
-                    data.append({"type": type, "benchmark": SHORT_NAME[i],
-                               "index": index})
+                    data.append(
+                        {"type": type, "benchmark": SHORT_NAME[i], "index": index}
+                    )
                     break
 
     df = pd.DataFrame(data)
 
     return df
+
 
 @task
 def plot_unixbench(
@@ -130,7 +133,13 @@ def plot_unixbench(
     size: str = "medium",
     disk: str = "nvme1n1",
     rel: bool = True,
+    tmebypass: bool = False,
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
+    p = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -139,8 +148,10 @@ def plot_unixbench(
         vm = "intel"
         vm_label = "vm"
         cvm_label = "td"
+        if tmebypass:
+            p = "-tmebpass"
 
-    vm_df = parse_result(vm_label, f"{vm}-direct-{size}-{disk}")
+    vm_df = parse_result(vm_label, f"{vm}-direct-{size}-{disk}{p}")
     cvm_df = parse_result(cvm_label, f"{cvm}-direct-{size}-{disk}")
 
     df = pd.concat([vm_df, cvm_df])
@@ -160,7 +171,7 @@ def plot_unixbench(
     )
     ax.set_xlabel("")
     ax.set_xticklabels(SHORT_NAME, fontsize=5, rotation=30, ha="right")
-    #ax.set_xticklabels(SHORT_NAME, fontsize=5)
+    # ax.set_xticklabels(SHORT_NAME, fontsize=5)
     ax.set_ylabel("Benchmark Index [K]")
     ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
 
@@ -173,7 +184,7 @@ def plot_unixbench(
     # print relative numbers
     print(relative)
     # report geometric mean of relative velues
-    geometric_mean = np.prod(relative) ** (1/len(relative))
+    geometric_mean = np.prod(relative) ** (1 / len(relative))
     overhead = (1 - geometric_mean) * 100
     print(f"Geometric mean of relative values: {geometric_mean}")
     print(f"Overhead: {overhead:.2f}%")
@@ -181,29 +192,35 @@ def plot_unixbench(
     # calc geomean of exel and process
     exel = relative[2]
     process = relative[8]
-    geomean = (exel * process) ** (1/2)
+    geomean = (exel * process) ** (1 / 2)
     overhead = (1 - geomean) * 100
     print(f"Geometric mean of Exel and Process: {geomean}")
     print(f"Overhead: {overhead:.2f}%")
 
     others = relative[[0, 1, 3, 4, 5, 6, 7, 9, 10, 11]]
-    geomean = np.prod(others) ** (1/len(others))
+    geomean = np.prod(others) ** (1 / len(others))
     overhead = (1 - geomean) * 100
     print(f"Geometric mean of other benchmarks: {geomean}")
     print(f"Overhead: {overhead:.2f}%")
 
-
     if rel:
         # plot relative values using the right axis
         ax2 = ax.twinx()
-        ax2.plot(SHORT_NAME, relative, marker="o", color="gray", label="Relative",
-                 markersize=1)
+        ax2.plot(
+            SHORT_NAME,
+            relative,
+            marker="o",
+            color="gray",
+            label="Relative",
+            markersize=1,
+        )
         ax2.set_ylabel("Relative Performance", color="black", fontsize=5)
         ax2.tick_params(axis="y", labelcolor="black")
-        ax2.set_ylim([0, 1.5])
+        # ax2.set_ylim([0, 1.5])
+        ax2.set_ylim([0.8, 1.1])
         # draw 1.0 line
         ax2.axhline(y=1.0, color="black", linestyle="--", linewidth=0.5)
-        #ax2.legend(loc="best"h)
+        # ax2.legend(loc="best"h)
 
     # remove legend title
     ax.get_legend().set_title("")
@@ -226,7 +243,6 @@ def plot_unixbench(
     # annotate values with .2f
     for container in ax.containers:
         ax.bar_label(container, fmt="%.2f", fontsize=5)
-
 
     plt.tight_layout()
     outdir = Path(outdir)

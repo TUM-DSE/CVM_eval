@@ -371,7 +371,8 @@ def plot_application(
                 # remove ylabel
                 ax2.set_ylabel("")
 
-            ax2.set_ylim([0, 1.5])
+            # ax2.set_ylim([0, 1.5])
+            ax2.set_ylim([0.8, 1.2])
             # draw 1.0 line
             ax2.axhline(y=1.0, color="black", linestyle="--", linewidth=0.5)
 
