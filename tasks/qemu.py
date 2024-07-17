@@ -248,7 +248,7 @@ class QemuVm:
             try:
                 cmd = ["taskset", "-pc", str(cpuidx + pcpu_base), str(tid)]
                 run(cmd)
-            except OSError as e:
+            except subprocess.CalledProcessError as e:
                 print("Failed to pin vCPU{}: {}".format(cpuidx, e))
                 return
 
@@ -263,7 +263,8 @@ class QemuVm:
             try:
                 cmd = ["taskset", "-pc", str(pcpu_base + num_cpus + i), str(tid)]
                 run(cmd)
-            except OSError as e:
+            except subprocess.CalledProcessError as e:
+                # FIXME: this can happen if pcpu_base + num_cpus + i is bigger than the number of available CPUs
                 print("Failed to pin vCPU{}: {}".format(cpuidx, e))
                 return
 
