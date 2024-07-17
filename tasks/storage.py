@@ -30,9 +30,26 @@ def run_fio(
     vm.ssh_cmd(cmd)
 
 
-def mount_disk(vm: QemuVm, dev: str, mountpoint: str = "/mnt", format=False):
+def mount_disk(vm: QemuVm, dev: str, mountpoint: str = "/mnt", format="no") -> bool:
     """Mount a disk on the VM"""
-    if format:
-        vm.ssh_cmd(["sudo", "mkfs.ext4", dev])
     vm.ssh_cmd(["sudo", "mkdir", "-p", mountpoint])
+
+    if format == "auto":
+        # try mount
+        output = vm.ssh_cmd(["sudo", "mount", dev, mountpoint])
+        if output.returncode == 0:
+            print(f"[mount disk] mount {dev} to {mountpoint}")
+            return True
+        # if mount fail, then format the disk
+        print("[mount disk] format disk")
+        vm.ssh_cmd(["sudo", "mkfs.ext4", dev])
+    elif format == "yes":
+        vm.ssh_cmd(["sudo", "mkfs.ext4", dev])
+
     vm.ssh_cmd(["sudo", "mount", dev, mountpoint])
+    if output.returncode == 0:
+        print(f"[mount disk] mount {dev} to {mountpoint}")
+        return True
+    else:
+        print(f"[mount disk] mount {dev} to {mountpoint} failed")
+        return False

@@ -996,7 +996,7 @@ def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         if virito_blk:
             import storage
 
-            storage.mount_disk(vm, "/dev/vdb", "/mnt", format=True)
+            storage.mount_disk(vm, "/dev/vdb", "/mnt", format="auto")
             dbpath = "/mnt/test.db"
 
             name += f"-{kargs['config']['virtio_blk_aio']}"
