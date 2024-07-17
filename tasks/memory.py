@@ -86,15 +86,18 @@ def parse_mlc_result(base_dir: Path, date: Optional[str] = None):
 
 
 @task
-def show_mlc_result(cx: Any, cvm: str = "snp", size: str = "medium"):
+def show_mlc_result(cx: Any, cvm: str = "snp", size: str = "medium", tmebypass: bool = False):
+    p = ""
     if cvm == "snp":
         vm = "amd"
     else:
         vm = "intel"
+        if tmebypass:
+            p = "-tmebypass"
 
     RESULT_DIR = PROJECT_ROOT / f"bench-result/memory/mlc"
 
-    vm_lat, vm_bw = parse_mlc_result(RESULT_DIR / f"{vm}-direct-{size}")
+    vm_lat, vm_bw = parse_mlc_result(RESULT_DIR / f"{vm}-direct-{size}{p}")
     cvm_lat, cvm_bw = parse_mlc_result(RESULT_DIR / f"{cvm}-direct-{size}")
 
     print(f"{vm},{vm_lat},{vm_bw}")
@@ -112,18 +115,24 @@ def show_mlc_result(cx: Any, cvm: str = "snp", size: str = "medium"):
 
 
 @task
-def show_mmap_result(cx: Any, cvm: str = "snp", size: str = "medium"):
+def show_mmap_result(cx: Any, cvm: str = "snp", size: str = "medium", tmebypass: bool = False):
     """Parse mmap measure log and show the result"""
+    p = ""
     if cvm == "snp":
         vm = "amd"
     else:
         vm = "intel"
+        if tmebypass:
+            p = "-tmebypass"
 
     RESULT_DIR = PROJECT_ROOT / f"bench-result/memory/mmap-time"
 
     for v in [vm, cvm]:
         for n in ["1st", "2nd"]:
-            log = RESULT_DIR / f"{v}-direct-{size}/{n}.txt"
+            if v == vm:
+                log = RESULT_DIR / f"{v}-direct-{size}{p}/{n}.txt"
+            else:
+                log = RESULT_DIR / f"{v}-direct-{size}/{n}.txt"
             result = []
             with open(log, "r") as f:
                 lines = f.readlines()

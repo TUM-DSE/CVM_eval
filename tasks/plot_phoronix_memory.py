@@ -151,7 +151,9 @@ def plot_phoronix_memory(
     size="medium",
     outdir: str = "./plot",
     name: str = "memory",
+    tmebypass: bool = False,
 ):
+    p = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -160,8 +162,10 @@ def plot_phoronix_memory(
         vm = "intel"
         vm_label = "vm"
         cvm_label = "td"
+        if tmebypass:
+            p = "-tmebypass"
 
-    vmfile = get_file(f"{vm}-direct-{size}")
+    vmfile = get_file(f"{vm}-direct-{size}{p}")
     cvmfile = get_file(f"{cvm}-direct-{size}")
     data = load_data(vmfile, cvmfile)
 

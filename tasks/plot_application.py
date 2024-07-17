@@ -204,7 +204,9 @@ def plot_application(
     sizes=[],
     labels=[],
     rel=True,
+    tmebypass=False,
 ):
+    p = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -213,10 +215,13 @@ def plot_application(
         vm = "intel"
         vm_label = "vm"
         cvm_label = "td"
+        if tmebypass:
+            p = "-tmebypass"
+
 
     if len(sizes) == 0:
-        sizes = ["small", "medium", "large", "numa"]
-        #labels = ["small", "medium", "large", "xlarge"]
+        #labels = ["small", "medium", "large", "numa"]
+        sizes = ["small", "medium", "large", "xlarge"]
         labels = ["S", "M", "L", "X"]
 
     # create a data frame like
@@ -225,13 +230,17 @@ def plot_application(
     # |    |      |             |      |
     data = []
     for vmname, vmlabel in zip([vm, cvm], [vm_label, cvm_label]):
+        if vmname == vm:
+            p_ = p
+        else:
+            p_ = ""
         for size, label in zip(sizes, labels):
             data.append(
                 {
                     "VM": vmlabel,
                     "Size": label,
                     "Application": "Blender",
-                    "Time": parse_blender_result(f"{vmname}-direct-{size}"),
+                    "Time": parse_blender_result(f"{vmname}-direct-{size}{p_}"),
                 },
             )
             data.append(
@@ -239,7 +248,7 @@ def plot_application(
                     "VM": vmlabel,
                     "Size": label,
                     "Application": "Tensorflow",
-                    "Time": parse_tensorflow_result(f"{vmname}-direct-{size}"),
+                    "Time": parse_tensorflow_result(f"{vmname}-direct-{size}{p_}"),
                 },
             )
             data.append(
@@ -247,7 +256,7 @@ def plot_application(
                     "VM": vmlabel,
                     "Size": label,
                     "Application": "Pytorch",
-                    "Time": parse_pytorch_result(f"{vmname}-direct-{size}"),
+                    "Time": parse_pytorch_result(f"{vmname}-direct-{size}{p_}"),
                 },
             )
     df = pd.DataFrame(data)

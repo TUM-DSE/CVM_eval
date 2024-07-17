@@ -79,8 +79,8 @@ def parse_result(name: str, date: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def load_data(vm: str, cvm: str, rel=True, size="numa") -> pd.DataFrame:
-    vm_df = parse_result(f"{vm}-direct-{size}")
+def load_data(vm: str, cvm: str, rel=True, size="numa", p="") -> pd.DataFrame:
+    vm_df = parse_result(f"{vm}-direct-{size}{p}")
     cvm_df = parse_result(f"{cvm}-direct-{size}")
 
     if not rel:
@@ -173,7 +173,9 @@ def plot_npb(
     outname: str = "npb",
     size: str = "numa",
     rel: bool = True,
+    tmebypass: bool = False,
 ):
+    p = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -182,8 +184,10 @@ def plot_npb(
         vm = "intel"
         vm_label = "vm"
         cvm_label = "td"
+        if tmebypass:
+            p = "-tmebypass"
 
-    df = load_data(vm, cvm, rel=False, size=size)
+    df = load_data(vm, cvm, rel=False, size=size, p=p)
     df["identifier"] = df["identifier"].map(
         {f"{vm}-direct-{size}": vm_label, f"{cvm}-direct-{size}": cvm_label}
     )
