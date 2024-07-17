@@ -302,7 +302,7 @@ def plot_application(
         ax=ax[0],
         palette=palette,
         edgecolor="black",
-        err_kws={'linewidth': 1},
+        err_kws={"linewidth": 1},
     )
     sns.barplot(
         data=df[df["Application"] == "Pytorch"],
@@ -312,7 +312,7 @@ def plot_application(
         ax=ax[1],
         palette=palette,
         edgecolor="black",
-        err_kws={'linewidth': 1},
+        err_kws={"linewidth": 1},
     )
     sns.barplot(
         data=df[df["Application"] == "Tensorflow"],
@@ -322,18 +322,22 @@ def plot_application(
         ax=ax[2],
         palette=palette,
         edgecolor="black",
-        err_kws={'linewidth': 1},
+        err_kws={"linewidth": 1},
     )
 
     # calc relative values
     # type vm is the baseline
     for i, app in enumerate(["Blender", "Pytorch", "Tensorflow"]):
-        vm_index = df[(df["VM"] == vm_label) & (df["Application"] == app)][
-            "Time"
-        ].values
-        cvm_index = df[(df["VM"] == cvm_label) & (df["Application"] == app)][
-            "Time"
-        ].values
+        # choose mean values of each size
+        vm_mean = df[(df["VM"] == vm_label) & (df["Application"] == app)]
+        vm_mean = vm_mean.groupby("Size")["Time"].mean()
+        vm_index = np.array([vm_mean[label] for label in labels])
+        cvm_mean = df[(df["VM"] == cvm_label) & (df["Application"] == app)]
+        cvm_mean = cvm_mean.groupby("Size")["Time"].mean()
+        cvm_index = np.array([cvm_mean[label] for label in labels])
+
+        print("vm_index:", vm_index, cvm_index)
+
         if app == "Tensorflow":
             vm_index[0] = 1
             cvm_index[0] = 1
@@ -490,7 +494,7 @@ def plot_sqlite(
         ax=ax,
         palette=palette2,
         edgecolor="black",
-        err_kws={'linewidth': 1},
+        err_kws={"linewidth": 1},
     )
     ax.set_xlabel("")
     ax.set_ylabel("Runtime [sec]")
