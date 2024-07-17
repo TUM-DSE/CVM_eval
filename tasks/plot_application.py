@@ -302,6 +302,7 @@ def plot_application(
         ax=ax[0],
         palette=palette,
         edgecolor="black",
+        err_kws={'linewidth': 1},
     )
     sns.barplot(
         data=df[df["Application"] == "Pytorch"],
@@ -311,6 +312,7 @@ def plot_application(
         ax=ax[1],
         palette=palette,
         edgecolor="black",
+        err_kws={'linewidth': 1},
     )
     sns.barplot(
         data=df[df["Application"] == "Tensorflow"],
@@ -320,6 +322,7 @@ def plot_application(
         ax=ax[2],
         palette=palette,
         edgecolor="black",
+        err_kws={'linewidth': 1},
     )
 
     # calc relative values
@@ -486,6 +489,7 @@ def plot_sqlite(
         ax=ax,
         palette=palette2,
         edgecolor="black",
+        err_kws={'linewidth': 1},
     )
     ax.set_xlabel("")
     ax.set_ylabel("Runtime [sec]")

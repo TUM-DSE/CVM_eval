@@ -29,7 +29,7 @@ figwidth_full = 7
 FONTSIZE = 9
 
 pastel = sns.color_palette("pastel")
-#palette = sns.color_palette("pastel")
+# palette = sns.color_palette("pastel")
 vm_col = pastel[0]
 swiotlb_col = pastel[1]
 vhost_col = pastel[4]
@@ -37,7 +37,7 @@ vshot_swiotlb_col = pastel[5]
 cvm_col = pastel[2]
 cvm_vhost_col = pastel[3]
 palette = [vm_col, swiotlb_col, vhost_col, vshot_swiotlb_col, cvm_col, cvm_vhost_col]
-#hatches = ["", "//"]
+# hatches = ["", "//"]
 hatches = ["", "", "", "", "//", "//"]
 
 palette2 = [vm_col, vhost_col, cvm_col, cvm_vhost_col]
@@ -46,35 +46,13 @@ hatches2 = ["", "", "//", "//"]
 BENCH_RESULT_DIR = Path("./bench-result/network")
 
 
-# bench mark path:
-# ./bench-result/network/iperf/{name}/{date}
-def parse_iperf_result(name: str, label: str, mode: str, date=None, pkt=None) -> pd.DataFrame:
-    # create df like the following
-    # | VM | pkt size | throughput |
-    # |----|----------|------------|
-    # |    |          |            |
-    if pkt is not None:
-        pktsize = [pkt]
-    elif mode == "udp":
-        pktsize = [64, 128, 256, 512, 1024, 1460]
-    elif mode == "tcp":
-        pktsize = [64, 128, 256, 512, 1024, "32K", "128K"]
-    else:
-        raise ValueError(f"Invalid mode: {mode}")
+def parse_iperf_result_sub(
+    name: str, mode: str, date: str, lebel: str, pkt_size: [int]
+) -> pd.DataFrame:
     ths = []
-
-    if date is None:
-        # use the latest date
-        date = sorted(os.listdir(BENCH_RESULT_DIR / "iperf" / name / mode))[-1]
-
-    print(f"date: {date}")
-
-    for size in pktsize:
-        path = Path(f"./bench-result/network/iperf/{name}/{mode}/{date}/{size}.log")
-        if not path.exists():
-            print(f"XXX: {path} not found!")
-            continue
-        with path.open("r") as f:
+    for size in pkt_size:
+        file = BENCH_RESULT_DIR / "iperf" / name / mode / date / f"{size}.log"
+        with file.open("r") as f:
             lines = f.readlines()
 
         # example format:
@@ -90,8 +68,42 @@ def parse_iperf_result(name: str, label: str, mode: str, date=None, pkt=None) ->
             th /= 1000.0
         ths.append(th)
 
-    print(ths)
-    df = pd.DataFrame({"name": label, "size": pktsize[: len(ths)], "throughput": ths})
+    df = pd.DataFrame({"name": lebel, "size": pkt_size, "throughput": ths})
+    return df
+
+
+# bench mark path:
+# ./bench-result/network/iperf/{name}/{date}
+def parse_iperf_result(
+    name: str, label: str, mode: str, date=None, pkt=None, max_num: int = 10
+) -> pd.DataFrame:
+    # create df like the following
+    # | VM | pkt size | throughput |
+    # |----|----------|------------|
+    # |    |          |            |
+    if pkt is not None:
+        pktsize = [pkt]
+    elif mode == "udp":
+        pktsize = [64, 128, 256, 512, 1024, 1460]
+    elif mode == "tcp":
+        pktsize = [64, 128, 256, 512, 1024, "32K", "128K"]
+    else:
+        raise ValueError(f"Invalid mode: {mode}")
+
+    dates = []
+    if date is None:
+        # use the latest date
+        dates = sorted(os.listdir(BENCH_RESULT_DIR / "iperf" / name / mode))[-max_num:]
+    else:
+        dates.append(date)
+
+    dfs = []
+    for date in dates:
+        df = parse_iperf_result_sub(name, mode, date, label, pktsize)
+        dfs.append(df)
+
+    df = pd.concat(dfs)
+
     return df
 
 
@@ -178,33 +190,44 @@ def parse_memtier_result_sub(
 
 
 def parse_memtier_result(
-    name: str, label: str, server: str, date=None, date_tls=None
+    name: str, label: str, server: str, date=None, date_tls=None, max_num: int = 10
 ) -> pd.DataFrame:
-    if date is None:
-        date = sorted(os.listdir(BENCH_RESULT_DIR / "memtier" / server / name))[-1]
-    df = parse_memtier_result_sub(
-        BENCH_RESULT_DIR / "memtier" / server / name / date / "memtier.log",
-        label,
-        server,
-        False,
-    )
-    if date_tls is None:
-        date_tls = sorted(
-            os.listdir(BENCH_RESULT_DIR / "memtier" / f"{server}-tls" / name)
-        )[-1]
-    df_tls = parse_memtier_result_sub(
-        BENCH_RESULT_DIR
-        / "memtier"
-        / f"{server}-tls"
-        / name
-        / date_tls
-        / "memtier.log",
-        f"{label}",
-        server,
-        True,
-    )
+    dates = []
 
-    df = pd.concat([df, df_tls])
+    if date is None:
+        dates = sorted(os.listdir(BENCH_RESULT_DIR / "memtier" / server / name))[
+            -max_num:
+        ]
+    else:
+        dates.append(date)
+
+    dfs = []
+    for date in dates:
+        df = parse_memtier_result_sub(
+            BENCH_RESULT_DIR / "memtier" / server / name / date / "memtier.log",
+            label,
+            server,
+            False,
+        )
+        if date_tls is None:
+            date_tls = sorted(
+                os.listdir(BENCH_RESULT_DIR / "memtier" / f"{server}-tls" / name)
+            )[-1]
+        df_tls = parse_memtier_result_sub(
+            BENCH_RESULT_DIR
+            / "memtier"
+            / f"{server}-tls"
+            / name
+            / date_tls
+            / "memtier.log",
+            f"{label}",
+            server,
+            True,
+        )
+        dfs.append(df)
+        dfs.append(df_tls)
+
+    df = pd.concat(dfs)
 
     return df
 
@@ -233,22 +256,28 @@ def parse_nginx_result_sub(path: str, name: str, workload: str) -> pd.DataFrame:
     return df
 
 
-def parse_nginx_result(name: str, label: str, date=None) -> pd.DataFrame:
+def parse_nginx_result(
+    name: str, label: str, date=None, max_num: int = 10
+) -> pd.DataFrame:
+    dates = []
     if date is None:
-        date = sorted(os.listdir(BENCH_RESULT_DIR / "nginx" / name))[-1]
+        dates = sorted(os.listdir(BENCH_RESULT_DIR / "nginx" / name))[-max_num:]
+    else:
+        dates.append(date)
 
-    df = parse_nginx_result_sub(
-        BENCH_RESULT_DIR / "nginx" / name / date / "http.log",
-        label,
-        "http",
-    )
-    df_ssl = parse_nginx_result_sub(
-        BENCH_RESULT_DIR / "nginx" / name / date / "https.log",
-        label,
-        "https",
-    )
+    dfs = []
+    for date in dates:
+        df = parse_nginx_result_sub(
+            BENCH_RESULT_DIR / "nginx" / name / date / "http.log", label, "http"
+        )
+        df_ssl = parse_nginx_result_sub(
+            BENCH_RESULT_DIR / "nginx" / name / date / "https.log", label, "https"
+        )
 
-    df = pd.concat([df, df_ssl])
+        dfs.append(df)
+        dfs.append(df_ssl)
+
+    df = pd.concat(dfs)
 
     return df
 
@@ -264,7 +293,11 @@ def plot_iperf(
     outname=None,
     size="medium",
     pkt=None,
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -284,18 +317,25 @@ def plot_iperf(
             n += "-swiotlb"
         return n
 
-    #df1 = parse_iperf_result(get_name(vm), vm, mode)
-    #df2 = parse_iperf_result(get_name(cvm), cvm, mode)
-    ## merge df using name as key
-    #df = pd.concat([df1, df2])
-
     dfs = []
     dfs.append(parse_iperf_result(get_name(vm), vm_label, mode, pkt=pkt))
-    dfs.append(parse_iperf_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb", mode, pkt=pkt))
+    dfs.append(
+        parse_iperf_result(
+            get_name(vm, vhost=False, swiotlb=True), f"swiotlb", mode, pkt=pkt
+        )
+    )
     dfs.append(parse_iperf_result(get_name(vm, vhost=True), f"vhost", mode, pkt=pkt))
-    dfs.append(parse_iperf_result(get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", mode, pkt=pkt))
+    dfs.append(
+        parse_iperf_result(
+            get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", mode, pkt=pkt
+        )
+    )
     dfs.append(parse_iperf_result(get_name(cvm), cvm_label, mode, pkt=pkt))
-    dfs.append(parse_iperf_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", mode, pkt=pkt))
+    dfs.append(
+        parse_iperf_result(
+            get_name(cvm, vhost=True), f"{cvm_label}-vhost", mode, pkt=pkt
+        )
+    )
     df = pd.concat(dfs)
     print(df)
 
@@ -309,6 +349,7 @@ def plot_iperf(
         ax=ax,
         palette=palette,
         edgecolor="black",
+        err_kws={"linewidth": 1},
     )
     if pkt is not None:
         ax.set_xticklabels([])
@@ -370,7 +411,11 @@ def plot_ping(
     outname=None,
     size="medium",
     all=False,
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -392,11 +437,19 @@ def plot_ping(
 
     dfs = []
     dfs.append(parse_ping_result(get_name(vm), vm_label, all=all))
-    dfs.append(parse_ping_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb", all=all))
+    dfs.append(
+        parse_ping_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb", all=all)
+    )
     dfs.append(parse_ping_result(get_name(vm, vhost=True), f"vhost", all=all))
-    dfs.append(parse_ping_result(get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", all=all))
+    dfs.append(
+        parse_ping_result(
+            get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", all=all
+        )
+    )
     dfs.append(parse_ping_result(get_name(cvm), cvm_label, all=all))
-    dfs.append(parse_ping_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", all=all))
+    dfs.append(
+        parse_ping_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", all=all)
+    )
     df = pd.concat(dfs)
     print(df)
 
@@ -410,6 +463,7 @@ def plot_ping(
         ax=ax,
         palette=palette,
         edgecolor="black",
+        err_kws={"linewidth": 1},
     )
     if not all:
         ax.set_xticklabels([])
@@ -471,7 +525,11 @@ def plot_redis(
     outdir="plot",
     outname=None,
     size="medium",
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -493,7 +551,9 @@ def plot_redis(
     dfs.append(parse_memtier_result(get_name(vm), vm_label, "redis"))
     dfs.append(parse_memtier_result(get_name(vm, vhost=True), f"vhost", "redis"))
     dfs.append(parse_memtier_result(get_name(cvm), cvm_label, "redis"))
-    dfs.append(parse_memtier_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", "redis"))
+    dfs.append(
+        parse_memtier_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", "redis")
+    )
     df = pd.concat(dfs)
     print(df)
 
@@ -506,6 +566,7 @@ def plot_redis(
         ax=ax,
         palette=palette2,
         edgecolor="black",
+        err_kws={"linewidth": 1},
     )
     ax.set_xlabel("")
     ax.set_ylabel("Throughput [M req/s]")
@@ -559,7 +620,11 @@ def plot_memcached(
     outdir="plot",
     outname=None,
     size="medium",
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -581,7 +646,11 @@ def plot_memcached(
     dfs.append(parse_memtier_result(get_name(vm), vm_label, "memcached"))
     dfs.append(parse_memtier_result(get_name(vm, vhost=True), f"vhost", "memcached"))
     dfs.append(parse_memtier_result(get_name(cvm), cvm_label, "memcached"))
-    dfs.append(parse_memtier_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", "memcached"))
+    dfs.append(
+        parse_memtier_result(
+            get_name(cvm, vhost=True), f"{cvm_label}-vhost", "memcached"
+        )
+    )
     df = pd.concat(dfs)
     print(df)
 
@@ -594,6 +663,7 @@ def plot_memcached(
         ax=ax,
         palette=palette2,
         edgecolor="black",
+        err_kws={"linewidth": 1},
     )
     ax.set_xlabel("")
     ax.set_ylabel("Throughput [M req/s]")
@@ -614,7 +684,7 @@ def plot_memcached(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    #for patch in ax.get_legend().get_patches()[1::2]:
+    # for patch in ax.get_legend().get_patches()[1::2]:
     for patch in ax.get_legend().get_patches()[2:]:
         patch.set_hatch("//")
 
@@ -648,7 +718,12 @@ def plot_nginx(
     outdir="plot",
     outname=None,
     size="medium",
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
+
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -684,6 +759,7 @@ def plot_nginx(
         ax=ax,
         palette=palette2,
         edgecolor="black",
+        err_kws={"linewidth": 1},
     )
     ax.set_xlabel("")
     ax.set_ylabel("Throughput [M req/s]")

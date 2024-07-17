@@ -37,7 +37,7 @@ vm_col = pastel[0]
 swiotlb_col = pastel[1]
 cvm_col = pastel[2]
 palette = [vm_col, swiotlb_col, cvm_col]
-#hatches = ["", "//", "x", "//x"]
+# hatches = ["", "//", "x", "//x"]
 hatches = ["", "", "//"]
 
 
@@ -102,15 +102,30 @@ def process_data(data, name):
 BENCH_RESULT_DIR = Path("./bench-result/fio")
 
 
-def read_result(name: str, label: str, jobname: str, date=None) -> pd.DataFrame:
+def read_result(
+    name: str, label: str, jobname: str, date=None, max_num: int = 1
+) -> pd.DataFrame:
+    dates = []
     if date is None:
-        # use the latest one
-        date = Path(sorted(os.listdir(BENCH_RESULT_DIR / name / jobname))[-1]).stem
+        # use the latest results
+        # note: fio reports stddev
+        dates = [
+            Path(i).stem
+            for i in sorted(os.listdir(BENCH_RESULT_DIR / name / jobname))[-max_num:]
+        ]
+    else:
+        dates.append(date)
 
-    file = BENCH_RESULT_DIR / name / jobname / f"{date}.json"
-    print(f"file: {file}")
-    data = read_json(file)
-    df = process_data(data, label)
+    dfs = []
+    for date in dates:
+        file = BENCH_RESULT_DIR / name / jobname / f"{date}.json"
+        print(f"file: {file}")
+        data = read_json(file)
+        df = process_data(data, label)
+        dfs.append(df)
+
+    # merge df
+    df = pd.concat(dfs)
 
     return df
 
@@ -163,6 +178,7 @@ def plot_bw(df, outdir, device=""):
         yerr=bw["write_bw_dev"],
         fmt="none",
         c="k",
+        elinewidth=1,
     )
     # apply hatch
     for i, bar in enumerate(ax.patches[n * 2 :]):
@@ -211,7 +227,8 @@ def plot_iops(df, outdir, device=""):
 
     ## randread
     iops = df[(df["jobname"] == "iops randread")]
-    ax = sns.barplot( data=iops,
+    ax = sns.barplot(
+        data=iops,
         x="jobname",
         y="read_iops_mean",
         hue="name",
@@ -225,7 +242,12 @@ def plot_iops(df, outdir, device=""):
     y_coords = [p.get_height() for p in ax.patches]
     n = len(x_coords) // 2
     ax.errorbar(
-        x=x_coords[:n], y=y_coords[:n], yerr=iops["read_iops_stddev"], fmt="none", c="k"
+        x=x_coords[:n],
+        y=y_coords[:n],
+        yerr=iops["read_iops_stddev"],
+        fmt="none",
+        c="k",
+        elinewidth=1,
     )
     ax.get_legend().set_title("")
     for i, bar in enumerate(ax.patches[:n]):
@@ -254,6 +276,7 @@ def plot_iops(df, outdir, device=""):
         yerr=iops["write_iops_stddev"],
         fmt="none",
         c="k",
+        elinewidth=1,
     )
 
     ## mixread70
@@ -401,6 +424,7 @@ def plot_latency(df, outdir, device=""):
 
     ## randwrite
     lat = df[(df["jobname"] == "alat randwrite")]
+    print(lat)
     ax = sns.barplot(
         data=lat,
         x="jobname",
@@ -489,16 +513,20 @@ def plot_fio(
         cvm_label = "td"
 
     vm_data = read_result(f"{vm}-direct-{size}{device}-{aio}", vm_label, jobfile)
-    swiotlb_data = read_result(f"{vm}-direct-{size}{device}-{aio}-swiotlb", "swiotlb", jobfile)
+    swiotlb_data = read_result(
+        f"{vm}-direct-{size}{device}-{aio}-swiotlb", "swiotlb", jobfile
+    )
     cvm_data = read_result(f"{cvm}-direct-{size}{device}-{aio}", cvm_label, jobfile)
 
     # labels = [vm, "swiotlb", cvm]
     # labels = ["vm", "swiotlb", "td"]
-    #labels = ["vm", "swiotlb", "td", "td-poll"]
+    # labels = ["vm", "swiotlb", "td", "td-poll"]
     # df = pd.concat([vm_data, swiotlb_data, cvm_data])
-    #df = pd.concat([vm_data, swiotlb_data, cvm_data, cvm_poll_data])
+    # df = pd.concat([vm_data, swiotlb_data, cvm_data, cvm_poll_data])
     df = pd.concat([vm_data, swiotlb_data, cvm_data])
     print(df)
+    # save df
+    df.to_csv(Path(outdir) / f"fio_{device}.csv", index=False)
 
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)

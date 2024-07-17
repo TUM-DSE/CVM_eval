@@ -103,7 +103,7 @@ def parse_mlc_result(
 
     fs = []
     if date is None:
-        files = sorted([d for d in base_dir.iterdir() if d.is_dir()])[:10]
+        files = sorted([d for d in base_dir.iterdir() if d.is_dir()])[-10:]
         for f in files:
             fs.append(f / "mlc.log")
     else:
@@ -123,7 +123,11 @@ def parse_mlc_result(
 
 @task
 def show_mlc_result(
-    cx: Any, cvm: str = "snp", size: str = "medium", tmebypass: bool = False
+    cx: Any,
+    cvm: str = "snp",
+    size: str = "medium",
+    tmebypass: bool = False,
+    result_dir: Optional[str] = None,
 ):
     p = ""
     if cvm == "snp":
@@ -137,7 +141,10 @@ def show_mlc_result(
         if tmebypass:
             p = "-tmebypass"
 
-    RESULT_DIR = PROJECT_ROOT / f"bench-result/memory/mlc"
+    if result_dir is None:
+        RESULT_DIR = PROJECT_ROOT / f"bench-result/memory/mlc"
+    else:
+        RESULT_DIR = Path(result_dir)
 
     vm_df = parse_mlc_result(vm_label, RESULT_DIR / f"{vm}-direct-{size}{p}")
     cvm_df = parse_mlc_result(cvm_label, RESULT_DIR / f"{cvm}-direct-{size}")
@@ -173,7 +180,11 @@ def show_mlc_result(
 
 @task
 def show_mmap_result(
-    cx: Any, cvm: str = "snp", size: str = "medium", tmebypass: bool = False
+    cx: Any,
+    cvm: str = "snp",
+    size: str = "medium",
+    tmebypass: bool = False,
+    result_dir: Optional[str] = None,
 ):
     """Parse mmap measure log and show the result"""
     p = ""
@@ -184,7 +195,10 @@ def show_mmap_result(
         if tmebypass:
             p = "-tmebypass"
 
-    RESULT_DIR = PROJECT_ROOT / f"bench-result/memory/mmap-time"
+    if result_dir is None:
+        RESULT_DIR = PROJECT_ROOT / f"bench-result/memory/mmap-time"
+    else:
+        RESULT_DIR = Path(result_dir)
 
     for v in [vm, cvm]:
         for n in ["1st", "2nd"]:
