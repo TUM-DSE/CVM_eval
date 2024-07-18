@@ -492,6 +492,52 @@ show_bridge_status:
     brctl show
     networkctl
 
-# command for the guest
-perf-record sec="10":
-   {{KERNEL_SHELL}} "{{PROJECT_ROOT}}/guest-tools/perf record -- sleep {{sec}}"
+# ------------------------------
+# trace
+trace name duration="20" interval="1":
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    bash {{PROJECT_ROOT}}/trace/all.sh {{name}} {{duration}} {{interval}} $DATE &
+    just ssh "bash /share/trace/all.sh {{name}} {{duration}} {{interval}} $DATE"
+    sleep 5
+    just flamegraph {{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host/perf.data {{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host/perf.svg
+    just flamegraph-guest {{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/guest/perf.data {{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/guest/perf.svg
+
+trace_host name:
+    bash {{PROJECT_ROOT}}/trace/all.sh {{name}}
+
+perf_host name:
+    bash {{PROJECT_ROOT}}/trace/perf.sh {{name}}
+
+stat_host name:
+    bash {{PROJECT_ROOT}}/trace/stat.sh {{name}}
+
+trace_guest name:
+    just ssh "bash /share/trace/all.sh {{name}}"
+
+perf_guest name:
+    just ssh "bash /share/trace/perf.sh {{name}}"
+
+stat_guest name:
+    just ssh "bash /share/trace/stat.sh {{name}}"
+
+flamegraph in="perf.data" out="a.svg":
+    #!/usr/bin/env bash
+    TMP=$(mktemp -p /tmp)
+    trap 'rm -f $TMP' EXIT
+    perf script -i {{in}} | {{PROJECT_ROOT}}/../FlameGraph/stackcollapse-perf.pl > $TMP
+    {{PROJECT_ROOT}}/../FlameGraph/flamegraph.pl $TMP > {{out}}
+
+flamegraph-guest in="perf.data" out="a.svg":
+    #!/usr/bin/env bash
+    TMP=$(mktemp -p /tmp)
+    trap 'rm -f $TMP' EXIT
+    perf script -k {{LINUX_DIR}}/vmlinux -i {{in}} | {{PROJECT_ROOT}}/../FlameGraph/stackcollapse-perf.pl > $TMP
+    {{PROJECT_ROOT}}/../FlameGraph/flamegraph.pl $TMP > {{out}}
+
+# command for the guest (run in the guest)
+perf-record sec="10" out="perf.data":
+   {{KERNEL_SHELL}} "{{PROJECT_ROOT}}/guest-tools/perf record --output {{out}} -a -g -- sleep {{sec}}"
+
+perf-report in="perf.data" out="report.txt":
+   {{KERNEL_SHELL}} "{{PROJECT_ROOT}}/guest-tools/perf report -i {{in}} -k {{PROJECT_ROOT}}/guest-tools/vmlinux --no-children > {{out}}"

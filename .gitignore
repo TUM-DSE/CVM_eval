@@ -15,6 +15,7 @@ build/
 result
 result-fd
 bench-result
+trace-result
 guest-tools
 /.pre-commit-config.yaml
 
