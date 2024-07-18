@@ -19,6 +19,13 @@
 , inotify-tools
 , cloc
 , tokei
+, newt
+, slang
+, libtraceevent
+, libunwind
+, numactl
+, python3
+, babeltrace
 , runScript ? ''bash -c''
 }:
 buildFHSUserEnv {
@@ -44,7 +51,16 @@ buildFHSUserEnv {
     ncurses
     openssl
     zlib
+    newt
+    slang
+    libtraceevent
+    libunwind
+    numactl
+    python3
+    perl
+    babeltrace
   ]);
+  hardeningDisable = [ "all" ];
   profile = ''
     export hardeningDisable=all
   '';

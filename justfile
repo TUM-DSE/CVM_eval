@@ -438,6 +438,14 @@ build-linux:
     cd {{ LINUX_DIR }}
     yes "" | {{ KERNEL_SHELL }} "make KCFLAGS=-Wno-error=missing-prototypes -C {{ LINUX_DIR }} -j$(nproc)"
 
+build-perf:
+    #!/usr/bin/env bash
+    set -xeu
+    cd {{ LINUX_DIR }}/tools/perf
+    {{ KERNEL_SHELL }} "NIX_CFLAGS_COMPILE='-idirafter /usr/include -O2' make -j$(nproc)"
+    mkdir -p guest-tools
+    cp {{ LINUX_DIR }}/tools/perf/perf guest-tools
+
 clean-linux:
     {{ KERNEL_SHELL }} "make -C {{ LINUX_DIR }} clean"
 
@@ -484,3 +492,6 @@ show_bridge_status:
     brctl show
     networkctl
 
+# command for the guest
+perf-record sec="10":
+   {{KERNEL_SHELL}} "{{PROJECT_ROOT}}/guest-tools/perf record -- sleep {{sec}}"
