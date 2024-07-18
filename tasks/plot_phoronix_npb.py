@@ -193,7 +193,7 @@ def plot_npb(
 
     df = load_data(vm, cvm, rel=False, size=size, p=p)
     df["identifier"] = df["identifier"].map(
-        {f"{vm}-direct-{size}": vm_label, f"{cvm}-direct-{size}": cvm_label}
+        {f"{vm}-direct-{size}{p}": vm_label, f"{cvm}-direct-{size}": cvm_label}
     )
     df["benchmark_id"] = df["benchmark_id"].map(
         {i: j for i, j in zip(BENCHMARK_ID, LABELS)}
