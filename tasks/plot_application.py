@@ -227,12 +227,14 @@ def plot_application(
     labels=[],
     rel=True,
     tmebypass=False,
+    poll=False,
     result_dir=None,
 ):
     if result_dir is not None:
         global BENCH_RESULT_DIR
         BENCH_RESULT_DIR = Path(result_dir)
-    p = ""
+    pvm = ""
+    pcvm = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -242,7 +244,10 @@ def plot_application(
         vm_label = "vm"
         cvm_label = "td"
         if tmebypass:
-            p = "-tmebypass"
+            pvm = "-tmebypass"
+    if poll:
+        pvm += "-poll"
+        pcvm += "-poll"
 
     if len(sizes) == 0:
         # labels = ["small", "medium", "large", "numa"]
@@ -254,13 +259,9 @@ def plot_application(
     # |----|------|-------------|------|
     # |    |      |             |      |
     data = []
-    for vmname, vmlabel in zip([vm, cvm], [vm_label, cvm_label]):
-        if vmname == vm:
-            p_ = p
-        else:
-            p_ = ""
+    for vmname, vmlabel, p in zip([vm, cvm], [vm_label, cvm_label], [pvm, pcvm]):
         for size, label in zip(sizes, labels):
-            bl_df = parse_blender_result(f"{vmname}-direct-{size}{p_}")
+            bl_df = parse_blender_result(f"{vmname}-direct-{size}{p}")
             for i, row in bl_df.iterrows():
                 data.append(
                     {
@@ -270,7 +271,7 @@ def plot_application(
                         "Time": row["time"],
                     },
                 )
-            tf_df = parse_tensorflow_result(f"{vmname}-direct-{size}{p_}")
+            tf_df = parse_tensorflow_result(f"{vmname}-direct-{size}{p}")
             for i, row in tf_df.iterrows():
                 data.append(
                     {
@@ -280,7 +281,7 @@ def plot_application(
                         "Time": row["time"],
                     },
                 )
-            pt_df = parse_pytorch_result(f"{vmname}-direct-{size}{p_}")
+            pt_df = parse_pytorch_result(f"{vmname}-direct-{size}{p}")
             for i, row in pt_df.iterrows():
                 data.append(
                     {
@@ -446,9 +447,9 @@ def plot_application(
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     if not rel:
-        save_path = outdir / f"{outname}_norel.pdf"
+        save_path = outdir / f"{outname}_norel{pvm}.pdf"
     else:
-        save_path = outdir / f"{outname}.pdf"
+        save_path = outdir / f"{outname}{pvm}.pdf"
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
 

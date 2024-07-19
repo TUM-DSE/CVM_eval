@@ -79,9 +79,9 @@ def parse_result(name: str, date: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def load_data(vm: str, cvm: str, rel=True, size="numa", p="") -> pd.DataFrame:
-    vm_df = parse_result(f"{vm}-direct-{size}{p}")
-    cvm_df = parse_result(f"{cvm}-direct-{size}")
+def load_data(vm: str, cvm: str, rel=True, size="numa", pvm="", pcvm="") -> pd.DataFrame:
+    vm_df = parse_result(f"{vm}-direct-{size}{pvm}")
+    cvm_df = parse_result(f"{cvm}-direct-{size}{pcvm}")
 
     if not rel:
         df = pd.concat([vm_df, cvm_df])
@@ -174,12 +174,14 @@ def plot_npb(
     size: str = "medium",
     rel: bool = True,
     tmebypass: bool = False,
+    poll: bool = False,
     result_dir=None,
 ):
     if result_dir is not None:
         global BENCH_RESULT_DIR
         BENCH_RESULT_DIR = Path(result_dir)
-    p = ""
+    pcvm = ""
+    pvm = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -189,11 +191,13 @@ def plot_npb(
         vm_label = "vm"
         cvm_label = "td"
         if tmebypass:
-            p = "-tmebypass"
-
-    df = load_data(vm, cvm, rel=False, size=size, p=p)
+            pvm = "-tmebypass"
+    if poll:
+        pvm += "-poll"
+        pcvm += "-poll"
+    df = load_data(vm, cvm, rel=False, size=size, pvm=pvm, pcvm=pcvm)
     df["identifier"] = df["identifier"].map(
-        {f"{vm}-direct-{size}{p}": vm_label, f"{cvm}-direct-{size}": cvm_label}
+        {f"{vm}-direct-{size}{pvm}": vm_label, f"{cvm}-direct-{size}{pcvm}": cvm_label}
     )
     df["benchmark_id"] = df["benchmark_id"].map(
         {i: j for i, j in zip(BENCHMARK_ID, LABELS)}
@@ -271,8 +275,8 @@ def plot_npb(
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     if not rel:
-        save_path = outdir / f"{outname}_{size}_norel.pdf"
+        save_path = outdir / f"{outname}_{size}_norel{pvm}.pdf"
     else:
-        save_path = outdir / f"{outname}_{size}.pdf"
+        save_path = outdir / f"{outname}_{size}{pvm}.pdf"
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")

@@ -152,8 +152,10 @@ def plot_phoronix_memory(
     outdir: str = "./plot",
     name: str = "memory",
     tmebypass: bool = False,
+    poll: bool = False,
 ):
-    p = ""
+    pvm = ""
+    pcvm = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -163,10 +165,13 @@ def plot_phoronix_memory(
         vm_label = "vm"
         cvm_label = "td"
         if tmebypass:
-            p = "-tmebypass"
+            pvm = "-tmebypass"
+    if poll:
+        pvm += "-poll"
+        pcvm += "-poll"
 
-    vmfile = get_file(f"{vm}-direct-{size}{p}")
-    cvmfile = get_file(f"{cvm}-direct-{size}")
+    vmfile = get_file(f"{vm}-direct-{size}{pvm}")
+    cvmfile = get_file(f"{cvm}-direct-{size}{pcvm}")
     data = load_data(vmfile, cvmfile)
 
     # print relative values
@@ -215,6 +220,6 @@ def plot_phoronix_memory(
 
     outdir = Path(outdir)
     outdir.mkdir(exist_ok=True, parents=True)
-    outpath = outdir / f"{name}_{size}.pdf"
+    outpath = outdir / f"{name}_{size}{pvm}.pdf"
     plt.savefig(outpath, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"save {outpath}")

@@ -127,9 +127,11 @@ def show_mlc_result(
     cvm: str = "snp",
     size: str = "medium",
     tmebypass: bool = False,
+    poll: bool = False,
     result_dir: Optional[str] = None,
 ):
-    p = ""
+    pvm = ""
+    pcvm = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -139,15 +141,18 @@ def show_mlc_result(
         vm_label = "vm"
         cvm_label = "td"
         if tmebypass:
-            p = "-tmebypass"
+            pvm = "-tmebypass"
+    if poll:
+        pvm += "-poll"
+        pcvm += "-poll"
 
     if result_dir is None:
         RESULT_DIR = PROJECT_ROOT / f"bench-result/memory/mlc"
     else:
         RESULT_DIR = Path(result_dir)
 
-    vm_df = parse_mlc_result(vm_label, RESULT_DIR / f"{vm}-direct-{size}{p}")
-    cvm_df = parse_mlc_result(cvm_label, RESULT_DIR / f"{cvm}-direct-{size}")
+    vm_df = parse_mlc_result(vm_label, RESULT_DIR / f"{vm}-direct-{size}{pvm}")
+    cvm_df = parse_mlc_result(cvm_label, RESULT_DIR / f"{cvm}-direct-{size}{pcvm}")
 
     print(vm_df)
     print(cvm_df)
