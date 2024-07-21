@@ -35,6 +35,11 @@ cd $OUTDIR
 echo "Start collecting data $DURATION seconds"
 
 sar -A -o sar.out $INTERVAL $DURATION > /dev/null 2>&1 &
+# iostat option
+# -d: display the device utilization report
+# -k: display statistics in kilobytes
+# -x: display extended statistics
+# -y: omit first report with statistics since system boot
 iostat  -d -k -x -y $INTERVAL $DURATION > iostat.txt &
 mpstat -I CPU $INTERVAL $DURATION > mpstat.txt &
 
