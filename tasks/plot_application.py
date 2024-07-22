@@ -477,7 +477,7 @@ def plot_sqlite(
         vm_label = "vm"
         cvm_label = "td"
 
-    vm_df = parse_sqlite_result(f"{vm}-direct-{size}{device}-{aio}", label=vm_label)
+    vm_df = parse_sqlite_result(f"{vm}-direct-{size}-{device}-{aio}", label=vm_label)
     swiotlb_df = parse_sqlite_result(
         f"{vm}-direct-{size}{device}-{aio}-swiotlb", label="swiotlb"
     )

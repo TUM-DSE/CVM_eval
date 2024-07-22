@@ -171,8 +171,7 @@ def create_df2(vm, cvm, prealloc, index) -> pd.DataFrame:
         columns=columns,
     )
     df3 = pd.DataFrame(
-        np.array([prealloc_qemu, prealloc_ovmf, prealloc_linux, prealloc_init])
-        .T,
+        np.array([prealloc_qemu, prealloc_ovmf, prealloc_linux, prealloc_init]).T,
         index=index,
         columns=columns,
     )
@@ -180,6 +179,7 @@ def create_df2(vm, cvm, prealloc, index) -> pd.DataFrame:
     data = [df1, df2, df3]
 
     return data
+
 
 # https://stackoverflow.com/questions/22787209/how-to-have-clusters-of-stacked-bars
 def plot_clustered_stacked(
@@ -248,7 +248,7 @@ def plot_clustered_stacked(
             columnspacing=0.5,
             handletextpad=0.2,
             fontsize=5,
-            #bbox_to_anchor=[1.0, -0.15],
+            # bbox_to_anchor=[1.0, -0.15],
             bbox_to_anchor=[0, 0.90],
             loc="upper left",
         )
@@ -256,22 +256,24 @@ def plot_clustered_stacked(
 
     # calculate the total time
     for i in range(n_df):
-        total_time = (dfall[i]["QEMU"] + dfall[i]["OVMF"] + dfall[i]["Linux"] + dfall[i]["Init"]).values
+        total_time = (
+            dfall[i]["QEMU"] + dfall[i]["OVMF"] + dfall[i]["Linux"] + dfall[i]["Init"]
+        ).values
         # put the total time on the top of the bar
         for j in range(len(total_time)):
             p = axe.patches[j + i * len(total_time)]
             axe.text(
-                p.get_x() + (0.25)*i + p.get_width() / 2.0,
+                p.get_x() + (0.25) * i + p.get_width() / 2.0,
                 total_time[j] + 0.1,
                 f"{total_time[j]:.2f}",
                 ha="center",
                 va="bottom",
                 fontsize=5,
             )
-    #vm_total_time = (dfall[0]["QEMU"] + dfall[0]["OVMF"] + dfall[0]["Linux"] + dfall[0]["Init"]).values
-    #cvm_total_time = (dfall[1]["QEMU"] + dfall[1]["OVMF"] + dfall[1]["Linux"] + dfall[1]["Init"]).values
+    # vm_total_time = (dfall[0]["QEMU"] + dfall[0]["OVMF"] + dfall[0]["Linux"] + dfall[0]["Init"]).values
+    # cvm_total_time = (dfall[1]["QEMU"] + dfall[1]["OVMF"] + dfall[1]["Linux"] + dfall[1]["Init"]).values
     ## put the total time on the top of the bar
-    #for i in range(len(vm_total_time)):
+    # for i in range(len(vm_total_time)):
     #    p = axe.patches[i]
     #    axe.text(
     #        p.get_x() + p.get_width() / 2.0,
@@ -281,7 +283,7 @@ def plot_clustered_stacked(
     #        va="bottom",
     #        fontsize=5,
     #    )
-    #for i in range(len(cvm_total_time)):
+    # for i in range(len(cvm_total_time)):
     #    p = axe.patches[i + len(vm_total_time)]
     #    axe.text(
     #        p.get_x() + 0.3 + p.get_width() / 2.0,

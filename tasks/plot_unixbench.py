@@ -153,6 +153,7 @@ def plot_unixbench(
 
     vm_df = parse_result(vm_label, f"{vm}-direct-{size}-{disk}{p}")
     cvm_df = parse_result(cvm_label, f"{cvm}-direct-{size}-{disk}")
+    # cvm_poll_df = parse_result(f"{cvm_label}-poll", f"{cvm}-direct-{size}-{disk}-poll")
 
     df = pd.concat([vm_df, cvm_df])
 

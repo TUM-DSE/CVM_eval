@@ -79,7 +79,9 @@ def parse_result(name: str, date: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def load_data(vm: str, cvm: str, rel=True, size="numa", pvm="", pcvm="") -> pd.DataFrame:
+def load_data(
+    vm: str, cvm: str, rel=True, size="numa", pvm="", pcvm=""
+) -> pd.DataFrame:
     vm_df = parse_result(f"{vm}-direct-{size}{pvm}")
     cvm_df = parse_result(f"{cvm}-direct-{size}{pcvm}")
 
@@ -280,3 +282,120 @@ def plot_npb(
         save_path = outdir / f"{outname}_{size}{pvm}.pdf"
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
+
+
+# -----------------
+
+
+def extract_time_from_log(file_path):
+    with open(file_path, "r") as file:
+        for line in file:
+            if "Time in seconds =" in line:
+                return float(line.split("=")[1].strip())
+    return None
+
+
+def get_wait_policy(file_name):
+    if "passive" in file_name:
+        return "passive"
+    elif "active" in file_name:
+        return "active"
+    else:
+        return "default"
+
+
+def parse_experiment_results(root_dir):
+    data = []
+
+    for root, dirs, files in os.walk(root_dir):
+        for file in files:
+            if file.endswith(".log"):
+                parts = file.split(".")
+                benchmark = parts[0]
+                size = parts[1]
+                wait_policy = get_wait_policy(file)
+                time = extract_time_from_log(os.path.join(root, file))
+
+                dir_parts = root.split(os.sep)
+                experiment_type = dir_parts[-1]  # get the last part of the path
+
+                data.append(
+                    {
+                        "type": experiment_type,
+                        "benchmark": benchmark,
+                        "size": size,
+                        "wait_policy": wait_policy,
+                        "time": time,
+                    }
+                )
+
+    df = pd.DataFrame(data)
+    return df
+
+
+def plot_execution_times(df, size="C", outdir="./plot"):
+    # Filter the DataFrame for size 'C'
+    df_filtered = df[df["size"] == size]
+
+    # Calculate the median execution time for each benchmark and wait policy
+    df_median = (
+        df_filtered.groupby(["benchmark", "wait_policy"])["time"].median().reset_index()
+    )
+
+    # Get the unique wait policies
+    wait_policies = df_median["wait_policy"].unique()
+
+    # Create a plot for each wait policy
+    for policy in wait_policies:
+        # df_policy = df_median[df_median['wait_policy'] == policy]
+        df_policy = df[df["wait_policy"] == policy]
+
+        plt.figure(figsize=(10, 6))
+        ax = sns.barplot(
+            data=df_policy,
+            x="benchmark",
+            y="time",
+            hue="type",
+            palette=pastel,
+            edgecolor="black",
+        )
+        # set hatch
+        # bars = ax.patches
+        # hs = []
+        # num_x = len(df_policy['benchmark'].unique())
+        # hatches = ["", "//", "x", "o"]
+        # for hatch in hatches:
+        #    hs.extend([hatch] * num_x)
+        # num_legend = len(bars) - len(hs)
+        # hs.extend([""] * num_legend)
+        # for bar, hatch in zip(bars, hs):
+        #    bar.set_hatch(hatch)
+        plt.title(f"Execution Time for Wait Policy: {policy}")
+        plt.xlabel("Benchmark")
+        plt.ylabel("Execution Time (seconds)")
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+
+        plt.savefig(f"{outdir}/npb-omp_{size}_{policy}.pdf")
+
+
+@task
+def plot_npb_omp(
+    ctx: Any,
+    outdir: str = "./plot",
+    outname: str = "npb-omp",
+    result_dir=None,
+):
+    if result_dir is None:
+        result_dir = "./bench-result/npb-omp"
+    df = parse_experiment_results(result_dir)
+    print(df)
+
+    # exclude "intel-tmebypass"
+    df = df[df["type"] != "intel-tmebypass"]
+    # sort df using "type" and "benchmark"
+    df = df.sort_values(by=["type", "benchmark"])
+    # replace "intel" with "vm", "tdx" with "td"
+    df["type"] = df["type"].replace("intel", "vm").replace("tdx", "td")
+
+    plot_execution_times(df, size="C", outdir=outdir)

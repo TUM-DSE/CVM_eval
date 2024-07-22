@@ -115,7 +115,8 @@ def plot_vmexit(ctx: Any, cvm="snp", outdir="plot"):
     ]
 
     data = pd.DataFrame(
-        {f"{vm_label}": vm_val, f"{cvm_label}": cvm_val, f"{cvm_label}*": cvm_opt_val}, index=index
+        {f"{vm_label}": vm_val, f"{cvm_label}": cvm_val, f"{cvm_label}*": cvm_opt_val},
+        index=index,
     )
 
     # create bar plot

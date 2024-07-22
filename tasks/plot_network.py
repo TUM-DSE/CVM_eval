@@ -38,7 +38,7 @@ cvm_col = pastel[2]
 cvm_vhost_col = pastel[3]
 palette = [vm_col, swiotlb_col, vhost_col, vshot_swiotlb_col, cvm_col, cvm_vhost_col]
 # hatches = ["", "//"]
-hatches = ["", "", "", "", "//", "//"]
+hatches = ["", "", "", "", "//", "//", "//", "//", "//", "//"]
 
 palette2 = [vm_col, vhost_col, cvm_col, cvm_vhost_col]
 hatches2 = ["", "", "//", "//"]
@@ -289,6 +289,9 @@ def plot_iperf(
     mode="udp",
     vhost=False,
     mq=False,
+    tmebypass=False,
+    poll=False,
+    plot_all=False,
     outdir="plot",
     outname=None,
     size="medium",
@@ -298,6 +301,8 @@ def plot_iperf(
     if result_dir is not None:
         global BENCH_RESULT_DIR
         BENCH_RESULT_DIR = Path(result_dir)
+    pvm = ""
+    pcvm = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -306,9 +311,14 @@ def plot_iperf(
         vm = "intel"
         vm_label = "vm"
         cvm_label = "td"
+        if tmebypass:
+            pvm = "-tmebypass"
+    if poll:
+        pvm += "-poll"
+        pcvm += "-poll"
 
-    def get_name(name, vhost=False, mq=mq, swiotlb=False):
-        n = f"{name}-direct-{size}"
+    def get_name(name, p, vhost=False, mq=mq, swiotlb=False):
+        n = f"{name}-direct-{size}{p}"
         if vhost:
             n += "-vhost"
         if mq:
@@ -318,24 +328,51 @@ def plot_iperf(
         return n
 
     dfs = []
-    dfs.append(parse_iperf_result(get_name(vm), vm_label, mode, pkt=pkt))
+    dfs.append(parse_iperf_result(get_name(vm, pvm), vm_label, mode, pkt=pkt))
     dfs.append(
         parse_iperf_result(
-            get_name(vm, vhost=False, swiotlb=True), f"swiotlb", mode, pkt=pkt
+            get_name(vm, pvm, vhost=False, swiotlb=True), f"swiotlb", mode, pkt=pkt
         )
     )
-    dfs.append(parse_iperf_result(get_name(vm, vhost=True), f"vhost", mode, pkt=pkt))
+    dfs.append(
+        parse_iperf_result(get_name(vm, pvm, vhost=True), f"vhost", mode, pkt=pkt)
+    )
     dfs.append(
         parse_iperf_result(
-            get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", mode, pkt=pkt
+            get_name(vm, pvm, vhost=True, swiotlb=True), f"vhost-swiotlb", mode, pkt=pkt
         )
     )
-    dfs.append(parse_iperf_result(get_name(cvm), cvm_label, mode, pkt=pkt))
+    dfs.append(parse_iperf_result(get_name(cvm, pcvm), cvm_label, mode, pkt=pkt))
+    if plot_all:
+        dfs.append(
+            parse_iperf_result(
+                get_name(cvm, "-haltpoll"), f"{cvm_label}-hpoll", mode, pkt=pkt
+            )
+        )
+        dfs.append(
+            parse_iperf_result(
+                get_name(cvm, "-poll"), f"{cvm_label}-poll", mode, pkt=pkt
+            )
+        )
     dfs.append(
         parse_iperf_result(
-            get_name(cvm, vhost=True), f"{cvm_label}-vhost", mode, pkt=pkt
+            get_name(cvm, pcvm, vhost=True), f"{cvm_label}-vhost", mode, pkt=pkt
         )
     )
+    if plot_all:
+        dfs.append(
+            parse_iperf_result(
+                get_name(cvm, "-haltpoll-vhost"),
+                f"{cvm_label}-vhost-hpoll",
+                mode,
+                pkt=pkt,
+            )
+        )
+        dfs.append(
+            parse_iperf_result(
+                get_name(cvm, "-poll-vhost"), f"{cvm_label}-vhost-poll", mode, pkt=pkt
+            )
+        )
     df = pd.concat(dfs)
     print(df)
 
@@ -392,7 +429,10 @@ def plot_iperf(
             outname += "_mq"
         if pkt is not None:
             outname += f"_{pkt}"
-        outname += "_throughput.pdf"
+        outname += f"_throughput{pvm}"
+    if plot_all:
+        outname += "_all"
+    outname += ".pdf"
 
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -407,6 +447,8 @@ def plot_ping(
     cvm="snp",
     vhost=False,
     mq=False,
+    tmebypass=False,
+    poll=False,
     outdir="plot",
     outname=None,
     size="medium",
@@ -416,6 +458,8 @@ def plot_ping(
     if result_dir is not None:
         global BENCH_RESULT_DIR
         BENCH_RESULT_DIR = Path
+    pvm = ""
+    pcvm = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -424,9 +468,14 @@ def plot_ping(
         vm = "intel"
         vm_label = "vm"
         cvm_label = "td"
+        if tmebypass:
+            pvm = "-tmebypass"
+    if poll:
+        pvm += "-poll"
+        pcvm += "-poll"
 
-    def get_name(name, vhost=False, mq=mq, swiotlb=False):
-        n = f"{name}-direct-{size}"
+    def get_name(name, p, vhost=False, mq=mq, swiotlb=False):
+        n = f"{name}-direct-{size}{p}"
         if vhost:
             n += "-vhost"
         if mq:
@@ -436,19 +485,37 @@ def plot_ping(
         return n
 
     dfs = []
-    dfs.append(parse_ping_result(get_name(vm), vm_label, all=all))
-    dfs.append(
-        parse_ping_result(get_name(vm, vhost=False, swiotlb=True), f"swiotlb", all=all)
-    )
-    dfs.append(parse_ping_result(get_name(vm, vhost=True), f"vhost", all=all))
+    dfs.append(parse_ping_result(get_name(vm, pvm), vm_label, all=all))
     dfs.append(
         parse_ping_result(
-            get_name(vm, vhost=True, swiotlb=True), f"vhost-swiotlb", all=all
+            get_name(vm, pvm, vhost=False, swiotlb=True), f"swiotlb", all=all
         )
     )
-    dfs.append(parse_ping_result(get_name(cvm), cvm_label, all=all))
+    dfs.append(parse_ping_result(get_name(vm, pvm, vhost=True), f"vhost", all=all))
     dfs.append(
-        parse_ping_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", all=all)
+        parse_ping_result(
+            get_name(vm, pvm, vhost=True, swiotlb=True), f"vhost-swiotlb", all=all
+        )
+    )
+    dfs.append(parse_ping_result(get_name(cvm, pcvm), cvm_label, all=all))
+    dfs.append(
+        parse_ping_result(get_name(cvm, "-haltpoll"), f"{cvm_label}-hpoll", all=all)
+    )
+    dfs.append(parse_ping_result(get_name(cvm, "-poll"), f"{cvm_label}-poll", all=all))
+    dfs.append(
+        parse_ping_result(
+            get_name(cvm, pcvm, vhost=True), f"{cvm_label}-vhost", all=all
+        )
+    )
+    dfs.append(
+        parse_ping_result(
+            get_name(cvm, "-haltpoll", vhost=True), f"{cvm_label}-vhost-hpoll", all=all
+        )
+    )
+    dfs.append(
+        parse_ping_result(
+            get_name(cvm, "-poll", vhost=True), f"{cvm_label}-vhost-poll", all=all
+        )
     )
     df = pd.concat(dfs)
     print(df)
@@ -507,7 +574,7 @@ def plot_ping(
             outname += "_mq"
         if all:
             outname += "_all"
-        outname += ".pdf"
+        outname += f"{pvm}.pdf"
 
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -539,8 +606,8 @@ def plot_redis(
         vm_label = "vm"
         cvm_label = "td"
 
-    def get_name(name, vhost=False, mq=mq):
-        n = f"{name}-direct-{size}"
+    def get_name(name, vhost=False, p="", mq=mq):
+        n = f"{name}-direct-{size}{p}"
         if vhost:
             n += "-vhost"
         if mq:
@@ -552,7 +619,27 @@ def plot_redis(
     dfs.append(parse_memtier_result(get_name(vm, vhost=True), f"vhost", "redis"))
     dfs.append(parse_memtier_result(get_name(cvm), cvm_label, "redis"))
     dfs.append(
+        parse_memtier_result(
+            get_name(cvm, p="-haltpoll"), f"{cvm_label}-hpoll", "redis"
+        )
+    )
+    dfs.append(
+        parse_memtier_result(get_name(cvm, p="-poll"), f"{cvm_label}-poll", "redis")
+    )
+    dfs.append(
         parse_memtier_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost", "redis")
+    )
+    dfs.append(
+        parse_memtier_result(
+            get_name(cvm, vhost=True, p="-haltpoll"),
+            f"{cvm_label}-hpoll-vhost",
+            "redis",
+        )
+    )
+    dfs.append(
+        parse_memtier_result(
+            get_name(cvm, vhost=True, p="-poll"), f"{cvm_label}-poll-vhost", "redis"
+        )
     )
     df = pd.concat(dfs)
     print(df)
@@ -574,6 +661,9 @@ def plot_redis(
 
     # remove legend title
     ax.get_legend().set_title("")
+
+    # set legend ncol
+    ax.legend(loc="center", ncol=2, fontsize=5)
 
     # set hatch
     bars = ax.patches
@@ -634,8 +724,8 @@ def plot_memcached(
         vm_label = "vm"
         cvm_label = "td"
 
-    def get_name(name, vhost=False, mq=mq):
-        n = f"{name}-direct-{size}"
+    def get_name(name, vhost=False, p="", mq=mq):
+        n = f"{name}-direct-{size}{p}"
         if vhost:
             n += "-vhost"
         if mq:
@@ -648,7 +738,27 @@ def plot_memcached(
     dfs.append(parse_memtier_result(get_name(cvm), cvm_label, "memcached"))
     dfs.append(
         parse_memtier_result(
+            get_name(cvm, p="-haltpoll"), f"{cvm_label}-hpoll", "memcached"
+        )
+    )
+    dfs.append(
+        parse_memtier_result(get_name(cvm, p="-poll"), f"{cvm_label}-poll", "memcached")
+    )
+    dfs.append(
+        parse_memtier_result(
             get_name(cvm, vhost=True), f"{cvm_label}-vhost", "memcached"
+        )
+    )
+    dfs.append(
+        parse_memtier_result(
+            get_name(cvm, vhost=True, p="-haltpoll"),
+            f"{cvm_label}-hpoll-vhost",
+            "memcached",
+        )
+    )
+    dfs.append(
+        parse_memtier_result(
+            get_name(cvm, vhost=True, p="-poll"), f"{cvm_label}-poll-vhost", "memcached"
         )
     )
     df = pd.concat(dfs)
@@ -671,6 +781,9 @@ def plot_memcached(
 
     # remove legend title
     ax.get_legend().set_title("")
+
+    # set legend ncol
+    ax.legend(loc="center", ncol=2, fontsize=5)
 
     # set hatch
     bars = ax.patches
@@ -733,8 +846,8 @@ def plot_nginx(
         vm_label = "vm"
         cvm_label = "td"
 
-    def get_name(name, vhost=False, mq=mq):
-        n = f"{name}-direct-{size}"
+    def get_name(name, vhost=False, p="", mq=mq):
+        n = f"{name}-direct-{size}{p}"
         if vhost:
             n += "-vhost"
         if mq:
@@ -745,7 +858,19 @@ def plot_nginx(
     dfs.append(parse_nginx_result(get_name(vm), vm_label))
     dfs.append(parse_nginx_result(get_name(vm, vhost=True), f"vhost"))
     dfs.append(parse_nginx_result(get_name(cvm), cvm_label))
+    dfs.append(parse_nginx_result(get_name(cvm, p="-haltpoll"), f"{cvm_label}-hpoll"))
+    dfs.append(parse_nginx_result(get_name(cvm, p="-poll"), f"{cvm_label}-poll"))
     dfs.append(parse_nginx_result(get_name(cvm, vhost=True), f"{cvm_label}-vhost"))
+    dfs.append(
+        parse_nginx_result(
+            get_name(cvm, vhost=True, p="-haltpoll"), f"{cvm_label}-vhost-hpoll"
+        )
+    )
+    dfs.append(
+        parse_nginx_result(
+            get_name(cvm, vhost=True, p="-poll"), f"{cvm_label}-vhost-poll"
+        )
+    )
     ## merge df using name as key
     df = pd.concat(dfs)
     print(df)
@@ -767,6 +892,9 @@ def plot_nginx(
 
     # remove legend title
     ax.get_legend().set_title("")
+
+    # set legend ncol
+    ax.legend(loc="lower center", ncol=2, fontsize=5)
 
     # set hatch
     bars = ax.patches
