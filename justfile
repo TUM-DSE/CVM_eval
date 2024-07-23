@@ -514,6 +514,15 @@ mpstat name:
     just ssh "OUTDIR=$OUTDIR bash /share/trace/mpstat.sh"
     wait $(jobs -p)
 
+vmstat name:
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host
+    export OUTDIR
+    bash {{PROJECT_ROOT}}/trace/vmstat.sh {{name}}
+    OUTDIR=/share/trace-result/{{name}}/$DATE/guest
+    just ssh "OUTDIR=$OUTDIR bash /share/trace/vmstat.sh"
+
 trace-host name:
     #!/usr/bin/env bash
     DATE=$(date '+%Y-%m-%d-%H-%M-%S')
