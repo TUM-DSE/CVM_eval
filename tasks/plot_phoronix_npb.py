@@ -9,6 +9,7 @@ import pandas as pd
 import os
 import numpy as np
 from pathlib import Path
+from matplotlib.patches import Patch
 
 from invoke import task
 
@@ -304,7 +305,7 @@ def get_wait_policy(file_name):
         return "default"
 
 
-def parse_experiment_results(root_dir):
+def parse_experiment_results(root_dir, type=None):
     data = []
 
     for root, dirs, files in os.walk(root_dir):
@@ -317,11 +318,12 @@ def parse_experiment_results(root_dir):
                 time = extract_time_from_log(os.path.join(root, file))
 
                 dir_parts = root.split(os.sep)
-                experiment_type = dir_parts[-1]  # get the last part of the path
+                if type is None:
+                    type = dir_parts[-1]  # get the last part of the path
 
                 data.append(
                     {
-                        "type": experiment_type,
+                        "type": type,
                         "benchmark": benchmark,
                         "size": size,
                         "wait_policy": wait_policy,
@@ -335,19 +337,13 @@ def parse_experiment_results(root_dir):
 
 def plot_execution_times(df, size="C", outdir="./plot"):
     # Filter the DataFrame for size 'C'
-    df_filtered = df[df["size"] == size]
-
-    # Calculate the median execution time for each benchmark and wait policy
-    df_median = (
-        df_filtered.groupby(["benchmark", "wait_policy"])["time"].median().reset_index()
-    )
+    df = df[df["size"] == size]
 
     # Get the unique wait policies
-    wait_policies = df_median["wait_policy"].unique()
+    wait_policies = df["wait_policy"].unique()
 
     # Create a plot for each wait policy
     for policy in wait_policies:
-        # df_policy = df_median[df_median['wait_policy'] == policy]
         df_policy = df[df["wait_policy"] == policy]
 
         plt.figure(figsize=(10, 6))
@@ -382,20 +378,103 @@ def plot_execution_times(df, size="C", outdir="./plot"):
 @task
 def plot_npb_omp(
     ctx: Any,
+    cvm: str = "snp",
+    size: str = "large",
+    npb_size: str = "C",
     outdir: str = "./plot",
     outname: str = "npb-omp",
     result_dir=None,
 ):
     if result_dir is None:
         result_dir = "./bench-result/npb-omp"
-    df = parse_experiment_results(result_dir)
-    print(df)
+    result_dir = Path(result_dir)
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
 
-    # exclude "intel-tmebypass"
-    df = df[df["type"] != "intel-tmebypass"]
+    dfs = []
+    dfs.append(parse_experiment_results(result_dir / f"{vm}-direct-{size}", vm_label))
+    dfs.append(parse_experiment_results(result_dir / f"{cvm}-direct-{size}", cvm_label))
+    df = pd.concat(dfs)
+
     # sort df using "type" and "benchmark"
     df = df.sort_values(by=["type", "benchmark"])
-    # replace "intel" with "vm", "tdx" with "td"
-    df["type"] = df["type"].replace("intel", "vm").replace("tdx", "td")
+    df = df[df["size"] == npb_size]
+    wait_policies = df["wait_policy"].unique()
 
-    plot_execution_times(df, size="C", outdir=outdir)
+    df['policy'] = df['type'] + '-' + df['wait_policy']
+    df = df[df['wait_policy'] != 'default']
+    print(df)
+
+    vm_passive = df[(df['type'] == vm_label) & (df['wait_policy'] == 'passive')]
+    cvm_passive = df[(df['type'] == cvm_label) & (df['wait_policy'] == 'passive')]
+    vm_active = df[(df['type'] == vm_label) & (df['wait_policy'] == 'active')]
+    cvm_active = df[(df['type'] == cvm_label) & (df['wait_policy'] == 'active')]
+
+    # calculate the overhead of {cvm}-passive over {vm}-passive and {cvm}-active over {vm}-active for each benchmark
+    ov_passive = []
+    ov_active = []
+    for benchmark in df['benchmark'].unique():
+        vm_passive_time = vm_passive[vm_passive['benchmark'] == benchmark]['time'].values.mean()
+        cvm_passive_time = cvm_passive[cvm_passive['benchmark'] == benchmark]['time'].values.mean()
+        vm_active_time = vm_active[vm_active['benchmark'] == benchmark]['time'].values.mean()
+        cvm_active_time = cvm_active[cvm_active['benchmark'] == benchmark]['time'].values.mean()
+
+        overhead_passive = (cvm_passive_time - vm_passive_time) / vm_passive_time * 100
+        overhead_active = (cvm_active_time - vm_active_time) / vm_active_time * 100
+        ov_passive.append(overhead_passive)
+        ov_active.append(overhead_active)
+        #print(f"Overhead (passive) for {benchmark}: {overhead_passive}")
+        #print(f"Overhead (active) for {benchmark}: {overhead_active}")
+    ov_passive = np.array(ov_passive)
+    ov_active = np.array(ov_active)
+    print(f"Overhead (passive): {ov_passive}")
+    print(f"Overhead (active): {ov_active}")
+
+    # calculate geomen of overhead
+    geomean_passive = np.exp(np.mean(np.log(ov_passive)))
+    geomean_active = np.exp(np.mean(np.log(ov_active)))
+    print(f"Geometric mean of overhead (passive): {geomean_passive}")
+    print(f"Geometric mean of overhead (active): {geomean_active}")
+
+    hue_order = [f"{vm_label}-passive", f"{cvm_label}-passive", f"{vm_label}-active", f"{cvm_label}-active"]
+    palette = [vm_col, cvm_col, pastel[1], pastel[3]]
+
+    fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
+    ax = sns.barplot(data=df, x='benchmark', y='time', hue='policy', ax=ax,
+                     palette=palette, edgecolor="black", hue_order=hue_order)
+
+    hatches = ["", "//", "", "//"]
+    num_benchmark = len(df['benchmark'].unique())
+    for i, hatch in enumerate(hatches):
+        for j in range(num_benchmark):
+            ax.patches[i * num_benchmark + j].set_hatch(hatch)
+
+
+    # annotate values with .2f
+    for container in ax.containers:
+        ax.bar_label(container, fmt="%.02f", fontsize=5, rotation=90, padding=2)
+
+    # Create custom legend
+    handles = [
+        Patch(facecolor=palette[i], edgecolor='black', hatch=hatches[i % len(hatches)], label=hue_order[i])
+        for i in range(len(hue_order))
+    ]
+
+    # plt.title('NAS Parallel Benchmarks (OpenMP): Execution Time')
+    ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
+    plt.xlabel('Benchmark')
+    plt.ylabel('Execution Time [sec]')
+    plt.legend(handles=handles, fontsize=7)
+    plt.tight_layout()
+
+    outfile = f"{outdir}/npb-omp_{npb_size}_{size}.pdf"
+    plt.savefig(outfile)
+    print(f"Plot saved in {outfile}")
+
+

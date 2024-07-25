@@ -263,7 +263,7 @@ def plot_clustered_stacked(
         for j in range(len(total_time)):
             p = axe.patches[j + i * len(total_time)]
             axe.text(
-                p.get_x() + (0.25) * i + p.get_width() / 2.0,
+                p.get_x() + (0.30) * i + p.get_width() / 2.0,
                 total_time[j] + 0.1,
                 f"{total_time[j]:.2f}",
                 ha="center",

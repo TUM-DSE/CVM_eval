@@ -417,7 +417,10 @@ def plot_iperf(
 
     # annotate values with .2f
     for container in ax.containers:
-        ax.bar_label(container, fmt="%.2f", fontsize=5)
+        if mode == "udp":
+            ax.bar_label(container, fmt="%.2f", fontsize=5, rotation=90, padding=2)
+        else:
+            ax.bar_label(container, fmt="%.2f", fontsize=5)
 
     plt.tight_layout()
 
