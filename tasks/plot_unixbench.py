@@ -243,7 +243,7 @@ def plot_unixbench(
 
     # annotate values with .2f
     for container in ax.containers:
-        ax.bar_label(container, fmt="%.2f", fontsize=5)
+        ax.bar_label(container, fmt="%.2f", fontsize=5, rotation=90)
 
     plt.tight_layout()
     outdir = Path(outdir)
