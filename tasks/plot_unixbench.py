@@ -134,12 +134,14 @@ def plot_unixbench(
     disk: str = "nvme1n1",
     rel: bool = True,
     tmebypass: bool = False,
+    poll: bool = False,
     result_dir=None,
 ):
     if result_dir is not None:
         global BENCH_RESULT_DIR
         BENCH_RESULT_DIR = Path(result_dir)
-    p = ""
+    pcvm = ""
+    pvm = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -149,10 +151,13 @@ def plot_unixbench(
         vm_label = "vm"
         cvm_label = "td"
         if tmebypass:
-            p = "-tmebpass"
+            pvm = "-tmebypass"
+    if poll:
+        pvm += "-poll"
+        pcvm += "-poll"
 
-    vm_df = parse_result(vm_label, f"{vm}-direct-{size}-{disk}{p}")
-    cvm_df = parse_result(cvm_label, f"{cvm}-direct-{size}-{disk}")
+    vm_df = parse_result(vm_label, f"{vm}-direct-{size}-{disk}{pvm}")
+    cvm_df = parse_result(cvm_label, f"{cvm}-direct-{size}-{disk}{pcvm}")
     # cvm_poll_df = parse_result(f"{cvm_label}-poll", f"{cvm}-direct-{size}-{disk}-poll")
 
     df = pd.concat([vm_df, cvm_df])
@@ -249,8 +254,8 @@ def plot_unixbench(
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     if not rel:
-        save_path = outdir / f"{outname}_{size}_{disk}_norel.pdf"
+        save_path = outdir / f"{outname}_{size}_{disk}{pvm}_norel.pdf"
     else:
-        save_path = outdir / f"{outname}_{size}_{disk}.pdf"
+        save_path = outdir / f"{outname}_{size}_{disk}{pvm}.pdf"
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
