@@ -144,6 +144,7 @@
                 bridge-utils
                 hwloc
                 numactl
+                sysstat
 
                 fio
                 cryptsetup
