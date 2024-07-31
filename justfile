@@ -136,7 +136,7 @@ start-snp-direct:
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
-        -bios {{OVMF_SNP}} \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on \
         -serial null \
         -device virtio-serial \
         -chardev stdio,mux=on,id=char0,signal=off \
