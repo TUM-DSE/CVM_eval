@@ -9,13 +9,16 @@ the previous commits. Therefore, we use forked versions to track changes.
 A branch name "snp-latest-202311110" means that the branch is a snapshot of the
 snp-latest branch of that date.
 
-### 2023-11-17
-- *Currently deployed*
-- Host: https://github.com/mmisono/linux/tree/snp-host-latest-20231117
-    - Linux 6.6-rc1
-- Guest: Linux 6.6 (mainline (LTS))
-- QEMU: https://github.com/mmisono/qemu/tree/snp-latest-20231110
-- OVMF: https://github.com/mmisono/edk2/tree/snp-latest-20231110
+### Sotware version table
+
+| host kernel version | linux | ovmf | qemu |
+| ------------------- | ----- | -----| -----|
+| 6.10.0-rc7          | [kvm-next-20240717](https://github.com/mmisono/linux/tree/kvm-next-20240717) | [snp-latest-20240510](https://github.com/mmisono/edk2/tree/snp-latest-20240510) | [snp-latest-20240515](https://github.com/mmisono/qemu/tree/snp-latest-20240515) |
+| 6.9.0-rc7           | [snp-host-latest-20240514](https://github.com/mmisono/linux/tree/snp-host-latest-20240514) | [snp-latest-20240510](https://github.com/mmisono/edk2/tree/snp-latest-20240510) | [snp-latest-20240515](https://github.com/mmisono/qemu/tree/snp-latest-20240515) |
+| 6.8.0-rc5           | [snp-host-latest-20240221](https://github.com/mmisono/linux/tree/snp-host-latest-20240221) | [snp-latest-20231110](https://github.com/mmisono/edk2/tree/snp-latest-20231110) | [snp-latest-20240221](https://github.com/mmisono/qemu/tree/snp-latest-20240221) |
+| 6.6.0-rc1           | [snp-host-latest-20231117](https://github.com/mmisono/linux/tree/snp-host-latest-20231117) | [snp-latest-20231110](https://github.com/mmisono/edk2/tree/snp-latest-20231110) | [snp-latest-20240221](https://github.com/mmisono/qemu/tree/snp-latest-20231110) |
+
+Note: The latest kernel versions (6.9 >=) has a memory performance issue by default due to disabling 2MB THP: https://github.com/AMDESE/AMDSEV/issues/225
 
 ## Intel TDX
 - Intel summarizes TDX software information [here](https://github.com/intel/tdx/wiki/TDX-KVM).
