@@ -43,7 +43,10 @@ VMRESOURCES["amd"] = {}
 VMRESOURCES["intel"] = {}
 VMRESOURCES["amd"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
 VMRESOURCES["amd"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0], pin_base=8)
-VMRESOURCES["amd"]["large"] = VMResource(cpu=32, memory=256, numa_node=[0], pin_base=0)
+# for irene
+VMRESOURCES["amd"]["large"] = VMResource(cpu=32, memory=256, numa_node=[0], pin_base=8)
+VMRESOURCES["amd"]["xlarge"] = VMResource(cpu=64, memory=512, numa_node=[0], pin_base=8)
+# VMRESOURCES["amd"]["large"] = VMResource(cpu=32, memory=256, numa_node=[0], pin_base=0)
 VMRESOURCES["amd"]["numa"] = VMResource(
     cpu=64, memory=512, numa_node=[0, 1], pin_base=0
 )
@@ -107,8 +110,12 @@ VMRESOURCES["amd"]["boot-cpu28"] = VMResource(
 VMRESOURCES["amd"]["boot-cpu32"] = VMResource(
     cpu=32, memory=8, numa_node=[0], pin_base=0
 )
+# VMRESOURCES["amd"]["boot-cpu56"] = VMResource(
+#    cpu=56, memory=8, numa_node=[0, 1], pin_base=0
+# )
+# ierene
 VMRESOURCES["amd"]["boot-cpu56"] = VMResource(
-    cpu=56, memory=8, numa_node=[0, 1], pin_base=0
+    cpu=56, memory=8, numa_node=[0], pin_base=0
 )
 VMRESOURCES["amd"]["boot-cpu64"] = VMResource(
     cpu=64, memory=8, numa_node=[0, 1], pin_base=0
