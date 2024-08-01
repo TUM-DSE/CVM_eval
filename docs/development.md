@@ -90,5 +90,8 @@ mount -t 9p -o trans=virtio,version=9p2000.L share /share
 - You can first become root (`sudo su`) then `nix develop`. Then the shell has all dependencies.
 
 ### nix-shell env does not work for some reason
-- Try `nix-shell --repair`
+- Try
+   - `nix-shell --repair`
+   - `nix-collect-garbage -d`
+   - `nix-store --verify --check-contents --repair`
 
