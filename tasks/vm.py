@@ -366,7 +366,7 @@ def get_snp_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
-    -bios {vmconfig.ovmf}
+    -drive if=pflash,format=raw,unit=0,file={vmconfig.ovmf},readonly=on
 
     -nographic
     """
