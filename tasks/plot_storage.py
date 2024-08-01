@@ -235,7 +235,8 @@ def plot_bw(df, outdir, outname):
         frameon=True,
     )
 
-    plt.ylabel("Maximum Bandwidth [GiB/s]")
+    # plt.ylabel("Maximum Bandwidth [GiB/s]")
+    plt.ylabel("Bandwidth [GiB/s]")
     plt.xlabel("")
     plt.title("Higher is better ↑", fontsize=9, color="navy", weight="bold")
     plt.tight_layout()
@@ -324,6 +325,11 @@ def plot_iops(df, outdir, outname=""):
         c="k",
         elinewidth=1,
     )
+    ax.get_legend().set_title("")
+    for i, bar in enumerate(ax.patches[:n]):
+        bar.set_hatch(hatches[i])
+    for i, handle in enumerate(ax.get_legend().legend_handles):
+        handle.set_hatch(hatches[i])
 
     ## mixread70
     iops = df[(df["jobname"] == "iops rwmixread")].reset_index()
@@ -363,6 +369,11 @@ def plot_iops(df, outdir, outname=""):
     #    legend=False,
     #    bottom=iops["read_iops_mean"],
     # )
+    ax.get_legend().set_title("")
+    for i, bar in enumerate(ax.patches[:n]):
+        bar.set_hatch(hatches[i])
+    for i, handle in enumerate(ax.get_legend().legend_handles):
+        handle.set_hatch(hatches[i])
 
     ## mixread30
     iops = df[(df["jobname"] == "iops rwmixwrite")].reset_index()
@@ -401,6 +412,12 @@ def plot_iops(df, outdir, outname=""):
     #    legend=False,
     #    bottom=iops["read_iops_mean"],
     # )
+    i = 0
+    while i < len(ax.patches):
+        j = 0
+        for j in range(n):
+            ax.patches[i + j].set_hatch(hatches[j])
+        i += n
 
     # apply hatch
     # for i, bar in enumerate(ax.patches[n * 2 :]):
@@ -414,8 +431,10 @@ def plot_iops(df, outdir, outname=""):
         ax.text(
             x=p.get_x() + p.get_width() / 2.0,
             y=height + 2000,
-            s=f"{height/1000:.2f}",
+            #s=f"{height/1000:.2f}",
+            s=f"{height/1000:.0f}",
             ha="center",
+            #rotation=90,
         )
 
     ax.yaxis.set_major_formatter(
@@ -437,7 +456,8 @@ def plot_iops(df, outdir, outname=""):
     #                     "Mixrw(read30)"], rotation=45)
     ax.set_xticklabels(["RandR", "RandW", "RRW70", "RRW30"], rotation=30)
     # sns.despine()
-    plt.ylabel("4KB Throughput [K IOPS]")
+    #plt.ylabel("4KB Throughput [K IOPS]")
+    plt.ylabel("Throughput [K IOPS]")
     plt.xlabel("")
     plt.title("Higher is better ↑", fontsize=9, color="navy", weight="bold")
     plt.tight_layout()
@@ -600,8 +620,10 @@ def plot_latency(df, outdir, outname):
         ax.text(
             x=p.get_x() + p.get_width() / 2.0,
             y=height + 2000,
-            s=f"{height/1000:.2f}",
+            #s=f"{height/1000:.2f}",
+            s=f"{height/1000:.0f}",
             ha="center",
+            #rotation=90,
         )
 
     sns.move_legend(
@@ -680,11 +702,11 @@ def plot_fio(
                 f"{cvm}-direct-{size}-{device}-poll-{aio}", f"{cvm_label}-poll", jobfile
             )
         )
-        dfs.append(
-            read_result(
-                f"{vm}-direct-{size}-{device}-poll-{aio}", f"{vm_label}-poll", jobfile
-            )
-        )
+        #dfs.append(
+        #    read_result(
+        #        f"{vm}-direct-{size}-{device}-poll-{aio}", f"{vm_label}-poll", jobfile
+        #    )
+        #)
 
     df = pd.concat(dfs)
     print(df)

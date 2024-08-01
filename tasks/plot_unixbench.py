@@ -70,34 +70,7 @@ SHORT_NAME = [
     "Syscall",
 ]
 
-
-def parse_result(type: str, name: str, date: Optional[str] = None) -> pd.DataFrame:
-    """Example format
-    System Benchmarks Index Values               BASELINE       RESULT    INDEX
-    Dhrystone 2 using register variables         116700.0  263721433.8  22598.2
-    Double-Precision Whetstone                       55.0      39234.1   7133.5
-    Execl Throughput                                 43.0      20736.3   4822.4
-    File Copy 1024 bufsize 2000 maxblocks          3960.0   10207871.1  25777.5
-    File Copy 256 bufsize 500 maxblocks            1655.0    2950460.3  17827.6
-    File Copy 4096 bufsize 8000 maxblocks          5800.0   27915051.7  48129.4
-    Pipe Throughput                               12440.0   15274023.1  12278.2
-    Pipe-based Context Switching                   4000.0    1954459.3   4886.1
-    Process Creation                                126.0      47407.7   3762.5
-    Shell Scripts (1 concurrent)                     42.4      19512.3   4602.0
-    Shell Scripts (8 concurrent)                      6.0       2887.3   4812.2
-    System Call Overhead                          15000.0   13710090.9   9140.1
-    """
-
-    path = BENCH_RESULT_DIR / name
-    if date is None:
-        files = os.listdir(path)
-        # remove if file contains extension (e.g., .html)
-        files = [f for f in files if "." not in f and Path(path / f).is_file()]
-        date = sorted(files)[-1]
-    path = path / date
-
-    print(path)
-
+def parse_result_sub(path: Path, type: str) -> pd.DataFrame:
     # parse file
     with open(path, "r") as f:
         lines = f.readlines()
@@ -120,6 +93,44 @@ def parse_result(type: str, name: str, date: Optional[str] = None) -> pd.DataFra
                     break
 
     df = pd.DataFrame(data)
+    return df
+
+
+
+def parse_result(type: str, name: str, date: Optional[str] = None, max_num:int = 10) -> pd.DataFrame:
+    """Example format
+    System Benchmarks Index Values               BASELINE       RESULT    INDEX
+    Dhrystone 2 using register variables         116700.0  263721433.8  22598.2
+    Double-Precision Whetstone                       55.0      39234.1   7133.5
+    Execl Throughput                                 43.0      20736.3   4822.4
+    File Copy 1024 bufsize 2000 maxblocks          3960.0   10207871.1  25777.5
+    File Copy 256 bufsize 500 maxblocks            1655.0    2950460.3  17827.6
+    File Copy 4096 bufsize 8000 maxblocks          5800.0   27915051.7  48129.4
+    Pipe Throughput                               12440.0   15274023.1  12278.2
+    Pipe-based Context Switching                   4000.0    1954459.3   4886.1
+    Process Creation                                126.0      47407.7   3762.5
+    Shell Scripts (1 concurrent)                     42.4      19512.3   4602.0
+    Shell Scripts (8 concurrent)                      6.0       2887.3   4812.2
+    System Call Overhead                          15000.0   13710090.9   9140.1
+    """
+
+    path = BENCH_RESULT_DIR / name
+    files = []
+    if date is None:
+        files = os.listdir(path)
+        # remove if file contains extension (e.g., .html)
+        files = [f for f in files if "." not in f and Path(path / f).is_file()]
+        date = sorted(files)[-max_num:]
+        files = [path / d for d in date]
+    else:
+        path = path / date
+        files.append(path)
+
+    dfs = []
+    for file in files:
+        df = parse_result_sub(file, type)
+        dfs.append(df)
+    df = pd.concat(dfs)
 
     return df
 
@@ -160,6 +171,17 @@ def plot_unixbench(
     cvm_df = parse_result(cvm_label, f"{cvm}-direct-{size}-{disk}{pcvm}")
     # cvm_poll_df = parse_result(f"{cvm_label}-poll", f"{cvm}-direct-{size}-{disk}-poll")
 
+
+    # for each banchmark, calculte the mean and variance
+    benchmarks = cvm_df["benchmark"].unique()
+    for bench in benchmarks:
+        vm_mean = vm_df[vm_df["benchmark"] == bench]["index"].mean()
+        cvm_mean = cvm_df[cvm_df["benchmark"] == bench]["index"].mean()
+        vm_std = vm_df[vm_df["benchmark"] == bench]["index"].std()
+        cvm_std = cvm_df[cvm_df["benchmark"] == bench]["index"].std()
+        #print(f"{bench}: {vm_mean:.2f} ({vm_std:.2f}), {cvm_mean:.2f} ({cvm_std:.2f})")
+        print(f"{bench}, {cvm_mean:.2f}, {cvm_std:.2f}")
+
     df = pd.concat([vm_df, cvm_df])
 
     print(df)
@@ -183,9 +205,23 @@ def plot_unixbench(
 
     # calculate relative values for each benchmark
     # type vm is the baseline
-    vm_index = vm_df["index"].values
-    cvm_index = cvm_df["index"].values
-    relative = cvm_index / vm_index
+    #vm_index = vm_df["index"].values
+    #cvm_index = cvm_df["index"].values
+    #relative = cvm_index / vm_index
+    # get values from the bar
+    vm_values = []
+    cvm_values = []
+    for i, container in enumerate(ax.containers):
+        for bar in container:
+            if i == 0:
+                vm_values.append(bar.get_height())
+            else:
+                cvm_values.append(bar.get_height())
+    vm_values = np.array(vm_values)
+    cvm_values = np.array(cvm_values)
+    print(vm_values)
+    print(cvm_values)
+    relative = cvm_values / vm_values
 
     # print relative numbers
     print(relative)
