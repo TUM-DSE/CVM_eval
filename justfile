@@ -68,8 +68,6 @@ start-vm-direct:
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
-        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
-        -device virtio-net-pci,netdev=en0 \
         -serial null \
         -device virtio-serial \
         -chardev stdio,mux=on,id=char0,signal=off \
@@ -124,9 +122,8 @@ start-snp-direct:
         -cpu EPYC-v4,host-phys-bits=true \
         -smp {{smp}} \
         -m {{mem}} \
-        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
+        -machine q35,memory-encryption=sev0,vmport=off \
         -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
-        -object memory-backend-memfd-private,id=ram1,size={{mem}},share=true \
         -enable-kvm \
         -nographic \
         -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
@@ -137,8 +134,6 @@ start-snp-direct:
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on \
-        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
-        -device virtio-net-pci,netdev=en0 \
         -serial null \
         -device virtio-serial \
         -chardev stdio,mux=on,id=char0,signal=off \

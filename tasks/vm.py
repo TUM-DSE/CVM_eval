@@ -387,9 +387,8 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -smp {resource.cpu}
     -m {resource.memory}G
 
-    -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off
+    -machine q35,memory-encryption=sev0,vmport=off
     -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0
-    -object memory-backend-memfd-private,id=ram1,size={resource.memory}G,share=true
 
     -kernel {vmconfig.kernel}
     -append "{vmconfig.cmdline} {extra_cmdline}"

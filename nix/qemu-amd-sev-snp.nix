@@ -3,11 +3,11 @@
 with pkgs;
 qemu_full.overrideAttrs (new: old: {
   src = fetchFromGitHub {
-    owner = "mmisono";
+    owner = "AMDESE";
     repo = "qemu";
-    # branch: snp-latest-20231110
-    rev = "fe4c9e8e7e7ddac4b19c4366c1f105ffc4a78482";
-    sha256 = "sha256-51BEYF7P5GteCrWOp7nKPjUDxXFq8KDxMAC5f5TNO2I=";
+    # branch: snp-v3
+    rev = "3b6a2b6b7466f6dea53243900b7516c3f29027b7";
+    sha256 = "sha256-g93Q5mEcgNsWuxqXYyH5ipogXWBjtUDV/UZZLaBVGeU=";
     fetchSubmodules = true;
   };
   dontStrip = true;
