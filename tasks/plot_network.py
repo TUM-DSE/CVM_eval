@@ -390,25 +390,53 @@ def plot_iperf(
     )
     if pkt is not None:
         ax.set_xticklabels([])
-        ax.set_xlabel(f"Buffer Size {pkt} byte")
+        #ax.set_xlabel(f"Buffer Size {pkt} byte")
+        ax.set_xlabel("")
     else:
         ax.set_xlabel("Packet Size (byte)")
     ax.set_ylabel("Throughput (Gbps)")
     ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
 
+    # second axis for CPU utilization
+    #if mode == "tcp" and mq:
+    #    print("plot cpu utilization")
+    #    # get x position of each bar
+    #    xpos = []
+    #    for bar in ax.patches[:len(df["name"].unique())]:
+    #        xpos.append(bar.get_x() + bar.get_width() / 2)
+    #    # vm, swiotlb, vhost, vhost-swiotlb, cvm, cvm-vhost
+    #    cpu_util = [6.58, 8.22, 99.78, 100, 100, 100]
+    #    ax2 = ax.twinx()
+    #    ax2.plot(
+    #        xpos,
+    #        cpu_util,
+    #        color="red",
+    #        linestyle="",
+    #        marker="x",
+    #        markersize=2,
+    #    )
+    #    ax2.set_ylabel("Guest CPU Utilization (%)")
+    #    ax2.set_ylim(0, 120)
+    #    ax2.set_yticks(np.arange(0, 121, 20))
+    #    ax2.set_yticklabels([f"{i}" for i in np.arange(0, 121, 20)])
+
     # remove legend title
     ax.get_legend().set_title("")
 
     # set hatch
-    bars = ax.patches
-    hs = []
-    num_x = len(df["size"].unique())
-    for hatch in hatches:
-        hs.extend([hatch] * num_x)
-    num_legend = len(bars) - len(hs)
-    hs.extend([""] * num_legend)
-    for bar, hatch in zip(bars, hs):
-        bar.set_hatch(hatch)
+    if mode == "udp":
+        bars = ax.patches
+        hs = []
+        num_x = len(df["size"].unique())
+        for hatch in hatches:
+            hs.extend([hatch] * num_x)
+        num_legend = len(bars) - len(hs)
+        hs.extend([""] * num_legend)
+        for bar, hatch in zip(bars, hs):
+            bar.set_hatch(hatch)
+    else:
+        for bar in ax.patches[4:6]:
+            bar.set_hatch("//")
 
     # set hatch for the legend
     plt.legend(fontsize=5)
