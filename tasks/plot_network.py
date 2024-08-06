@@ -12,21 +12,23 @@ from pathlib import Path
 
 from invoke import task
 
-mpl.use("Agg")
-mpl.rcParams["text.latex.preamble"] = r"\usepackage{amsmath}"
-mpl.rcParams["pdf.fonttype"] = 42
-mpl.rcParams["ps.fonttype"] = 42
-mpl.rcParams["font.family"] = "libertine"
-
-sns.set_style("whitegrid")
-sns.set_style("ticks", {"xtick.major.size": 8, "ytick.major.size": 8})
-sns.set_context("paper", rc={"font.size": 5, "axes.titlesize": 5, "axes.labelsize": 8})
-
-# 3.3 inch for single column, 7 inch for double column
-figwidth_half = 3.3
-figwidth_full = 7
+# mpl.use("Agg")
+# mpl.rcParams["text.latex.preamble"] = r"\usepackage{amsmath}"
+# mpl.rcParams["pdf.fonttype"] = 42
+# mpl.rcParams["ps.fonttype"] = 42
+# mpl.rcParams["font.family"] = "libertine"
+#
+# sns.set_style("whitegrid")
+# sns.set_style("ticks", {"xtick.major.size": 8, "ytick.major.size": 8})
+# sns.set_context("paper", rc={"font.size": 5, "axes.titlesize": 5, "axes.labelsize": 8})
+#
+## 3.3 inch for single column, 7 inch for double column
+# figwidth_half = 3.3
+# figwidth_full = 7
 
 FONTSIZE = 9
+
+from motivation_plotting_config import *
 
 pastel = sns.color_palette("pastel")
 # palette = sns.color_palette("pastel")
@@ -292,10 +294,12 @@ def plot_iperf(
     tmebypass=False,
     poll=False,
     plot_all=False,
+    plot_hpoll=False,
     outdir="plot",
     outname=None,
     size="medium",
     pkt=None,
+    vhost_only=False,
     result_dir=None,
 ):
     if result_dir is not None:
@@ -328,21 +332,54 @@ def plot_iperf(
         return n
 
     dfs = []
-    dfs.append(parse_iperf_result(get_name(vm, pvm), vm_label, mode, pkt=pkt))
-    dfs.append(
-        parse_iperf_result(
-            get_name(vm, pvm, vhost=False, swiotlb=True), f"swiotlb", mode, pkt=pkt
+
+    if vhost_only:
+        dfs.append(
+            parse_iperf_result(get_name(vm, pvm, vhost=True), f"VM", mode, pkt=pkt)
         )
-    )
-    dfs.append(
-        parse_iperf_result(get_name(vm, pvm, vhost=True), f"vhost", mode, pkt=pkt)
-    )
-    dfs.append(
-        parse_iperf_result(
-            get_name(vm, pvm, vhost=True, swiotlb=True), f"vhost-swiotlb", mode, pkt=pkt
+        dfs.append(
+            parse_iperf_result(
+                get_name(vm, pvm, vhost=True, swiotlb=True), f"VM (+BB)", mode, pkt=pkt
+            )
         )
-    )
-    dfs.append(parse_iperf_result(get_name(cvm, pcvm), cvm_label, mode, pkt=pkt))
+        dfs.append(
+            parse_iperf_result(
+                get_name(cvm, pcvm, vhost=True), f"CVM (+BB+Enc)", mode, pkt=pkt
+            )
+        )
+        if plot_hpoll:
+            dfs.append(
+                parse_iperf_result(
+                    get_name(cvm, "-haltpoll-vhost"),
+                    f"CVM (+BB+Enc+HPoll)",
+                    mode,
+                    pkt=pkt,
+                )
+            )
+    else:
+        dfs.append(parse_iperf_result(get_name(vm, pvm), vm_label, mode, pkt=pkt))
+        dfs.append(
+            parse_iperf_result(
+                get_name(vm, pvm, vhost=False, swiotlb=True), f"swiotlb", mode, pkt=pkt
+            )
+        )
+        dfs.append(
+            parse_iperf_result(get_name(vm, pvm, vhost=True), f"vhost", mode, pkt=pkt)
+        )
+        dfs.append(
+            parse_iperf_result(
+                get_name(vm, pvm, vhost=True, swiotlb=True),
+                f"vhost-swiotlb",
+                mode,
+                pkt=pkt,
+            )
+        )
+        dfs.append(parse_iperf_result(get_name(cvm, pcvm), cvm_label, mode, pkt=pkt))
+        dfs.append(
+            parse_iperf_result(
+                get_name(cvm, pcvm, vhost=True), f"{cvm_label}-vhost", mode, pkt=pkt
+            )
+        )
     if plot_all:
         dfs.append(
             parse_iperf_result(
@@ -354,11 +391,6 @@ def plot_iperf(
                 get_name(cvm, "-poll"), f"{cvm_label}-poll", mode, pkt=pkt
             )
         )
-    dfs.append(
-        parse_iperf_result(
-            get_name(cvm, pcvm, vhost=True), f"{cvm_label}-vhost", mode, pkt=pkt
-        )
-    )
     if plot_all:
         dfs.append(
             parse_iperf_result(
@@ -373,11 +405,29 @@ def plot_iperf(
                 get_name(cvm, "-poll-vhost"), f"{cvm_label}-vhost-poll", mode, pkt=pkt
             )
         )
+    if not vhost_only and plot_hpoll:
+        dfs.append(
+            parse_iperf_result(
+                get_name(cvm, "-haltpoll"), f"{cvm_label}-hpoll", mode, pkt=pkt
+            )
+        )
+        dfs.append(
+            parse_iperf_result(
+                get_name(cvm, "-haltpoll-vhost"),
+                f"{cvm_label}-vhost-hpoll",
+                mode,
+                pkt=pkt,
+            )
+        )
     df = pd.concat(dfs)
     print(df)
 
     # plot thropughput
-    fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
+    # fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
+    fig, ax = create_standardized_plot(
+        ax_height=0.95, top_margin=0.45, bottom_margin=0.46
+    )
+
     sns.barplot(
         x="size",
         y="throughput",
@@ -386,15 +436,21 @@ def plot_iperf(
         ax=ax,
         palette=palette,
         edgecolor="black",
+        linewidth=0.5,
+        width=0.8,
         err_kws={"linewidth": 1},
     )
     if pkt is not None:
         ax.set_xticklabels([])
-        ax.set_xlabel(f"Buffer Size {pkt} byte")
+        # ax.set_xlabel(f"Buffer Size {pkt} byte")
+        ax.set_xlabel(f"UDP iperf (pkt size 1460)", fontsize=TICKS_FONTSIZE)
+        ax.set_ylim(0, 4)
     else:
         ax.set_xlabel("Packet Size (byte)")
-    ax.set_ylabel("Throughput (Gbps)")
-    ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
+    ax.set_ylabel("Throughput (Gbps)", fontsize=TICKS_FONTSIZE)
+    ax.set_title("Higher is better ↑", fontsize=TITLE_FONTSIZE, color="navy")
+    plt.yticks(fontsize=TICKS_FONTSIZE)
+    ax.yaxis.offsetText.set_fontsize(TICKS_FONTSIZE)
 
     # remove legend title
     ax.get_legend().set_title("")
@@ -411,14 +467,40 @@ def plot_iperf(
         bar.set_hatch(hatch)
 
     # set hatch for the legend
-    plt.legend(fontsize=5)
+    # plt.legend(fontsize=LEGEND_FONTSIZE, loc='upper left',
+    #           bbox_to_anchor=(0.01, 0.98))
+    # handles, labels = ax.get_legend_handles_labels()
+    # fig.legend(handles, labels, fontsize=LEGEND_FONTSIZE, loc='center',
+    #           bbox_to_anchor=(0.5, 0.91),
+    #           edgecolor='black', borderaxespad=0.,
+    #           frameon=True, ncols=3, columnspacing=0.3, labelspacing=0.2,
+    #           borderpad=0.3, handletextpad=0.3)
+    plt.legend(
+        fontsize=LEGEND_FONTSIZE,
+        loc="center",
+        bbox_to_anchor=(0.5, 1.40),
+        # bbox_to_anchor=(0.5, 0.91),
+        edgecolor="black",
+        borderaxespad=0.0,
+        frameon=True,
+        ncols=3,
+        columnspacing=0.3,
+        labelspacing=0.2,
+        borderpad=0.3,
+        handletextpad=0.3,
+    )
+    for patch in ax.get_legend().get_patches()[:4]:
+        patch.set_hatch("")
     for patch in ax.get_legend().get_patches()[4:]:
         patch.set_hatch("//")
 
     # annotate values with .2f
     for container in ax.containers:
         if mode == "udp":
-            ax.bar_label(container, fmt="%.2f", fontsize=5, rotation=90, padding=2)
+            # ax.bar_label(container, fmt="%.2f", fontsize=5, rotation=90, padding=2)
+            ax.bar_label(
+                container, fmt="%.2f", fontsize=ANNOTATION_SIZE, rotation=0, padding=2
+            )
         else:
             ax.bar_label(container, fmt="%.2f", fontsize=5)
 
@@ -432,10 +514,179 @@ def plot_iperf(
             outname += "_mq"
         if pkt is not None:
             outname += f"_{pkt}"
+        if vhost_only:
+            outname += "_vhost_only"
         outname += f"_throughput{pvm}"
     if plot_all:
         outname += "_all"
     outname += ".pdf"
+
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    save_path = outdir / outname
+    plt.savefig(save_path, bbox_inches="tight")
+    print(f"Plot saved in {save_path}")
+
+
+@task
+def plot_iperf2(
+    ctx,
+    cvm="snp",
+    mode="udp",
+    vhost=False,
+    mq=False,
+    tmebypass=False,
+    poll=False,
+    plot_all=False,
+    plot_hpoll=False,
+    outdir="plot",
+    outname=None,
+    size="medium",
+    pkt=None,
+    vhost_only=False,
+    result_dir=None,
+):
+    if pkt is None:
+        pkt = 1024
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
+    pvm = ""
+    pcvm = ""
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+        if tmebypass:
+            pvm = "-tmebypass"
+    if poll:
+        pvm += "-poll"
+        pcvm += "-poll"
+
+    def get_name(name, p, vhost=False, mq=mq, swiotlb=False):
+        n = f"{name}-direct-{size}{p}"
+        if vhost:
+            n += "-vhost"
+        if mq:
+            n += "-mq"
+        if swiotlb:
+            n += "-swiotlb"
+        return n
+
+    dfs = []
+
+    dfs.append(parse_iperf_result(get_name(vm, pvm), vm_label, mode, pkt=pkt))
+    dfs.append(
+        parse_iperf_result(
+            get_name(vm, pvm, vhost=False, swiotlb=True), f"swiotlb", mode, pkt=pkt
+        )
+    )
+    dfs.append(
+        parse_iperf_result(get_name(vm, pvm, vhost=True), f"vhost", mode, pkt=pkt)
+    )
+    dfs.append(
+        parse_iperf_result(
+            get_name(vm, pvm, vhost=True, swiotlb=True), f"vhost-swiotlb", mode, pkt=pkt
+        )
+    )
+    dfs.append(parse_iperf_result(get_name(cvm, pcvm), cvm_label, mode, pkt=pkt))
+    dfs.append(
+        parse_iperf_result(
+            get_name(cvm, pcvm, vhost=True), f"{cvm_label}-vhost", mode, pkt=pkt
+        )
+    )
+    dfs.append(
+        parse_iperf_result(
+            get_name(cvm, "-haltpoll"), f"{cvm_label}-hpoll", mode, pkt=pkt
+        )
+    )
+    dfs.append(
+        parse_iperf_result(
+            get_name(cvm, "-haltpoll-vhost"),
+            f"{cvm_label}-vhost-hpoll",
+            mode,
+            pkt=pkt,
+        )
+    )
+    df = pd.concat(dfs)
+    print(df)
+
+    # plot thropughput
+    fig, ax = create_standardized_plot(
+        ax_height=0.95, top_margin=0.45, bottom_margin=0.46
+    )
+    # fig, ax = create_standardized_plot(ax_height = 0.95, top_margin = 0.25, bottom_margin = 0.66)
+
+    sns.barplot(
+        x="size",
+        y="throughput",
+        hue="name",
+        data=df,
+        ax=ax,
+        palette=PALETTE_PASTEL,
+        edgecolor="black",
+        linewidth=0.0,
+        width=0.8,
+        err_kws={"linewidth": 1},
+    )
+    ax.set_xticklabels([])
+    ax.set_ylim(0, 4)
+    apply_consistent_style(
+        ax,
+        title=LOWER_BETTER_TITLE,
+        xlabel="Network performance with iPerf",
+        ylabel="Throughput (Gbps)",
+        labelpad=17,
+    )
+    plt.yticks(fontsize=TICKS_FONTSIZE)
+    ax.yaxis.offsetText.set_fontsize(TICKS_FONTSIZE)
+
+    # remove legend title
+    ax.get_legend().set_title("")
+
+    # set hatch
+    bars = ax.patches
+    for barh, hatch in zip(bars, HATCHES):
+        barh.set_hatch(hatch)
+    # hs = []
+    # num_x = len(df["size"].unique())
+    # for hatch in hatches:
+    #    hs.extend([hatch] * num_x)
+    # num_legend = len(bars) - len(hs)
+    # hs.extend([""] * num_legend)
+    # for bar, hatch in zip(bars, hs):
+    #    bar.set_hatch(hatch)
+
+    # legend
+    plt.legend(
+        fontsize=LEGEND_FONTSIZE,
+        loc="center",
+        bbox_to_anchor=(0.5, 1.30),
+        edgecolor="black",
+        borderaxespad=0.0,
+        frameon=True,
+        ncols=3,
+        columnspacing=0.3,
+        labelspacing=0.2,
+        borderpad=0.3,
+        handletextpad=0.3,
+    )
+    for patch, hatch in zip(ax.get_legend().get_patches(), HATCHES):
+        patch.set_hatch(hatch)
+
+    # annotate values on top of each bar
+    for container in ax.containers:
+        ax.bar_label(
+            container, fmt="%.2f", fontsize=ANNOTATION_SIZE, rotation=0, padding=0
+        )
+
+    plt.tight_layout()
+
+    outname = f"iperf_udp_{pkt}_throughput2.pdf"
 
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -501,25 +752,25 @@ def plot_ping(
         )
     )
     dfs.append(parse_ping_result(get_name(cvm, pcvm), cvm_label, all=all))
-    dfs.append(
-        parse_ping_result(get_name(cvm, "-haltpoll"), f"{cvm_label}-hpoll", all=all)
-    )
-    dfs.append(parse_ping_result(get_name(cvm, "-poll"), f"{cvm_label}-poll", all=all))
+    # dfs.append(
+    #    parse_ping_result(get_name(cvm, "-haltpoll"), f"{cvm_label}-hpoll", all=all)
+    # )
+    # dfs.append(parse_ping_result(get_name(cvm, "-poll"), f"{cvm_label}-poll", all=all))
     dfs.append(
         parse_ping_result(
             get_name(cvm, pcvm, vhost=True), f"{cvm_label}-vhost", all=all
         )
     )
-    dfs.append(
-        parse_ping_result(
-            get_name(cvm, "-haltpoll", vhost=True), f"{cvm_label}-vhost-hpoll", all=all
-        )
-    )
-    dfs.append(
-        parse_ping_result(
-            get_name(cvm, "-poll", vhost=True), f"{cvm_label}-vhost-poll", all=all
-        )
-    )
+    # dfs.append(
+    #    parse_ping_result(
+    #        get_name(cvm, "-haltpoll", vhost=True), f"{cvm_label}-vhost-hpoll", all=all
+    #    )
+    # )
+    # dfs.append(
+    #    parse_ping_result(
+    #        get_name(cvm, "-poll", vhost=True), f"{cvm_label}-vhost-poll", all=all
+    #    )
+    # )
     df = pd.concat(dfs)
     print(df)
 

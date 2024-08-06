@@ -2,7 +2,7 @@
 
 set -x
 
-VM=${VM:-intel}
+VM=${VM:-amd snp}
 DISKS=${DISKS:-nvme1n1}
 
 SWIOTLB_OPTION=' --virtio-iommu --extra-cmdline "swiotlb=524288,force"'

@@ -20,7 +20,7 @@ def run_ping(name: str, vm: QemuVm, pin_base=20):
 
     for pkt_size in [64, 128, 256, 512, 1024]:
         process = subprocess.Popen(
-            f"taskset -c {pin_base} ping -c 30 -i0.1 -s {pkt_size} {VM_IP}".split(" "),
+            f"taskset -c {pin_base} ping -c 300 -i0.1 -s {pkt_size} {VM_IP}".split(" "),
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
         )
