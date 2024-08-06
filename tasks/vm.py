@@ -864,7 +864,7 @@ def start(
     virtio_blk_aio: str = "native",
     virtio_blk_direct: bool = True,
     virtio_blk_iothread: bool = True,
-    tls: bool = True,
+    tls: bool = False,
     remote: bool = False,
     fio_job: str = "test",
     warn: bool = True,

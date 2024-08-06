@@ -34,272 +34,61 @@ FONTSIZE = 9
 palette = sns.color_palette("pastel")
 hatches = ["", "//"]
 
-BENCH_RESULT_DIR = Path("./bench-result/networking")
-
-
-# bench mark path:
-# ./bench-result/network/iperf/{name}/{date}
-def parse_iperf_result(name: str, label: str, mode: str, date=None) -> pd.DataFrame:
-    # create df like the following
-    # | VM | pkt size | throughput |
-    # |----|----------|------------|
-    # |    |          |            |
-    if mode == "udp":
-        pktsize = [64, 128, 256, 512, 1024, 1460]
-    elif mode == "tcp":
-        pktsize = [64, 128, 256, 512, 1024, "32K", "128K"]
-    else:
-        raise ValueError(f"Invalid mode: {mode}")
-    ths = []
-
-    if date is None:
-        # use the latest date
-        date = sorted(os.listdir(BENCH_RESULT_DIR / "iperf" / name / mode))[-1]
-
-    print(f"date: {date}")
-
-    for size in pktsize:
-        path = Path(f"./bench-result/networking/iperf/{name}/{mode}/{date}/{size}.log")
-        if not path.exists():
-            print(f"XXX: {path} not found!")
-            continue
-        with path.open("r") as f:
-            lines = f.readlines()
-
-        # example format:
-        # > [SUM]   0.00-10.00  sec  11.7 GBytes  10.1 Gbits/sec                  receiver
-        # find the line with [SUM] from the end
-        for line in reversed(lines):
-            if "[SUM]" in line:
-                break
-        else:
-            raise ValueError("No [SUM] line found")
-        th = float(line.split()[5])
-        if line.split()[6] == "Mbits/sec":
-            th /= 1000.0
-        ths.append(th)
-
-    print(ths)
-    df = pd.DataFrame({"name": label, "size": pktsize[: len(ths)], "throughput": ths})
-    return df
-
-
-def parse_ping_result(name: str, label: str, date=None) -> pd.DataFrame:
-    pktsize = [64, 128, 256, 512, 1024, 1460]
-    # pktsize_actual = [56, 120, 248, 504, 1016, 1462]
-    pktsize_actual = [64, 128, 256, 512, 1024, 1460]
-    pktsize_ = []
-    lats = []
-
-    if date is None:
-        # use the latest date
-        date = sorted(os.listdir(BENCH_RESULT_DIR / "ping" / name))[-1]
-
-    print(f"date: {date}")
-
-    for size in pktsize_actual:
-        path = Path(f"./bench-result/networking/ping/{name}/{date}/{size}.log")
-        if not path.exists():
-            print(f"XXX: {path} not found!")
-            continue
-        with path.open("r") as f:
-            lines = f.readlines()
-
-        # example format:
-        # > 128 bytes from 172.44.0.2: icmp_seq=1 ttl=64 time=0.131 ms
-        # > 128 bytes from 172.44.0.2: icmp_seq=2 ttl=64 time=0.221 ms
-        # > 128 bytes from 172.44.0.2: icmp_seq=3 ttl=64 time=0.212 ms
-        # > 128 bytes from 172.44.0.2: icmp_seq=4 ttl=64 time=0.200 ms
-        lats_ = []
-        for line in lines:
-            if "icmp_seq" in line:
-                lats_.append(float(line.split()[6].split("=")[1]))
-        # drop firt 3 pings to get stable result
-        lats_ = lats_[3:]
-        lats.extend(lats_)
-        pktsize_.extend([size] * len(lats_))
-
-    df = pd.DataFrame({"name": label, "size": pktsize_, "latency": lats})
-    return df
-
-
-# @task
-# def plot_iperf(
-#     ctx,
-#     vm="amd",
-#     cvm="snp",
-#     mode="udp",
-#     vhost=False,
-#     mq=False,
-#     outdir="plot",
-#     outname=None,
-# ):
-#     def get_name(name):
-#         n = f"{name}-direct-medium"
-#         if vhost:
-#             n += "-vhost"
-#         if mq:
-#             n += "-mq"
-#         return n
-
-#     df1 = parse_iperf_result(get_name(vm), vm, mode)
-#     df2 = parse_iperf_result(get_name(cvm), cvm, mode)
-#     # merge df using name as key
-#     df = pd.concat([df1, df2])
-
-#     # plot thropughput
-#     fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
-#     sns.barplot(
-#         x="size",
-#         y="throughput",
-#         hue="name",
-#         data=df,
-#         ax=ax,
-#         palette=palette,
-#         edgecolor="black",
-#     )
-#     ax.set_xlabel("Packet Size (byte)")
-#     ax.set_ylabel("Throughput (Gbps)")
-#     ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
-
-#     # remove legend title
-#     ax.get_legend().set_title("")
-
-#     # set hatch
-#     bars = ax.patches
-#     hs = []
-#     num_x = len(df["size"].unique())
-#     for hatch in hatches:
-#         hs.extend([hatch] * num_x)
-#     num_legend = len(bars) - len(hs)
-#     hs.extend([""] * num_legend)
-#     for bar, hatch in zip(bars, hs):
-#         bar.set_hatch(hatch)
-
-#     # set hatch for the legend
-#     for patch in ax.get_legend().get_patches()[1::2]:
-#         patch.set_hatch("//")
-
-#     # annotate values with .2f
-#     for container in ax.containers:
-#         ax.bar_label(container, fmt="%.2f")
-
-#     plt.tight_layout()
-
-#     if outname is None:
-#         outname = f"iperf_{mode}"
-#         if vhost:
-#             outname += "_vhost"
-#         if mq:
-#             outname += "_mq"
-#         outname += "_throughput.pdf"
-
-#     outdir = Path(outdir)
-#     outdir.mkdir(parents=True, exist_ok=True)
-#     save_path = outdir / outname
-#     plt.savefig(save_path, bbox_inches="tight")
-#     print(f"Plot saved in {save_path}")
-
 
 @task
-def plot_ping(
-    ctx, vm="amd", cvm="snp", vhost=False, mq=False, outdir="plot", outname=None
-):
-    def get_name(name):
-        n = f"{name}-direct-medium"
-        if vhost:
-            n += "-vhost"
-        if mq:
-            n += "-mq"
-        return n
-
-    df1 = parse_ping_result(get_name(vm), vm)
-    df2 = parse_ping_result(get_name(cvm), cvm)
-    # merge df using name as key
-    df = pd.concat([df1, df2])
-    print(df)
-
-    # plot thropughput
-    fig, ax = plt.subplots(figsize=(figwidth_half, 2.0))
-    sns.barplot(
-        x="size",
-        y="latency",
-        hue="name",
-        data=df,
-        ax=ax,
-        palette=palette,
-        edgecolor="black",
-    )
-    ax.set_xlabel("Packet Size (byte)")
-    ax.set_ylabel("Latency (ms)")
-    ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
-
-    # remove legend title
-    ax.get_legend().set_title("")
-
-    # set hatch
-    bars = ax.patches
-    hs = []
-    num_x = len(df["size"].unique())
-    for hatch in hatches:
-        hs.extend([hatch] * num_x)
-    num_legend = len(bars) - len(hs)
-    hs.extend([""] * num_legend)
-    for bar, hatch in zip(bars, hs):
-        bar.set_hatch(hatch)
-
-    # set hatch for the legend
-    for patch in ax.get_legend().get_patches()[1::2]:
-        patch.set_hatch("//")
-
-    # annotate values with .2f
-    for container in ax.containers:
-        ax.bar_label(container, fmt="%.2f")
-
-    plt.tight_layout()
-
-    if outname is None:
-        outname = f"ping"
-        if vhost:
-            outname += "_vhost"
-        if mq:
-            outname += "_mq"
-        outname += ".pdf"
-
-    outdir = Path(outdir)
-    outdir.mkdir(parents=True, exist_ok=True)
-    save_path = outdir / outname
-    plt.savefig(save_path, bbox_inches="tight")
-    print(f"Plot saved in {save_path}")
-
-
-@task
-def plot_iperf(ctx, y: str = "transfer"):
-    df = utils.query_db(f"SELECT * FROM iperf")
+def plot_iperf_tcp(ctx):
+    df = utils.query_db(f"SELECT * FROM iperf WHERE proto='tcp'")
     df["combined"] = df.apply(
-        lambda row: f"{row['type']}"
-        + ("_v" if row["vhost"] else "")
-        + ("_r" if row["remote"] else ""),
+        lambda row: f"{row['type'].upper()}"
+        + ("_VHOST" if row["vhost"] else "")
+        + ("_R" if row["remote"] else ""),
         axis=1,
     )
     fig, ax = plt.subplots()
     sns.barplot(
         data=df,
-        x="combined",
-        y=y,
+        x="pkt_size",
+        y="bitrate",
         ax=ax,
-        hue="pkt_size",
+        hue="combined",
         palette=palette,
         edgecolor="black",
     )
-    ax.set_xlabel("Config")
-    ax.set_ylabel("Throughput in GBytes")
+    ax.set_xlabel("Packet size in bytes")
+    ax.set_ylabel("Bitrate in Gbits/sec")
+    ax.set_title("Bitrate of iperf using TCP")
     plt.tight_layout()
-    plt.savefig(f"plot/iperf_{y}.pdf", bbox_inches="tight")
+    plt.savefig(f"plot/iperf_tcp.pdf", bbox_inches="tight")
 
 
 @task
-def plot_memtier(ctx, y: str = "ops_per_sec"):
+def plot_iperf_udp(ctx):
+    df = utils.query_db(f"SELECT * FROM iperf WHERE proto='udp'")
+    df["combined"] = df.apply(
+        lambda row: f"{row['type']}"
+        + ("_vhost" if row["vhost"] else "")
+        + ("_remote" if row["remote"] else ""),
+        axis=1,
+    )
+    fig, ax = plt.subplots()
+    sns.barplot(
+        data=df,
+        x="pkt_size",
+        y="bitrate",
+        ax=ax,
+        hue="combined",
+        palette=palette,
+        edgecolor="black",
+    )
+    ax.set_xlabel("Packet size in bytes")
+    ax.set_ylabel("Bitrate in Gbits/sec")
+    ax.set_title("Bitrate of iperf using UDP")
+    plt.tight_layout()
+    plt.savefig(f"plot/iperf_udp.pdf", bbox_inches="tight")
+
+
+@task
+def plot_memtier(ctx):
     df = utils.query_db(f"SELECT * FROM memtier")
     df["group"] = df.apply(
         lambda row: f"{row['type']}"
@@ -307,24 +96,28 @@ def plot_memtier(ctx, y: str = "ops_per_sec"):
         + ("_r" if row["remote"] else ""),
         axis=1,
     )
+    df["Protocol, TLS"] = df.apply(
+        lambda row: f"{row['proto'].upper()}" + (", TLS" if row["tls"] == 1 else ""),
+        axis=1,
+    )
     fig, ax = plt.subplots()
     sns.barplot(
         data=df,
         x="group",
-        y=y,
+        y="ops_per_sec",
         ax=ax,
-        hue="proto",
+        hue="Protocol, TLS",
         palette=palette,
         edgecolor="black",
     )
-    ax.set_xlabel("Config")
+    ax.set_xlabel("VM Config")
     ax.set_ylabel("Operations/sec")
     plt.tight_layout()
-    plt.savefig(f"plot/memtier_{y}.pdf", bbox_inches="tight")
+    plt.savefig(f"plot/memtier.pdf", bbox_inches="tight")
 
 
 @task
-def plot_nginx(ctx, y: str = "lat_avg"):
+def plot_nginx(ctx):
     df = utils.query_db(f"SELECT * FROM nginx")
     df["group"] = df.apply(
         lambda row: f"{row['type']}"
@@ -336,13 +129,13 @@ def plot_nginx(ctx, y: str = "lat_avg"):
     sns.barplot(
         data=df,
         x="group",
-        y=y,
+        y="lat_avg",
         ax=ax,
         hue="tls",
         palette=palette,
         edgecolor="black",
     )
-    ax.set_xlabel("Config")
+    ax.set_xlabel("VM Config")
     ax.set_ylabel("Average latency in ms")
     plt.tight_layout()
-    plt.savefig(f"plot/nginx_{y}.pdf", bbox_inches="tight")
+    plt.savefig(f"plot/nginx.pdf", bbox_inches="tight")

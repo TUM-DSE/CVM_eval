@@ -29,6 +29,9 @@ def clear_db(ctx, table: str = "test_table"):
 
 def connect_to_db():
     """Connect to sqlite."""
+    Path(config.DB_PATH).parent.mkdir(parents=True, exist_ok=True)
+    if not Path(config.DB_PATH).exists():
+        Path(config.DB_PATH).touch()
     return sqlite3.connect(config.DB_PATH)
 
 
