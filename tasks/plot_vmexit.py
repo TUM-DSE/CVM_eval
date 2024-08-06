@@ -76,7 +76,11 @@ def load_data(name):
 
 
 @task
-def plot_vmexit(ctx: Any, cvm="snp", outdir="plot"):
+def plot_vmexit(ctx: Any, cvm="snp", outdir="plot", result_dir=None):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
+
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"

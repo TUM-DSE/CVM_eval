@@ -305,7 +305,11 @@ def plot_boottime(
     outdir: str = "plot",
     sizes: list = [],
     labels: list = [],
+    result_dir=None,
 ) -> None:
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -367,7 +371,11 @@ def plot_boottime2(
     cpu: bool = False,
     prealloc: bool = True,
     outdir: str = "plot",
+    result_dir=None,
 ) -> None:
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -427,7 +435,11 @@ def plot_boottime3(
     cvm: str = "snp",
     cpu: bool = False,
     outdir: str = "plot",
+    result_dir=None,
 ) -> None:
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -488,7 +500,11 @@ def plot_boottime_snp(
     cpu: bool = False,
     version: str = "6.9",
     outdir: str = "plot",
+    result_dir=None,
 ) -> None:
+    global BENCH_RESULT_DIR
+    if result_dir is not None:
+        BENCH_RESULT_DIR = Path(result_dir)
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -506,14 +522,12 @@ def plot_boottime_snp(
     cvm_ = {}
     cvm2_ = {}
 
-    global BENCH_RESULT_DIR
-
     if cpu:
         for cpu in cpusize:
             vm_[cpu] = load_data(f"{vm}-direct-boot-cpu{cpu}")
             cvm_[cpu] = load_data(f"{cvm}-direct-boot-cpu{cpu}-no-prealloc")
             bench_result_dir_old = BENCH_RESULT_DIR
-            BENCH_RESULT_DIR = Path(f"./bench-result/v{version}/boottime")
+            BENCH_RESULT_DIR = BENCH_RESULT_DIR / ".." / f"v{version}" / "boottime"
             cvm2_[cpu] = load_data(f"{cvm}-direct-boot-cpu{cpu}-no-prealloc")
             BENCH_RESULT_DIR = bench_result_dir_old
         df = create_df2(vm_, cvm_, cvm2_, cpusize)
@@ -522,7 +536,7 @@ def plot_boottime_snp(
             vm_[mem] = load_data(f"{vm}-direct-boot-mem{mem}")
             cvm_[mem] = load_data(f"{cvm}-direct-boot-mem{mem}-no-prealloc")
             bench_result_dir_old = BENCH_RESULT_DIR
-            BENCH_RESULT_DIR = Path(f"./bench-result/v{version}/boottime")
+            BENCH_RESULT_DIR = BENCH_RESULT_DIR / ".." / f"v{version}" / "boottime"
             cvm2_[mem] = load_data(f"{cvm}-direct-boot-mem{mem}-no-prealloc")
             BENCH_RESULT_DIR = bench_result_dir_old
         df = create_df2(vm_, cvm_, cvm2_, memsize)

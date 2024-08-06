@@ -124,7 +124,7 @@ def parse_ping_result(name: str, label: str, date=None, all=False) -> pd.DataFra
     print(f"date: {date}")
 
     for size in pktsize_actual:
-        path = Path(f"./bench-result/network/ping/{name}/{date}/{size}.log")
+        path = Path(f"{BENCH_RESULT_DIR}/ping/{name}/{date}/{size}.log")
         if not path.exists():
             print(f"XXX: {path} not found!")
             continue
@@ -488,7 +488,7 @@ def plot_ping(
 ):
     if result_dir is not None:
         global BENCH_RESULT_DIR
-        BENCH_RESULT_DIR = Path
+        BENCH_RESULT_DIR = Path(result_dir)
     pvm = ""
     pcvm = ""
     if cvm == "snp":
@@ -565,7 +565,8 @@ def plot_ping(
     )
     if not all:
         ax.set_xticklabels([])
-        ax.set_xlabel("Ping (64 byte)")
+        #ax.set_xlabel("Ping (64 byte)")
+        ax.set_xlabel("")
     else:
         ax.set_xlabel("Packet Size (byte)")
     ax.set_ylabel("Latency (ms)")
@@ -587,7 +588,7 @@ def plot_ping(
 
     # set hatch for the legend
     print(ax.get_legend().get_patches())
-    plt.legend(fontsize=5)
+    plt.legend(fontsize=5,loc="lower center", ncol=4)
     for patch in ax.get_legend().get_patches()[4:]:
         patch.set_hatch("//")
 

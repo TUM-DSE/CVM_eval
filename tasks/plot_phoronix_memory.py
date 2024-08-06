@@ -153,7 +153,12 @@ def plot_phoronix_memory(
     name: str = "memory",
     tmebypass: bool = False,
     poll: bool = False,
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
+
     pvm = ""
     pcvm = ""
     if cvm == "snp":
