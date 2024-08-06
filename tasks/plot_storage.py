@@ -129,7 +129,7 @@ def read_result(
     return df
 
 
-def plot_bw(df, outdir, outname):
+def plot_bw(df, outdir, outname, legend=True):
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
 
     # read
@@ -235,6 +235,9 @@ def plot_bw(df, outdir, outname):
         frameon=True,
     )
 
+    if not legend:
+        plt.legend([],[], frameon=False)
+
     # plt.ylabel("Maximum Bandwidth [GiB/s]")
     plt.ylabel("Bandwidth [GiB/s]")
     plt.xlabel("")
@@ -246,7 +249,7 @@ def plot_bw(df, outdir, outname):
     plt.clf()
 
 
-def plot_iops(df, outdir, outname=""):
+def plot_iops(df, outdir, outname="", legend=True):
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
 
     ## randread
@@ -450,6 +453,9 @@ def plot_iops(df, outdir, outname=""):
         frameon=True,
     )
 
+    if not legend:
+        plt.legend([],[], frameon=False)
+
     # ax.set(xticklabels=["readread", "randwrite", "mixread70",
     #                     "mixread30"])
     # ax.set_xticklabels(["Randread", "Randwrite", "Mixrw(read70)",
@@ -467,7 +473,7 @@ def plot_iops(df, outdir, outname=""):
     plt.clf()
 
 
-def plot_latency(df, outdir, outname):
+def plot_latency(df, outdir, outname, legend=True):
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
 
     ## read
@@ -635,6 +641,9 @@ def plot_latency(df, outdir, outname):
         frameon=True,
     )
 
+    if not legend:
+        plt.legend([],[], frameon=False)
+
     # ax.set(xticklabels=["read", "write", "randread", "randwrite"], rotation=90)
     # ax.set_xticklabels(["Read", "Write", "Randread", "Randwrite"], rotation=45)
     ax.set_xticklabels(["Read", "Write", "RandR", "RandW"], rotation=30)
@@ -718,9 +727,9 @@ def plot_fio(
 
     if all:
         pvm += "-all"
-    plot_bw(df, outdir, f"fio_bw_{device}{pvm}.pdf")
-    plot_iops(df, outdir, f"fio_iops_{device}{pvm}.pdf")
-    plot_latency(df, outdir, f"fio_latency_{device}{pvm}.pdf")
+    plot_bw(df, outdir, f"fio_bw_{device}{pvm}.pdf", legend=True)
+    plot_iops(df, outdir, f"fio_iops_{device}{pvm}.pdf", legend=False)
+    plot_latency(df, outdir, f"fio_latency_{device}{pvm}.pdf", legend=False)
 
 
 @task
