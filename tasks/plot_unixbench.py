@@ -58,7 +58,7 @@ BENHCMARK_NAME = [
 SHORT_NAME = [
     "Dhrystone",
     "Whetstone",
-    "Exel",
+    "Execl",
     "File-mid",
     "File-small",
     "File-large",
@@ -97,7 +97,7 @@ def parse_result_sub(path: Path, type: str) -> pd.DataFrame:
 
 
 
-def parse_result(type: str, name: str, date: Optional[str] = None, max_num:int = 10) -> pd.DataFrame:
+def parse_result(type: str, name: str, date: Optional[str] = None, max_num:int = 5) -> pd.DataFrame:
     """Example format
     System Benchmarks Index Values               BASELINE       RESULT    INDEX
     Dhrystone 2 using register variables         116700.0  263721433.8  22598.2

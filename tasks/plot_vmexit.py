@@ -120,7 +120,8 @@ def plot_vmexit(ctx: Any, cvm="snp", outdir="plot"):
     )
 
     # create bar plot
-    fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
+    #fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
+    fig, ax = plt.subplots(figsize=(figwidth_half, 1.5))
     data.plot(kind="bar", ax=ax, color=palette, edgecolor="black", fontsize=FONTSIZE)
     # annotate values
     for container in ax.containers:
@@ -143,7 +144,9 @@ def plot_vmexit(ctx: Any, cvm="snp", outdir="plot"):
         loc="upper center",
         title=None,
         fontsize=FONTSIZE,
-        bbox_to_anchor=(0.5, -0.15),
+        #fontsize=5,
+        #bbox_to_anchor=(0.5, -0.15),
+        bbox_to_anchor=(0.5, -0.25),
         ncol=3,
     )
     ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
