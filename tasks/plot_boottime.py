@@ -479,3 +479,78 @@ def plot_boottime3(
 
     plt.savefig(outdir / outname, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"Output written to {outdir}/{outname}")
+
+
+@task
+def plot_boottime_snp(
+    ctx: Any,
+    cvm: str = "snp",
+    cpu: bool = False,
+    version: str = "6.9",
+    outdir: str = "plot",
+) -> None:
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+        memsize = [8, 16, 32, 64, 128, 256]
+        cpusize = [1, 8, 16, 28, 56]
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+        memsize = [8, 16, 32, 64, 128, 256]
+        cpusize = [1, 8, 16, 28, 56]
+
+    vm_ = {}
+    cvm_ = {}
+    cvm2_ = {}
+
+    global BENCH_RESULT_DIR
+
+    if cpu:
+        for cpu in cpusize:
+            vm_[cpu] = load_data(f"{vm}-direct-boot-cpu{cpu}")
+            cvm_[cpu] = load_data(f"{cvm}-direct-boot-cpu{cpu}-no-prealloc")
+            bench_result_dir_old = BENCH_RESULT_DIR
+            BENCH_RESULT_DIR = Path(f"./bench-result/v{version}/boottime")
+            cvm2_[cpu] = load_data(f"{cvm}-direct-boot-cpu{cpu}-no-prealloc")
+            BENCH_RESULT_DIR = bench_result_dir_old
+        df = create_df2(vm_, cvm_, cvm2_, cpusize)
+    else:
+        for mem in memsize:
+            vm_[mem] = load_data(f"{vm}-direct-boot-mem{mem}")
+            cvm_[mem] = load_data(f"{cvm}-direct-boot-mem{mem}-no-prealloc")
+            bench_result_dir_old = BENCH_RESULT_DIR
+            BENCH_RESULT_DIR = Path(f"./bench-result/v{version}/boottime")
+            cvm2_[mem] = load_data(f"{cvm}-direct-boot-mem{mem}-no-prealloc")
+            BENCH_RESULT_DIR = bench_result_dir_old
+        df = create_df2(vm_, cvm_, cvm2_, memsize)
+    print(df)
+
+    if "_" in version:
+        version_num = version.split("_")[0]
+    else:
+        version_num = version
+    ax = plot_clustered_stacked(
+        df, [vm_label, "snp6.8", f"snp{version_num}"], color=palette
+    )
+
+    ax.set_ylabel("Time (s)")
+    if cpu:
+        ax.set_xlabel("Number of vCPUs")
+    else:
+        ax.set_xlabel("Memory size (GB)")
+    ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
+    # sns.despine()
+    plt.tight_layout()
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    if cpu:
+        outname = f"boottime_snp_cpu_{version}.pdf"
+    else:
+        outname = f"boottime_snp_memory_{version}.pdf"
+
+    plt.savefig(outdir / outname, format="pdf", pad_inches=0, bbox_inches="tight")
+    print(f"Output written to {outdir}/{outname}")
