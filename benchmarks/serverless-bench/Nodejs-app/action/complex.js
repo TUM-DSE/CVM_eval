@@ -49,4 +49,4 @@ function main(params){
     
 }
 
-//console.log(main())
+main().then(result => console.log(result))

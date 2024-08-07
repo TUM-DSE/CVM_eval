@@ -24,3 +24,5 @@ function main(params) {
     console.log(greeting);
     return {payload: greeting, startTime: startTime}
 }
+
+console.log(main({payload: "serverless bench"}))
