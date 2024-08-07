@@ -164,6 +164,7 @@
           sqlite = pkgs.callPackage ./benchmarks/application/sqlite/shell.nix { inherit pkgs; };
           network = pkgs.callPackage ./benchmarks/network/shell.nix { inherit pkgs; };
           sev_attestation = pkgs.callPackage ./benchmarks/attestation/sev/shell.nix { inherit pkgs; };
+          serverless-bench = pkgs.callPackage ./benchmarks/serverless-bench/shell.nix { inherit pkgs; };
         };
 
       })) // {
