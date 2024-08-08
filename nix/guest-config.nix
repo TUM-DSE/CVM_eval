@@ -76,10 +76,16 @@ in
     address = "10.0.2.15";
     prefixLength = 24;
   }];
-  networking.interfaces.eth1.ipv4.addresses = [{
-    address = "172.44.0.2";
-    prefixLength = 24;
-  }];
+  networking.interfaces.eth1.ipv4.addresses = [
+    {
+      address = "172.45.0.2";
+      prefixLength = 24;
+    }
+    {
+      address = "192.168.100.11";
+      prefixLength = 24;
+    }
+  ];
   networking.useDHCP = false;
   networking.interfaces.eth0.useDHCP = false;
   networking.interfaces.eth1.useDHCP = false;
