@@ -5,13 +5,9 @@ This repository contains configurations to create a development environment as w
 ## Support status
 
 - [x] AMD SEV-SNP
+    - The current main is tested on Linux 6.9
 - [x] Intel TDX
-
-## Host machines in doctor-cluster-config
-Currently the followings hosts of the [doctor-cluster-config](https://github.com/TUM-DSE/doctor-cluster-config/) support this
-
-- AMD SEV-SNP
-    - vislor, rose
+    - The current main is tested on Linux 6.8 (canonical/tdx)
 
 See [./docs/software_version.md](./docs/software_version.md) for the detail of the software version.
 
