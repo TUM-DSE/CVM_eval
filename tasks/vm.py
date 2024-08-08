@@ -345,6 +345,10 @@ def get_amd_vm_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 def get_snp_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config("snp")
     ssh_port = config["ssh_port"]
+    if config["boot_prealloc"]:
+        prealloc = "on"
+    else:
+        prealloc = "off"
 
     qemu_cmd = f"""
     {vmconfig.qemu}
@@ -353,16 +357,16 @@ def get_snp_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -smp {resource.cpu}
     -m {resource.memory}G
 
-    -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
-    -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
-    -object memory-backend-memfd-private,id=ram1,size={resource.memory}G,share=true \
+    -machine q35,memory-backend=ram1,memory-encryption=sev0,vmport=off
+    -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,policy=0x30000
+    -object memory-backend-memfd,id=ram1,size={resource.memory}G,share=true,prealloc={prealloc}
 
     -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
     -device virtio-blk-pci,drive=q2,bootindex=0
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
-    -drive if=pflash,format=raw,unit=0,file={vmconfig.ovmf},readonly=on
+    -bios {vmconfig.ovmf}
 
     -nographic
     """
@@ -378,7 +382,6 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
         prealloc = "on"
     else:
         prealloc = "off"
-    # XXX: the current QEMU/SNP version seems not support prealloc option
 
     qemu_cmd = f"""
     {vmconfig.qemu}
@@ -387,9 +390,9 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -smp {resource.cpu}
     -m {resource.memory}G
 
-    -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off
-    -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0
-    -object memory-backend-memfd-private,id=ram1,size={resource.memory}G,share=true
+    -machine q35,memory-backend=ram1,memory-encryption=sev0,vmport=off
+    -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,policy=0x30000
+    -object memory-backend-memfd,id=ram1,size={resource.memory}G,share=true,prealloc={prealloc}
 
     -kernel {vmconfig.kernel}
     -append "{vmconfig.cmdline} {extra_cmdline}"
@@ -399,7 +402,7 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
-    -drive if=pflash,format=raw,unit=0,file={vmconfig.ovmf},readonly=on
+    -bios {vmconfig.ovmf}
 
     -nographic
     -serial null

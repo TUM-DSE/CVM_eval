@@ -16,13 +16,17 @@ OVMF.fd.overrideAttrs (old: {
   src = fetchFromGitHub {
     owner = "mmisono";
     repo = "edk2";
+    # branch "snp-latest-20240510"
+    rev = "4b6ee06a090d956f80b4a92fb9bf03098a372f39";
+    sha256 = "sha256-IZSuVlbcBoZATdfsEw7LzxhIEBf3/dSkhczGd17Xg+A=";
     # branch "snp-latest-20231110"
-    rev = "80318fcdf1bccf5d503197825d62a157efd27c4b";
-    sha256 = "sha256-L/X1uESu6m8a+8ir+E2HkxiazA9iyfcfeySxRJkt+2s=";
+    #rev = "80318fcdf1bccf5d503197825d62a157efd27c4b";
+    #sha256 = "sha256-L/X1uESu6m8a+8ir+E2HkxiazA9iyfcfeySxRJkt+2s=";
     fetchSubmodules = true;
   };
-  patches = (old.patches or []) ++ [
+  patches = (old.patches or [ ]) ++ [
     # to record boot events
     ./patches/ovmf-event-record.patch
   ];
+  env.NIX_CFLAGS_COMPILE = "-Wno-return-type" + " -Wno-error=implicit-function-declaration";
 })

@@ -219,13 +219,12 @@ def show_mmap_result(
                 f"{v},{n},{np.median(result):.3f},{np.mean(result):.3f},{np.std(result):.3f}"
             )
 
-    if cvm == "tdx":
-        for n in ["1st", "2nd"]:
-            log = RESULT_DIR / f"tdx-direct-{size}-no-prealloc/{n}.txt"
-            result = []
-            with open(log, "r") as f:
-                lines = f.readlines()
-                result = [float(line) for line in lines]
-            print(
-                f"tdx-no-prealloc,{n},{np.median(result):.3f},{np.mean(result):.3f},{np.std(result):.3f}"
-            )
+    for n in ["1st", "2nd"]:
+        log = RESULT_DIR / f"{cvm}-direct-{size}-no-prealloc/{n}.txt"
+        result = []
+        with open(log, "r") as f:
+            lines = f.readlines()
+            result = [float(line) for line in lines]
+        print(
+            f"{cvm}-no-prealloc,{n},{np.median(result):.3f},{np.mean(result):.3f},{np.std(result):.3f}"
+        )

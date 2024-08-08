@@ -4,9 +4,13 @@ PROJECT_ROOT := justfile_directory()
 BUILD_DIR := join(PROJECT_ROOT, "build")
 QEMU_SNP := join(BUILD_DIR, "qemu-amd-sev-snp/bin/qemu-system-x86_64")
 OVMF_SNP := join(BUILD_DIR, "ovmf-amd-sev-snp-fd/FV/OVMF.fd")
+OVMF_SNP_CODE := join(BUILD_DIR, "ovmf-amd-sev-snp-fd/FV/OVMF_CODE.fd")
+OVMF_SNP_VARS := join(BUILD_DIR, "ovmf-amd-sev-snp-fd/FV/OVMF_VARS.fd")
 # qemu and ovmf for normal guest (use SNP version for now)
 QEMU := QEMU_SNP
 OVMF := OVMF_SNP
+OVMF_CODE := OVMF_SNP_CODE
+OVMF_VARS := OVMF_SNP_VARS
 SNP_IMAGE := join(BUILD_DIR, "image/snp-guest-image.qcow2")
 NORMAL_IMAGE := join(BUILD_DIR, "image/normal-guest-image.qcow2")
 GUEST_FS := join(BUILD_DIR, "image/guest-fs.qcow2")
@@ -68,8 +72,6 @@ start-vm-direct:
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
-        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
-        -device virtio-net-pci,netdev=en0 \
         -serial null \
         -device virtio-serial \
         -chardev stdio,mux=on,id=char0,signal=off \
@@ -105,9 +107,9 @@ start-snp-disk:
         -cpu EPYC-v4,host-phys-bits=true \
         -smp {{smp}} \
         -m {{mem}} \
-        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
-        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
-        -object memory-backend-memfd-private,id=ram1,size={{mem}},share=true \
+        -machine q35,memory-backend=ram1,memory-encryption=sev0,vmport=off \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,policy=0x30000 \
+        -object memory-backend-memfd,id=ram1,size={{mem}},share=true,prealloc=false \
         -enable-kvm \
         -nographic \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{SNP_IMAGE}} \
@@ -115,19 +117,17 @@ start-snp-disk:
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
-        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
-        -device virtio-net-pci,netdev=en0 \
-        -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on
+        -bios {{OVMF_SNP}}
 
 start-snp-direct:
     sudo {{QEMU_SNP}} \
         -cpu EPYC-v4,host-phys-bits=true \
         -smp {{smp}} \
         -m {{mem}} \
-        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
-        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
-        -object memory-backend-memfd-private,id=ram1,size={{mem}},share=true \
+        -machine q35,memory-backend=ram1,memory-encryption=sev0,vmport=off \
         -enable-kvm \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,policy=0x30000 \
+        -object memory-backend-memfd,id=ram1,size={{mem}},share=true,prealloc=false \
         -nographic \
         -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
         -append "root=/dev/vda console=hvc0" \
@@ -136,9 +136,7 @@ start-snp-direct:
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
-        -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on \
-        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
-        -device virtio-net-pci,netdev=en0 \
+        -bios {{OVMF_SNP}} \
         -serial null \
         -device virtio-serial \
         -chardev stdio,mux=on,id=char0,signal=off \
