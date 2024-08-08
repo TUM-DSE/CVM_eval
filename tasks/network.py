@@ -59,7 +59,7 @@ def run_iperf(
         pkt_sizes = ["128K"]
         proto = "tcp"
         if parallel is None:
-            parallel = 32
+            parallel = 8
     if pin_end is None:
         pin_end = pin_start + parallel - 1
 
