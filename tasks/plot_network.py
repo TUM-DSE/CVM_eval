@@ -37,19 +37,26 @@ vshot_swiotlb_col = pastel[5]
 cvm_col = pastel[2]
 cvm_vhost_col = pastel[3]
 poll_col = pastel[6]
-palette = [vm_col, swiotlb_col, vhost_col, vshot_swiotlb_col, cvm_col,
-           cvm_vhost_col, *pastel[6:]]
+palette = [
+    vm_col,
+    swiotlb_col,
+    vhost_col,
+    vshot_swiotlb_col,
+    cvm_col,
+    cvm_vhost_col,
+    *pastel[6:],
+]
 # hatches = ["", "//"]
-#hatches = ["", "", "", "", "//", "//", "//", "//", "//", "//"]
+# hatches = ["", "", "", "", "//", "//", "//", "//", "//", "//"]
 hatches = ["", "o", "*", ".", "//", "-", "\\", ".", "o-", "*-"]
 
 palette2 = [vm_col, vhost_col, cvm_col, cvm_vhost_col, *pastel[6:]]
-#hatches2 = ["", "", "//", "//"]
+# hatches2 = ["", "", "//", "//"]
 hatches2 = ["", "*", "//", "+"]
 
-#palette3 = [vm_col, vhost_col, cvm_col, cvm_vhost_col, poll_col, cvm_col, cvm_vhost_col, poll_col]
+# palette3 = [vm_col, vhost_col, cvm_col, cvm_vhost_col, poll_col, cvm_col, cvm_vhost_col, poll_col]
 palette3 = [vm_col, vhost_col, cvm_col, cvm_vhost_col, *pastel[6:]]
-#hatches3 = ["", "", "//", "//", "//", "x", "x", "x", "x"]
+# hatches3 = ["", "", "//", "//", "//", "x", "x", "x", "x"]
 hatches3 = ["", "*", "//", "-", "\\", ".", "o-", "*-"]
 
 BENCH_RESULT_DIR = Path("./bench-result/network")
@@ -399,7 +406,7 @@ def plot_iperf(
     )
     if pkt is not None:
         ax.set_xticklabels([])
-        #ax.set_xlabel(f"Buffer Size {pkt} byte")
+        # ax.set_xlabel(f"Buffer Size {pkt} byte")
         ax.set_xlabel("")
     else:
         ax.set_xlabel("Packet Size (byte)")
@@ -407,7 +414,7 @@ def plot_iperf(
     ax.set_title("Higher is better ↑", fontsize=FONTSIZE, color="navy")
 
     # second axis for CPU utilization
-    #if mode == "tcp" and mq:
+    # if mode == "tcp" and mq:
     #    print("plot cpu utilization")
     #    # get x position of each bar
     #    xpos = []
@@ -435,17 +442,17 @@ def plot_iperf(
     # set hatch
     if mode == "udp":
         pass
-        #bars = ax.patches
-        #hs = []
-        #num_x = len(df["size"].unique())
-        #for hatch in hatches:
+        # bars = ax.patches
+        # hs = []
+        # num_x = len(df["size"].unique())
+        # for hatch in hatches:
         #    hs.extend([hatch] * num_x)
-        #num_legend = len(bars) - len(hs)
-        #hs.extend([""] * num_legend)
-        #for bar, hatch in zip(bars, hs):
+        # num_legend = len(bars) - len(hs)
+        # hs.extend([""] * num_legend)
+        # for bar, hatch in zip(bars, hs):
         #    bar.set_hatch(hatch)
     else:
-        #for bar in ax.patches[4:6]:
+        # for bar in ax.patches[4:6]:
         #    bar.set_hatch("//")
         for i, bar in enumerate(ax.patches):
             patch = hatches[i % len(hatches)]
@@ -458,7 +465,6 @@ def plot_iperf(
         for i, patch in enumerate(ax.get_legend().get_patches()):
             patch.set_hatch(hatches[i % len(hatches)])
 
-
     # annotate values with .2f
     for container in ax.containers:
         if mode == "udp":
@@ -466,7 +472,7 @@ def plot_iperf(
         else:
             ax.bar_label(container, fmt="%.2f", fontsize=5)
 
-    sns.despine(top = True)
+    sns.despine(top=True)
     plt.tight_layout()
 
     if outname is None:
@@ -582,7 +588,7 @@ def plot_ping(
     )
     if not all:
         ax.set_xticklabels([])
-        #ax.set_xlabel("Ping (64 byte)")
+        # ax.set_xlabel("Ping (64 byte)")
         ax.set_xlabel("")
     else:
         ax.set_xlabel("Packet Size (byte)")
@@ -605,17 +611,17 @@ def plot_ping(
 
     # set hatch for the legend
     print(ax.get_legend().get_patches())
-    plt.legend(fontsize=5,loc="lower center", ncol=4)
+    plt.legend(fontsize=5, loc="lower center", ncol=4)
     for i, patch in enumerate(ax.get_legend().get_patches()):
         patch.set_hatch(hatches[i % len(hatches)])
-    #for patch in ax.get_legend().get_patches()[4:]:
+    # for patch in ax.get_legend().get_patches()[4:]:
     #    patch.set_hatch("//")
 
     # annotate values with .2f
     for container in ax.containers:
         ax.bar_label(container, fmt="%.3f")
 
-    sns.despine(top = True)
+    sns.despine(top=True)
     plt.tight_layout()
 
     if outname is None:
@@ -736,7 +742,7 @@ def plot_redis(
     for container in ax.containers:
         ax.bar_label(container, fmt="%.2f")
 
-    sns.despine(top = True)
+    sns.despine(top=True)
     plt.tight_layout()
 
     if outname is None:
@@ -851,18 +857,17 @@ def plot_memcached(
 
     # set hatch for the legend
     # for patch in ax.get_legend().get_patches()[1::2]:
-    #for patch in ax.get_legend().get_patches()[2:]:
+    # for patch in ax.get_legend().get_patches()[2:]:
     #    patch.set_hatch("//")
     patches = ax.get_legend().get_patches()
     for hatch, patch in zip(hatches3, patches):
         patch.set_hatch(hatch)
 
-
     # annotate values with .2f
     for container in ax.containers:
         ax.bar_label(container, fmt="%.2f", padding=2, rotation=90, fontsize=5)
 
-    sns.despine(top = True)
+    sns.despine(top=True)
     plt.tight_layout()
 
     if outname is None:
@@ -972,9 +977,9 @@ def plot_nginx(
 
     # annotate values with .2f
     for container in ax.containers:
-        ax.bar_label(container, fmt="%.0f",rotation=90, fontsize=5)
+        ax.bar_label(container, fmt="%.0f", rotation=90, fontsize=5)
 
-    sns.despine(top = True)
+    sns.despine(top=True)
     plt.tight_layout()
 
     if outname is None:
@@ -990,3 +995,109 @@ def plot_nginx(
     save_path = outdir / outname
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
+
+
+@task
+def plot_iperf_db_tcp(ctx):
+    df = utils.query_db(f"SELECT * FROM iperf WHERE proto='tcp'")
+    df["combined"] = df.apply(
+        lambda row: f"{row['type'].upper()}"
+        + ("_VHOST" if row["vhost"] else "")
+        + ("_R" if row["remote"] else ""),
+        axis=1,
+    )
+    fig, ax = plt.subplots()
+    sns.barplot(
+        data=df,
+        x="pkt_size",
+        y="bitrate",
+        ax=ax,
+        hue="combined",
+        palette=palette,
+        edgecolor="black",
+    )
+    ax.set_xlabel("Packet size in bytes")
+    ax.set_ylabel("Bitrate in Gbits/sec")
+    ax.set_title("Bitrate of iperf using TCP")
+    plt.tight_layout()
+    plt.savefig(f"plot/iperf_tcp.pdf", bbox_inches="tight")
+
+
+@task
+def plot_iperf_db_udp(ctx):
+    df = utils.query_db(f"SELECT * FROM iperf WHERE proto='udp'")
+    df["combined"] = df.apply(
+        lambda row: f"{row['type']}"
+        + ("_vhost" if row["vhost"] else "")
+        + ("_remote" if row["remote"] else ""),
+        axis=1,
+    )
+    fig, ax = plt.subplots()
+    sns.barplot(
+        data=df,
+        x="pkt_size",
+        y="bitrate",
+        ax=ax,
+        hue="combined",
+        palette=palette,
+        edgecolor="black",
+    )
+    ax.set_xlabel("Packet size in bytes")
+    ax.set_ylabel("Bitrate in Gbits/sec")
+    ax.set_title("Bitrate of iperf using UDP")
+    plt.tight_layout()
+    plt.savefig(f"plot/iperf_udp.pdf", bbox_inches="tight")
+
+
+@task
+def plot_memtier_db(ctx):
+    df = utils.query_db(f"SELECT * FROM memtier")
+    df["group"] = df.apply(
+        lambda row: f"{row['type']}"
+        + ("_v" if row["vhost"] else "")
+        + ("_r" if row["remote"] else ""),
+        axis=1,
+    )
+    df["Protocol, TLS"] = df.apply(
+        lambda row: f"{row['proto'].upper()}" + (", TLS" if row["tls"] == 1 else ""),
+        axis=1,
+    )
+    fig, ax = plt.subplots()
+    sns.barplot(
+        data=df,
+        x="group",
+        y="ops_per_sec",
+        ax=ax,
+        hue="Protocol, TLS",
+        palette=palette,
+        edgecolor="black",
+    )
+    ax.set_xlabel("VM Config")
+    ax.set_ylabel("Operations/sec")
+    plt.tight_layout()
+    plt.savefig(f"plot/memtier.pdf", bbox_inches="tight")
+
+
+@task
+def plot_nginx_db(ctx):
+    df = utils.query_db(f"SELECT * FROM nginx")
+    df["group"] = df.apply(
+        lambda row: f"{row['type']}"
+        + ("_v" if row["vhost"] else "")
+        + ("_r" if row["remote"] else ""),
+        axis=1,
+    )
+    fig, ax = plt.subplots()
+    sns.barplot(
+        data=df,
+        x="group",
+        y="lat_avg",
+        ax=ax,
+        hue="tls",
+        palette=palette,
+        edgecolor="black",
+    )
+    ax.set_xlabel("VM Config")
+    ax.set_ylabel("Average latency in ms")
+    plt.tight_layout()
+    plt.savefig(f"plot/nginx.pdf", bbox_inches="tight")
