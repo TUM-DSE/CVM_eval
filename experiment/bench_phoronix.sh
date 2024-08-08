@@ -5,7 +5,10 @@ set -e
 set -u
 set -o pipefail
 
-VM=${VM:-intel}
+VM=tdx
+EXTRA=""
+#VM=intel
+#EXTRA="--name-extra -tme-bypass"
 
 for size in medium
 do
@@ -13,20 +16,18 @@ do
     do
         for action in phoronix 
         do
-            inv vm.start --type ${type_} --size ${size} --action="run-${action}" --phoronix-bench-name "memory"
+            inv vm.start --type ${type_} --size ${size} --action="run-${action}" --phoronix-bench-name "memory" $EXTRA
         done
     done
 done
 
-exit
-
-for size in numa large
+for size in medium
 do
     for type_ in $VM
     do
         for action in phoronix 
         do
-            inv vm.start --type ${type_} --size ${size} --action="run-${action}" --phoronix-bench-name "npb"
+            inv vm.start --type ${type_} --size ${size} --action="run-${action}" --phoronix-bench-name "npb" $EXTRA
         done
     done
 done

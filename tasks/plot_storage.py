@@ -37,8 +37,8 @@ vm_col = pastel[0]
 swiotlb_col = pastel[1]
 cvm_col = pastel[2]
 palette = [vm_col, swiotlb_col, cvm_col]
-#hatches = ["", "//", "x", "//x"]
-hatches = ["", "", "//"]
+# hatches = ["", "//", "x", "//x"]
+hatches = ["", "o", "//", "x", ""]
 
 
 def read_json(file):
@@ -102,24 +102,51 @@ def process_data(data, name):
 BENCH_RESULT_DIR = Path("./bench-result/fio")
 
 
-def read_result(name: str, label: str, jobname: str, date=None) -> pd.DataFrame:
+def read_result(
+    name: str, label: str, jobname: str, date=None, max_num: int = 10
+) -> pd.DataFrame:
+    dates = []
     if date is None:
-        # use the latest one
-        date = Path(sorted(os.listdir(BENCH_RESULT_DIR / name / jobname))[-1]).stem
+        # use the latest results
+        # note: fio reports stddev
+        dates = [
+            Path(i).stem
+            for i in sorted(os.listdir(BENCH_RESULT_DIR / name / jobname))[-max_num:]
+        ]
+    else:
+        dates.append(date)
 
-    file = BENCH_RESULT_DIR / name / jobname / f"{date}.json"
-    print(f"file: {file}")
-    data = read_json(file)
-    df = process_data(data, label)
+    dfs = []
+    for date in dates:
+        file = BENCH_RESULT_DIR / name / jobname / f"{date}.json"
+        data = read_json(file)
+        df = process_data(data, label)
+        dfs.append(df)
+
+    # merge df
+    df = pd.concat(dfs)
 
     return df
 
 
-def plot_bw(df, outdir, device=""):
+def plot_bw(df, outdir, outname, legend=True):
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
 
     # read
-    bw = df[(df["jobname"] == "bw read")]
+    bw = df[(df["jobname"] == "bw read")].reset_index()
+    ## select median
+    names = bw["name"].unique()
+    dfs = []
+    for name in names:
+        ranks = bw[bw["name"] == name]["read_bw_mean"].rank(pct=True)
+        close_to_median = abs(ranks - 0.5)
+        idx = close_to_median.idxmin()
+        a = bw.loc[idx]
+        a = pd.DataFrame(a).T
+        dfs.append(a)
+    bw = pd.concat(dfs)
+
+    # get meaidn values of read_bw_mean
     ax = sns.barplot(
         data=bw,
         x="jobname",
@@ -143,7 +170,18 @@ def plot_bw(df, outdir, device=""):
         handle.set_hatch(hatches[i])
 
     ## write
-    bw = df[(df["jobname"] == "bw write")]
+    bw = df[(df["jobname"] == "bw write")].reset_index()
+    # select median
+    names = bw["name"].unique()
+    dfs = []
+    for name in names:
+        ranks = bw[bw["name"] == name]["write_bw_mean"].rank(pct=True)
+        close_to_median = abs(ranks - 0.5)
+        idx = close_to_median.idxmin()
+        a = bw.loc[idx]
+        a = pd.DataFrame(a).T
+        dfs.append(a)
+    bw = pd.concat(dfs)
     ax = sns.barplot(
         data=bw,
         x="jobname",
@@ -163,6 +201,7 @@ def plot_bw(df, outdir, device=""):
         yerr=bw["write_bw_dev"],
         fmt="none",
         c="k",
+        elinewidth=1,
     )
     # apply hatch
     for i, bar in enumerate(ax.patches[n * 2 :]):
@@ -190,28 +229,46 @@ def plot_bw(df, outdir, device=""):
     sns.move_legend(
         ax,
         "lower center",
-        bbox_to_anchor=(0.5, 0),
+        # bbox_to_anchor=(0.5, 0),
         ncol=5,
         title=None,
         frameon=True,
     )
 
-    plt.ylabel("Maximum Bandwidth [GiB/s]")
+    if not legend:
+        plt.legend([],[], frameon=False)
+
+    # plt.ylabel("Maximum Bandwidth [GiB/s]")
+    plt.ylabel("Bandwidth [GiB/s]")
     plt.xlabel("")
     plt.title("Higher is better ↑", fontsize=9, color="navy", weight="bold")
+    sns.despine(top = True)
     plt.tight_layout()
-    outfile = Path(outdir) / f"fio_bw_{device}.pdf"
+    outfile = Path(outdir) / outname
     plt.savefig(outfile, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"saved to {outfile}")
     plt.clf()
 
 
-def plot_iops(df, outdir, device=""):
+def plot_iops(df, outdir, outname="", legend=True):
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
 
     ## randread
-    iops = df[(df["jobname"] == "iops randread")]
-    ax = sns.barplot( data=iops,
+    iops = df[(df["jobname"] == "iops randread")].reset_index()
+    ## select median
+    names = iops["name"].unique()
+    dfs = []
+    for name in names:
+        ranks = iops[iops["name"] == name]["read_iops_mean"].rank(pct=True)
+        close_to_median = abs(ranks - 0.5)
+        idx = close_to_median.idxmin()
+        a = iops.loc[idx]
+        a = pd.DataFrame(a).T
+        dfs.append(a)
+    iops = pd.concat(dfs)
+    print(iops)
+    ax = sns.barplot(
+        data=iops,
         x="jobname",
         y="read_iops_mean",
         hue="name",
@@ -225,7 +282,12 @@ def plot_iops(df, outdir, device=""):
     y_coords = [p.get_height() for p in ax.patches]
     n = len(x_coords) // 2
     ax.errorbar(
-        x=x_coords[:n], y=y_coords[:n], yerr=iops["read_iops_stddev"], fmt="none", c="k"
+        x=x_coords[:n],
+        y=y_coords[:n],
+        yerr=iops["read_iops_stddev"],
+        fmt="none",
+        c="k",
+        elinewidth=0.8,
     )
     ax.get_legend().set_title("")
     for i, bar in enumerate(ax.patches[:n]):
@@ -234,7 +296,18 @@ def plot_iops(df, outdir, device=""):
         handle.set_hatch(hatches[i])
 
     ## randwrite
-    iops = df[(df["jobname"] == "iops randwrite")]
+    iops = df[(df["jobname"] == "iops randwrite")].reset_index()
+    ## select median
+    names = iops["name"].unique()
+    dfs = []
+    for name in names:
+        ranks = iops[iops["name"] == name]["write_iops_mean"].rank(pct=True)
+        close_to_median = abs(ranks - 0.5)
+        idx = close_to_median.idxmin()
+        a = iops.loc[idx]
+        a = pd.DataFrame(a).T
+        dfs.append(a)
+    iops = pd.concat(dfs)
     ax = sns.barplot(
         data=iops,
         x="jobname",
@@ -254,39 +327,105 @@ def plot_iops(df, outdir, device=""):
         yerr=iops["write_iops_stddev"],
         fmt="none",
         c="k",
+        elinewidth=0.8,
     )
+    ax.get_legend().set_title("")
+    for i, bar in enumerate(ax.patches[:n]):
+        bar.set_hatch(hatches[i])
+    for i, handle in enumerate(ax.get_legend().legend_handles):
+        handle.set_hatch(hatches[i])
 
     ## mixread70
-    iops = df[(df["jobname"] == "iops rwmixread")]
+    iops = df[(df["jobname"] == "iops rwmixread")].reset_index()
+    # create table with read_iops_mean + write_iops_mean
     iops["iops_mean"] = iops["read_iops_mean"] + iops["write_iops_mean"]
+    ## select median
+    names = iops["name"].unique()
+    dfs = []
+    for name in names:
+        ranks = iops[iops["name"] == name]["iops_mean"].rank(pct=True)
+        close_to_median = abs(ranks - 0.5)
+        idx = close_to_median.idxmin()
+        a = iops.loc[idx]
+        a = pd.DataFrame(a).T
+        dfs.append(a)
+    iops = pd.concat(dfs)
+    # plot read_iops_mean
     ax = sns.barplot(
         data=iops,
         x="jobname",
         y="iops_mean",
+        # y="read_iops_mean",
         hue="name",
         palette=palette,
         edgecolor="k",
         linewidth=1.0,
         legend=False,
     )
+    # sns.barplot(
+    #    data=iops,
+    #    x="jobname",
+    #    y="write_iops_mean",
+    #    hue="name",
+    #    palette=palette,
+    #    edgecolor="k",
+    #    linewidth=1.0,
+    #    legend=False,
+    #    bottom=iops["read_iops_mean"],
+    # )
+    ax.get_legend().set_title("")
+    for i, bar in enumerate(ax.patches[:n]):
+        bar.set_hatch(hatches[i])
+    for i, handle in enumerate(ax.get_legend().legend_handles):
+        handle.set_hatch(hatches[i])
 
     ## mixread30
-    iops = df[(df["jobname"] == "iops rwmixwrite")]
+    iops = df[(df["jobname"] == "iops rwmixwrite")].reset_index()
     iops["iops_mean"] = iops["read_iops_mean"] + iops["write_iops_mean"]
+    iops.reset_index()
+    ## select median
+    names = iops["name"].unique()
+    dfs = []
+    for name in names:
+        ranks = iops[iops["name"] == name]["iops_mean"].rank(pct=True)
+        close_to_median = abs(ranks - 0.5)
+        idx = close_to_median.idxmin()
+        a = iops.loc[idx]
+        a = pd.DataFrame(a).T
+        dfs.append(a)
+    iops = pd.concat(dfs)
     ax = sns.barplot(
         data=iops,
         x="jobname",
         y="iops_mean",
+        # y="read_iops_mean",
         hue="name",
         palette=palette,
         edgecolor="k",
         linewidth=1.0,
         legend=False,
     )
+    # sns.barplot(
+    #    data=iops,
+    #    x="jobname",
+    #    y="write_iops_mean",
+    #    hue="name",
+    #    palette=palette,
+    #    edgecolor="k",
+    #    linewidth=1.0,
+    #    legend=False,
+    #    bottom=iops["read_iops_mean"],
+    # )
+    i = 0
+    while i < len(ax.patches):
+        j = 0
+        for j in range(n):
+            ax.patches[i + j].set_hatch(hatches[j])
+        i += n
 
     # apply hatch
-    for i, bar in enumerate(ax.patches[n * 2 :]):
-        bar.set_hatch(hatches[i % n])
+    # for i, bar in enumerate(ax.patches[n * 2 :]):
+    #    bar.set_hatch(hatches[i % n])
 
     # put numbers on top of bars
     for i, p in enumerate(ax.patches):
@@ -296,8 +435,10 @@ def plot_iops(df, outdir, device=""):
         ax.text(
             x=p.get_x() + p.get_width() / 2.0,
             y=height + 2000,
-            s=f"{height/1000:.2f}",
+            #s=f"{height/1000:.2f}",
+            s=f"{height/1000:.0f}",
             ha="center",
+            #rotation=90,
         )
 
     ax.yaxis.set_major_formatter(
@@ -307,11 +448,14 @@ def plot_iops(df, outdir, device=""):
     sns.move_legend(
         ax,
         "lower center",
-        bbox_to_anchor=(0.5, 0),
+        # bbox_to_anchor=(0.5, 0),
         ncol=5,
         title=None,
         frameon=True,
     )
+
+    if not legend:
+        plt.legend([],[], frameon=False)
 
     # ax.set(xticklabels=["readread", "randwrite", "mixread70",
     #                     "mixread30"])
@@ -319,21 +463,34 @@ def plot_iops(df, outdir, device=""):
     #                     "Mixrw(read30)"], rotation=45)
     ax.set_xticklabels(["RandR", "RandW", "RRW70", "RRW30"], rotation=30)
     # sns.despine()
-    plt.ylabel("4KB Throughput [K IOPS]")
+    #plt.ylabel("4KB Throughput [K IOPS]")
+    plt.ylabel("Throughput [K IOPS]")
     plt.xlabel("")
     plt.title("Higher is better ↑", fontsize=9, color="navy", weight="bold")
+    sns.despine(top = True)
     plt.tight_layout()
-    outfile = Path(outdir) / f"fio_iops_{device}.pdf"
+    outfile = Path(outdir) / outname
     plt.savefig(outfile, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"saved to {outfile}")
     plt.clf()
 
 
-def plot_latency(df, outdir, device=""):
+def plot_latency(df, outdir, outname, legend=True):
     fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
 
     ## read
-    lat = df[(df["jobname"] == "alat read")]
+    lat = df[(df["jobname"] == "alat read")].reset_index()
+    ## select median
+    names = lat["name"].unique()
+    dfs = []
+    for name in names:
+        ranks = lat[lat["name"] == name]["read_lat_mean"].rank(pct=True)
+        close_to_median = abs(ranks - 0.5)
+        idx = close_to_median.idxmin()
+        a = lat.loc[idx]
+        a = pd.DataFrame(a).T
+        dfs.append(a)
+    lat = pd.concat(dfs)
     ax = sns.barplot(
         data=lat,
         x="jobname",
@@ -354,7 +511,18 @@ def plot_latency(df, outdir, device=""):
     )
 
     ## write
-    lat = df[(df["jobname"] == "alat write")]
+    lat = df[(df["jobname"] == "alat write")].reset_index()
+    ## select median
+    names = lat["name"].unique()
+    dfs = []
+    for name in names:
+        ranks = lat[lat["name"] == name]["write_lat_mean"].rank(pct=True)
+        close_to_median = abs(ranks - 0.5)
+        idx = close_to_median.idxmin()
+        a = lat.loc[idx]
+        a = pd.DataFrame(a).T
+        dfs.append(a)
+    lat = pd.concat(dfs)
     ax = sns.barplot(
         data=lat,
         x="jobname",
@@ -377,7 +545,18 @@ def plot_latency(df, outdir, device=""):
     )
 
     ## randread
-    lat = df[(df["jobname"] == "alat randread")]
+    lat = df[(df["jobname"] == "alat randread")].reset_index()
+    ## select median
+    names = lat["name"].unique()
+    dfs = []
+    for name in names:
+        ranks = lat[lat["name"] == name]["read_lat_mean"].rank(pct=True)
+        close_to_median = abs(ranks - 0.5)
+        idx = close_to_median.idxmin()
+        a = lat.loc[idx]
+        a = pd.DataFrame(a).T
+        dfs.append(a)
+    lat = pd.concat(dfs)
     ax = sns.barplot(
         data=lat,
         x="jobname",
@@ -400,7 +579,18 @@ def plot_latency(df, outdir, device=""):
     )
 
     ## randwrite
-    lat = df[(df["jobname"] == "alat randwrite")]
+    lat = df[(df["jobname"] == "alat randwrite")].reset_index()
+    ## select median
+    names = lat["name"].unique()
+    dfs = []
+    for name in names:
+        ranks = lat[lat["name"] == name]["write_lat_mean"].rank(pct=True)
+        close_to_median = abs(ranks - 0.5)
+        idx = close_to_median.idxmin()
+        a = lat.loc[idx]
+        a = pd.DataFrame(a).T
+        dfs.append(a)
+    lat = pd.concat(dfs)
     ax = sns.barplot(
         data=lat,
         x="jobname",
@@ -438,18 +628,23 @@ def plot_latency(df, outdir, device=""):
         ax.text(
             x=p.get_x() + p.get_width() / 2.0,
             y=height + 2000,
-            s=f"{height/1000:.2f}",
+            #s=f"{height/1000:.2f}",
+            s=f"{height/1000:.0f}",
             ha="center",
+            #rotation=90,
         )
 
     sns.move_legend(
         ax,
-        "lower center",
-        bbox_to_anchor=(0.5, -0.0),
-        ncol=5,
+        "upper center",
+        # bbox_to_anchor=(0.5, -0.0),
+        ncol=3,
         title=None,
         frameon=True,
     )
+
+    if not legend:
+        plt.legend([],[], frameon=False)
 
     # ax.set(xticklabels=["read", "write", "randread", "randwrite"], rotation=90)
     # ax.set_xticklabels(["Read", "Write", "Randread", "Randwrite"], rotation=45)
@@ -457,8 +652,9 @@ def plot_latency(df, outdir, device=""):
     plt.ylabel("4KB Latency [us]")
     plt.xlabel("")
     plt.title("Lower is better ↓", fontsize=9, color="navy", weight="bold")
+    sns.despine(top = True)
     plt.tight_layout()
-    outfile = Path(outdir) / f"fio_latency_{device}.pdf"
+    outfile = Path(outdir) / outname
     plt.savefig(outfile, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"saved to {outfile}")
     plt.clf()
@@ -472,8 +668,19 @@ def plot_fio(
     aio="native",
     jobfile="libaio",
     outdir="plot",
-    device="nvme0n1",
+    device="nvme1n1",
+    tmebypass=False,
+    poll=False,
+    all=False,
+    swiotlb=True,
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
+
+    pvm = ""
+    pcvm = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -482,22 +689,101 @@ def plot_fio(
         vm = "intel"
         vm_label = "vm"
         cvm_label = "td"
+        if tmebypass:
+            pvm = "-tmebypass"
+    if poll:
+        pvm += "-poll"
+        pcvm += "-poll"
 
-    vm_data = read_result(f"{vm}-direct-{size}{device}-{aio}", vm_label, jobfile)
-    swiotlb_data = read_result(f"{vm}-direct-{size}{device}-{aio}-swiotlb", "swiotlb", jobfile)
-    cvm_data = read_result(f"{cvm}-direct-{size}{device}-{aio}", cvm_label, jobfile)
+    dfs = []
+    dfs.append(
+        read_result(f"{vm}-direct-{size}-{device}{pvm}-{aio}", vm_label, jobfile)
+    )
+    if swiotlb and not poll:
+        dfs.append(
+            read_result(
+                f"{vm}-direct-{size}-{device}-{aio}{pvm}-swiotlb", "swiotlb", jobfile
+            )
+        )
+    dfs.append(
+        read_result(f"{cvm}-direct-{size}-{device}{pcvm}-{aio}", cvm_label, jobfile)
+    )
+    if all:
+        dfs.append(
+            read_result(
+                f"{cvm}-direct-{size}-{device}-poll-{aio}", f"{cvm_label}-poll", jobfile
+            )
+        )
+        #dfs.append(
+        #    read_result(
+        #        f"{vm}-direct-{size}-{device}-poll-{aio}", f"{vm_label}-poll", jobfile
+        #    )
+        #)
 
-    # labels = [vm, "swiotlb", cvm]
-    # labels = ["vm", "swiotlb", "td"]
-    #labels = ["vm", "swiotlb", "td", "td-poll"]
-    # df = pd.concat([vm_data, swiotlb_data, cvm_data])
-    #df = pd.concat([vm_data, swiotlb_data, cvm_data, cvm_poll_data])
-    df = pd.concat([vm_data, swiotlb_data, cvm_data])
+    df = pd.concat(dfs)
     print(df)
+    # save df
+    df.to_csv(Path(outdir) / f"fio_{device}{pvm}.csv", index=False)
 
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
-    plot_bw(df, outdir, device)
-    plot_iops(df, outdir, device)
-    plot_latency(df, outdir, device)
+    if all:
+        pvm += "-all"
+    plot_bw(df, outdir, f"fio_bw_{device}{pvm}.pdf", legend=True)
+    plot_iops(df, outdir, f"fio_iops_{device}{pvm}.pdf", legend=False)
+    plot_latency(df, outdir, f"fio_latency_{device}{pvm}.pdf", legend=False)
+
+
+@task
+def analyze_fio(
+    ctx: Any,
+    cvm="snp",
+    size="medium",
+    aio="native",
+    jobfile="libaio",
+    outdir="plot",
+    device="nvme1n1",
+    tmebypass=False,
+    poll=False,
+    swiotlb=False,
+    result_dir=None,
+):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
+
+    pvm = ""
+    pcvm = ""
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+        if tmebypass:
+            pvm = "-tmebypass"
+    if poll:
+        pvm += "-poll"
+        pcvm += "-poll"
+
+    df = read_result(
+        f"{vm}-direct-{size}-{device}{pvm}-{aio}", vm_label, jobfile, max_num=10
+    )
+    cdf = read_result(
+        f"{cvm}-direct-{size}-{device}{pcvm}-{aio}", cvm_label, jobfile, max_num=10
+    )
+
+    print(df[(df["jobname"] == "bw read")]["read_bw_mean"])
+    print(cdf[(cdf["jobname"] == "bw read")]["read_bw_mean"])
+
+    print(df[(df["jobname"] == "bw write")]["write_bw_mean"])
+    print(cdf[(cdf["jobname"] == "bw write")]["write_bw_mean"])
+
+    print(df[(df["jobname"] == "iops randread")]["read_iops_mean"])
+    print(cdf[(cdf["jobname"] == "iops randread")]["read_iops_mean"])
+
+    print(df[(df["jobname"] == "iops randwrite")]["write_iops_mean"])
+    print(cdf[(cdf["jobname"] == "iops randwrite")]["write_iops_mean"])

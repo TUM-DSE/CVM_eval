@@ -2,6 +2,6 @@
 
 // count tdx-related events
 
-f:*tdx*, t:*tdx* {
+f:*tdx* {
     @[probe] += 1;
 }

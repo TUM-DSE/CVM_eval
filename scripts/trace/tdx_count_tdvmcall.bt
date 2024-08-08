@@ -1,0 +1,37 @@
+BEGIN {
+    @exit_reason[10] = "CPUID";
+    @exit_reason[12] = "HLT";
+    @exit_reason[30] = "IO_INSTRUCTION";
+    @exit_reason[31] = "RDMSR";
+    @exit_reason[32] = "WRMSR";
+    @exit_reason[48] = "EPT_VIOLATION";
+    @exit_reason[0x10000] = "TDVMCALL_GET_TD_VM_CALL_INFO";
+    @exit_reason[0x10001] = "TDVMCALL_MAP_GPA";
+    @exit_reason[0x10002] = "TDVMCALL_GET_QUOTE";
+    @exit_reason[0x10003] = "TDVMCALL_REPORT_FATAL_ERROR";
+
+    printf("VMCALL,CPUID,HLT,IO,RDMSR,WRMSR,EPT_VIOLATION,TD_VM_CALL_INFO,MAP_GPA,GET_QUOTE,REPORT_FATAL_ERROR\n");
+}
+
+
+f:kvm_intel:handle_tdvmcall {
+   if (args->vcpu->arch.regs[10] > 0) {
+       @["VMCALL"]++;
+   } else {
+       @[@exit_reason[args->vcpu->arch.regs[11]]]++;
+   }
+} 
+
+i:s:1 {
+  // print(@);
+  printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+    @["VMCALL"], @["CPUID"], @["HLT"], @["IO_INSTRUCTION"], @["RDMSR"], @["WRMSR"], @["EPT_VIOLATION"],
+    @["TDVMCALL_GET_TD_VM_CALL_INFO"], @["TDVMCALL_MAP_GPA"], @["TDVMCALL_GET_QUOTE"], @["TDVMCALL_REPORT_FATAL_ERROR"]);
+  clear(@); 
+}
+
+END {
+  print(@);
+  clear(@); 
+  clear(@exit_reason);
+}

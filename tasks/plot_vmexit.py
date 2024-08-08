@@ -76,7 +76,11 @@ def load_data(name):
 
 
 @task
-def plot_vmexit(ctx: Any, cvm="snp", outdir="plot"):
+def plot_vmexit(ctx: Any, cvm="snp", outdir="plot", result_dir=None):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
+
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -115,15 +119,17 @@ def plot_vmexit(ctx: Any, cvm="snp", outdir="plot"):
     ]
 
     data = pd.DataFrame(
-        {f"{vm_label}": vm_val, f"{cvm_label}": cvm_val, f"{cvm_label}*": cvm_opt_val}, index=index
+        {f"{vm_label}": vm_val, f"{cvm_label}": cvm_val, f"{cvm_label}*": cvm_opt_val},
+        index=index,
     )
 
     # create bar plot
-    fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
+    #fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
+    fig, ax = plt.subplots(figsize=(figwidth_half, 1.5))
     data.plot(kind="bar", ax=ax, color=palette, edgecolor="black", fontsize=FONTSIZE)
     # annotate values
     for container in ax.containers:
-        ax.bar_label(container, fontsize=5)
+        ax.bar_label(container, fontsize=4, rotation=90, padding=0.5)
     # set hatch
     bars = ax.patches
     hs = []
@@ -142,11 +148,13 @@ def plot_vmexit(ctx: Any, cvm="snp", outdir="plot"):
         loc="upper center",
         title=None,
         fontsize=FONTSIZE,
-        bbox_to_anchor=(0.5, -0.15),
+        #fontsize=5,
+        #bbox_to_anchor=(0.5, -0.15),
+        bbox_to_anchor=(0.5, -0.25),
         ncol=3,
     )
     ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
-    # sns.despine()
+    sns.despine(top = True)
     plt.tight_layout()
 
     outdir = Path(outdir)

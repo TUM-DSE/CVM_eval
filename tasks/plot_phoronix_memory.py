@@ -151,7 +151,16 @@ def plot_phoronix_memory(
     size="medium",
     outdir: str = "./plot",
     name: str = "memory",
+    tmebypass: bool = False,
+    poll: bool = False,
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
+
+    pvm = ""
+    pcvm = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -160,9 +169,14 @@ def plot_phoronix_memory(
         vm = "intel"
         vm_label = "vm"
         cvm_label = "td"
+        if tmebypass:
+            pvm = "-tmebypass"
+    if poll:
+        pvm += "-poll"
+        pcvm += "-poll"
 
-    vmfile = get_file(f"{vm}-direct-{size}")
-    cvmfile = get_file(f"{cvm}-direct-{size}")
+    vmfile = get_file(f"{vm}-direct-{size}{pvm}")
+    cvmfile = get_file(f"{cvm}-direct-{size}{pcvm}")
     data = load_data(vmfile, cvmfile)
 
     # print relative values
@@ -172,8 +186,8 @@ def plot_phoronix_memory(
     print(f"geometric mean: {geomean}")
     print(f"overhead: {(1-geomean)*100}")
 
-    # fig, ax = plt.subplots(figsize=(4.5, 4.0))
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
+    #fig, ax = plt.subplots()
 
     ax.barh(
         data["benchmark_id"],
@@ -181,6 +195,7 @@ def plot_phoronix_memory(
         color=palette,
         edgecolor="black",
         label=f"{cvm_label}",
+        linewidth=0.5
     )
 
     # draw a line at 1.0 to indicate the baseline
@@ -188,10 +203,10 @@ def plot_phoronix_memory(
 
     # annotate values
     for container in ax.containers:
-        ax.bar_label(container, fontsize=5, fmt="%.2f", padding=2)
+        ax.bar_label(container, fontsize=5, fmt="%.2f", padding=0.2)
 
     # change ylabels
-    ax.set_yticklabels(LABELS, fontsize=5)
+    ax.set_yticklabels(LABELS, fontsize=7)
 
     # set hatch
     # bars = ax.patches
@@ -202,15 +217,17 @@ def plot_phoronix_memory(
     # for bar, hatch in zip(bars, hs):
     #     bar.set_hatch(hatch)
 
-    ax.set_xlabel("Relative value")
+    #ax.set_xlabel("Relative value")
+    ax.set_xlabel("")
     ax.set_ylabel("")
 
-    ax.set_title("Higher is better →", fontsize=FONTSIZE, color="navy")
+    ax.set_title("Higher is better →", fontsize=9, color="navy")
     # sns.despine()
+    sns.despine(top = True)
     plt.tight_layout()
 
     outdir = Path(outdir)
     outdir.mkdir(exist_ok=True, parents=True)
-    outpath = outdir / f"{name}_{size}.pdf"
+    outpath = outdir / f"{name}_{size}{pvm}.pdf"
     plt.savefig(outpath, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"save {outpath}")

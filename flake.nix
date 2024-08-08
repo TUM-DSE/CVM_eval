@@ -26,6 +26,12 @@
             clang-format.enable = true;
           };
         };
+        #kernel = {
+        #  src = ../linux;
+        #  version = "6.8.0";
+        #  makeFlags = pkgs.linuxPackages_6_8.kernel.makeFlags;
+        #  kernelOlder = x: false;
+        #};
       in
       rec {
         packages = {
@@ -100,6 +106,9 @@
 
           # shell for linux kernel build
           kernel-deps = pkgs.callPackage ./nix/kernel-deps.nix { };
+
+          # WIP: build perf with nix
+          #perf = pkgs.callPackage ./nix/perf.nix { kernel = kernel; };
 
         };
 

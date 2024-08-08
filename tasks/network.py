@@ -9,7 +9,7 @@ from config import PROJECT_ROOT, VM_IP
 from qemu import QemuVm
 
 
-def run_ping(name: str, vm: QemuVm):
+def run_ping(name: str, vm: QemuVm, pin_base=20):
     """Ping the VM.
     The results are saved in ./bench-results/network/ping/{name}/{date}
     """
@@ -20,7 +20,7 @@ def run_ping(name: str, vm: QemuVm):
 
     for pkt_size in [64, 128, 256, 512, 1024]:
         process = subprocess.Popen(
-            f"ping -c 30 -i0.1 -s {pkt_size} {VM_IP}".split(" "),
+            f"taskset -c {pin_base} ping -c 30 -i0.1 -s {pkt_size} {VM_IP}".split(" "),
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
         )
@@ -43,7 +43,9 @@ def run_iperf(
     vm: QemuVm,
     udp: bool = False,
     port: int = 7175,
-    parallel: int = 8,  # number of parallel streams
+    parallel: Optional[int] = None,
+    pin_start: int = 20,
+    pin_end: Optional[int] = None,
 ):
     """Run the iperf benchmark on the VM.
     The results are saved in ./bench-result/network/iperf/{name}/{proto}/{date}/
@@ -51,9 +53,15 @@ def run_iperf(
     if udp:
         proto = "udp"
         pkt_sizes = [64, 128, 256, 512, 1024, 1460]
+        if parallel is None:
+            parallel = 8
     else:
-        pkt_sizes = [64, 128, 256, 512, 1024, "32K", "128K"]
+        pkt_sizes = ["128K"]
         proto = "tcp"
+        if parallel is None:
+            parallel = 32
+    if pin_end is None:
+        pin_end = pin_start + parallel - 1
 
     date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     outputdir = Path(f"./bench-result/network/iperf/{name}/{proto}/{date}/")
@@ -68,6 +76,9 @@ def run_iperf(
     # run client
     for pkt_size in pkt_sizes:
         cmd = [
+            "taskset",
+            "-c",
+            f"{pin_start}-{pin_end}",
             "iperf",
             "-c",
             f"{VM_IP}",
@@ -108,6 +119,8 @@ def run_memtier(
     client_key: str = PROJECT_ROOT / "benchmarks/network/tls/pki/private/client.key",
     client_cert: str = PROJECT_ROOT / "benchmarks/network/tls/pki/issued/client.crt",
     ca_cert: str = PROJECT_ROOT / "benchmarks/network/tls/pki/ca.crt",
+    pin_start: int = 20,
+    pin_end: Optional[int] = None,
 ):
     """Run the memtier benchmark on the VM using redis or memcached.
     `server_threads` is only valid for memcached.
@@ -141,6 +154,9 @@ def run_memtier(
         else:
             client_threads = vm.config["resource"].cpu
 
+    if pin_end is None:
+        pin_end = pin_start + client_threads - 1
+
     server_cmd = [
         "just",
         "-f",
@@ -156,6 +172,9 @@ def run_memtier(
 
     if tls:
         cmd = [
+            "taskset",
+            "-c",
+            f"{pin_start}-{pin_end}",
             "memtier_benchmark",
             f"--host={VM_IP}",
             "-p",
@@ -173,6 +192,9 @@ def run_memtier(
         ]
     else:
         cmd = [
+            "taskset",
+            "-c",
+            f"{pin_start}-{pin_end}",
             "memtier_benchmark",
             f"--host={VM_IP}",
             "-p",
@@ -199,6 +221,8 @@ def run_nginx(
     threads: int = 8,
     connections: int = 300,
     duration: str = "30s",
+    pin_start: int = 20,
+    pin_end: Optional[int] = None,
 ):
     """Run the nginx on the VM and the wrk benchmark on the host.
     The results are saved in ./bench-result/network/nginx/{name}/{date}/
@@ -208,12 +232,18 @@ def run_nginx(
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
+    if pin_end is None:
+        pin_end = pin_start + threads - 1
+
     server_cmd = ["just", "-f", "/share/benchmarks/network/justfile", "run-nginx"]
     vm.ssh_cmd(server_cmd)
     time.sleep(1)
 
     # HTTP
     cmd = [
+        "taskset",
+        "-c",
+        f"{pin_start}-{pin_end}",
         "wrk",
         f"http://{VM_IP}",
         f"-t{threads}",
@@ -230,6 +260,9 @@ def run_nginx(
 
     # HTTPS
     cmd = [
+        "taskset",
+        "-c",
+        f"{pin_start}-{pin_end}",
         "wrk",
         f"https://{VM_IP}",
         f"-t{threads}",

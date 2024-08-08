@@ -1,0 +1,111 @@
+#!/usr/bin/env bpftrace
+
+BEGIN {
+    @exit_reason[0] = "EXCEPTION_OR_NMI";
+    @exit_reason[1] = "EXTERNAL_INT";
+    @exit_reason[2] = "TRIPLE_FAULT";
+    @exit_reason[3] = "INIT_SIGNAL";
+    @exit_reason[4] = "STARTUP_IPI";
+    @exit_reason[5] = "IO_SMI";
+    @exit_reason[6] = "OTHER_SMI";
+    @exit_reason[7] = "INTERRUPT_WINDOW";
+    @exit_reason[8] = "NMI_WINDOW";
+    @exit_reason[9] = "TASK_SWITCH";
+    @exit_reason[10] = "CPUID";
+    @exit_reason[11] = "GETSEC";
+    @exit_reason[12] = "HLT";
+    @exit_reason[13] = "INVD";
+    @exit_reason[14] = "INVLPG";
+    @exit_reason[15] = "RDPMC";
+    @exit_reason[16] = "RDTSC";
+    @exit_reason[17] = "RSM";
+    @exit_reason[18] = "VMCALL";
+    @exit_reason[19] = "VMCLEAR";
+    @exit_reason[20] = "VMLAUNCH";
+    @exit_reason[21] = "VMPTRLD";
+    @exit_reason[22] = "VMPTRST";
+    @exit_reason[23] = "VMREAD";
+    @exit_reason[24] = "VMRESUME";
+    @exit_reason[25] = "VMWRITE";
+    @exit_reason[26] = "VMXOFF";
+    @exit_reason[27] = "VMXON";
+    @exit_reason[28] = "MOV_CR";
+    @exit_reason[29] = "MOV_DR";
+    @exit_reason[30] = "IO_INSTRUCTION";
+    @exit_reason[31] = "RDMSR";
+    @exit_reason[32] = "WRMSR";
+    @exit_reason[33] = "ENTFAIL_GUEST_STATE";
+    @exit_reason[34] = "ENTFAIL_MSR_LOADING";
+    @exit_reason[35] = "N/A (35)";
+    @exit_reason[36] = "MWAIT";
+    @exit_reason[37] = "MONITOR_TRAP_FLAG";
+    @exit_reason[38] = "N/A (38)";
+    @exit_reason[39] = "MONITOR";
+    @exit_reason[40] = "PAUSE";
+    @exit_reason[41] = "ENTFAIL_MACHINE_CHK";
+    @exit_reason[42] = "N/A (42)";
+    @exit_reason[43] = "TPR_BELOW_THRESHOLD";
+    @exit_reason[44] = "APIC_ACCESS";
+    @exit_reason[45] = "VIRTUALIZED_EOI";
+    @exit_reason[46] = "ACCESS_GDTR_OR_IDTR";
+    @exit_reason[47] = "ACCESS_LDTR_OR_TR";
+    @exit_reason[48] = "EPT_VIOLATION";
+    @exit_reason[49] = "EPT_MISCONFIG";
+    @exit_reason[50] = "INVEPT";
+    @exit_reason[51] = "RDTSCP";
+    @exit_reason[52] = "VMX_PREEMPT_TIMER";
+    @exit_reason[53] = "INVVPID";
+    @exit_reason[54] = "WBINVD";
+    @exit_reason[55] = "XSETBV";
+    @exit_reason[56] = "APIC_WRITE";
+    @exit_reason[57] = "RDRAND";
+    @exit_reason[58] = "INVPCID";
+    @exit_reason[59] = "VMFUNC";
+    @exit_reason[60] = "ENCLS";
+    @exit_reason[61] = "RDSEED";
+    @exit_reason[62] = "PM_FULL";
+    @exit_reason[63] = "XSAVES";
+    @exit_reason[64] = "XRSTORS";
+    @exit_reason[65] = "PCONFIG";
+    @exit_reason[66] = "SPP";
+    @exit_reason[67] = "UMWAIT";
+    @exit_reason[68] = "TPAUSE";
+    @exit_reason[69] = "LOADIWKEY";
+    @exit_reason[70] = "ENCLV";
+    @exit_reason[71] = "N/A (71)";
+    @exit_reason[72] = "ENQCMD";
+    @exit_reason[73] = "ENQCMDS";
+    @exit_reason[74] = "BUSLOCK";
+    @exit_reason[75] = "INSN_TIMEOUT";
+    @exit_reason[76] = "SEAMCALL";
+    @exit_reason[77] = "TDCALL";
+
+    $i = 0;
+    while ($i <= 77) {
+        printf("%s,", @exit_reason[$i]);
+        $i += 1;
+    }
+    printf("\n");
+}
+
+tracepoint:kvm:kvm_exit {
+    @count[args->exit_reason] += 1;
+    if (args->exit_reason > 77) {
+        printf("Unknown exit reason! %d\n", args->exit_reason);
+    }
+}
+
+i:s:1 {
+    $i = 0;
+    while ($i <= 77) {
+        printf("%d,", @count[$i]);
+        $i += 1;
+    }
+    printf("\n");
+    clear(@count);
+}
+
+END {
+    clear(@exit_reason);
+    clear(@count);
+}

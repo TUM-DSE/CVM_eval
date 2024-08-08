@@ -47,24 +47,37 @@ VMRESOURCES["amd"]["large"] = VMResource(cpu=32, memory=256, numa_node=[0], pin_
 VMRESOURCES["amd"]["numa"] = VMResource(
     cpu=64, memory=512, numa_node=[0, 1], pin_base=0
 )
+
 VMRESOURCES["intel"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
 VMRESOURCES["intel"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0], pin_base=8)
 VMRESOURCES["intel"]["large"] = VMResource(
-    cpu=28, memory=128, numa_node=[1], pin_base=28
+    cpu=28, memory=128, numa_node=[0], pin_base=28
+)
+VMRESOURCES["intel"]["xlarge"] = VMResource(
+    cpu=56, memory=256, numa_node=[0], pin_base=0
 )
 VMRESOURCES["intel"]["numa"] = VMResource(
-    cpu=56, memory=256, numa_node=[0, 1], pin_base=0
+    cpu=112, memory=512, numa_node=[0, 1], pin_base=0
 )
-VMRESOURCES["intel"]["vnuma"] = VMResource(
-    cpu=56,
-    memory=256,
-    numa_node=[0, 1],
-    pin_base=0,
-    vnuma=[
-        NodeInfo(cpus="0-27", mem=128, dist=[12]),
-        NodeInfo(cpus="28-55", mem=128, dist=[]),
-    ],
-)
+
+
+# configuration when SNC (Sub Numa Clustering) enabled
+# VMRESOURCES["intel"]["large"] = VMResource(
+#    cpu=28, memory=128, numa_node=[1], pin_base=28
+# )
+# VMRESOURCES["intel"]["numa"] = VMResource(
+#    cpu=56, memory=256, numa_node=[0, 1], pin_base=0
+# )
+# VMRESOURCES["intel"]["vnuma"] = VMResource(
+#    cpu=56,
+#    memory=256,
+#    numa_node=[0, 1],
+#    pin_base=0,
+#    vnuma=[
+#        NodeInfo(cpus="0-27", mem=128, dist=[12]),
+#        NodeInfo(cpus="28-55", mem=128, dist=[]),
+#    ],
+# )
 
 VMRESOURCES["amd"]["boot-mem8"] = VMResource(cpu=8, memory=8, numa_node=[0], pin_base=8)
 VMRESOURCES["amd"]["boot-mem16"] = VMResource(
@@ -117,8 +130,11 @@ VMRESOURCES["intel"]["boot-mem128"] = VMResource(
     cpu=8, memory=128, numa_node=[0], pin_base=8
 )
 VMRESOURCES["intel"]["boot-mem256"] = VMResource(
-    cpu=8, memory=256, numa_node=[0, 1], pin_base=8
+    cpu=8, memory=256, numa_node=[0], pin_base=8
 )
+# VMRESOURCES["intel"]["boot-mem256"] = VMResource(
+#    cpu=8, memory=256, numa_node=[0, 1], pin_base=8
+# )
 
 VMRESOURCES["intel"]["boot-cpu1"] = VMResource(
     cpu=1, memory=8, numa_node=[0], pin_base=8
@@ -133,8 +149,11 @@ VMRESOURCES["intel"]["boot-cpu28"] = VMResource(
     cpu=28, memory=8, numa_node=[0], pin_base=0
 )
 VMRESOURCES["intel"]["boot-cpu56"] = VMResource(
-    cpu=56, memory=8, numa_node=[0, 1], pin_base=0
+    cpu=56, memory=8, numa_node=[0], pin_base=0
 )
+# VMRESOURCES["intel"]["boot-cpu56"] = VMResource(
+#    cpu=56, memory=8, numa_node=[0, 1], pin_base=0
+# )
 
 VMRESOURCES["snp"] = VMRESOURCES["amd"]
 VMRESOURCES["tdx"] = VMRESOURCES["intel"]
@@ -996,7 +1015,7 @@ def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         if virito_blk:
             import storage
 
-            storage.mount_disk(vm, "/dev/vdb", "/mnt", format=True)
+            storage.mount_disk(vm, "/dev/vdb", "/mnt", format="auto")
             dbpath = "/mnt/test.db"
 
             name += f"-{kargs['config']['virtio_blk_aio']}"

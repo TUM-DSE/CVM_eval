@@ -40,6 +40,25 @@ hatches2 = ["", "", "//"]
 BENCH_RESULT_DIR = Path("./bench-result/application")
 
 
+def parse_blender_result_sub(name: str, file: Path):
+    with open(file) as f:
+        lines = f.readlines()
+    # find a line starting with "Time:"
+    for line in lines:
+        if line.startswith("Time:"):
+            # example format:
+            # Time: 00:02.97 (Saving: 00:00.07)
+            time = line.split()[1]
+            # convert to seconds
+            minutes, seconds = time.split(":")
+            time = int(minutes) * 60 + float(seconds)
+
+    # create df
+    # | name | time |
+    df = pd.DataFrame({"name": [name], "time": [time]})
+    return df
+
+
 # bench mark path:
 # ./bench-result/application/blender/{name}/{date}/
 def parse_blender_result(name: str, date: Optional[str] = None) -> float:
@@ -50,34 +69,36 @@ def parse_blender_result(name: str, date: Optional[str] = None) -> float:
 
     if not os.path.exists(path):
         print(f"XXX: No result found in {path}")
-        return 0
-
-    print(f"{path}")
+        raise FileNotFoundError
 
     # iterate over the files in the directory
-    times = []
+    dfs = []
     for file in os.listdir(path):
-        with open(path / file) as f:
-            lines = f.readlines()
-        # find a line starting with "Time:"
-        for line in lines:
-            if line.startswith("Time:"):
-                # example format:
-                # Time: 00:02.97 (Saving: 00:00.07)
-                time = line.split()[1]
-                # convert to seconds
-                minutes, seconds = time.split(":")
-                times.append(int(minutes) * 60 + float(seconds))
-                break
-        else:
-            print(f"XXX: No time found in {file}")
-            continue
+        df = parse_blender_result_sub(name, path / file)
+        dfs.append(df)
 
-    if len(times) == 0:
-        return 0
+    # merge dfs
+    df = pd.concat(dfs, ignore_index=True)
 
-    # return median value
-    return np.median(times)
+    return df
+
+
+def parse_pytorch_result_sub(name: str, file: Path):
+    with open(file) as f:
+        lines = f.readlines()
+    # find a line starting with "Time:"
+    for line in lines:
+        if line.startswith("Time:"):
+            # example format:
+            # Time: 7.30 seconds
+            time = float(line.split(":")[1].strip().split()[0])
+            # create df
+            # | name | time |
+            df = pd.DataFrame({"name": [name], "time": [time]})
+            return df
+
+    print(f"XXX: No time found in {file}")
+    raise FileNotFoundError
 
 
 def parse_pytorch_result(name: str, date: Optional[str] = None) -> float:
@@ -90,30 +111,34 @@ def parse_pytorch_result(name: str, date: Optional[str] = None) -> float:
         print(f"XXX: No result found in {path}")
         return 0
 
-    print(f"{path}")
-
     # iterate over the files in the directory
-    times = []
+    dfs = []
     for file in os.listdir(path):
-        with open(path / file) as f:
-            lines = f.readlines()
-        # find a line starting with "Time:"
-        for line in lines:
-            if line.startswith("Time:"):
-                # example format:
-                # Time: 7.30 seconds
-                time = float(line.split(":")[1].strip().split()[0])
-                times.append(time)
-                break
-        else:
-            print(f"XXX: No time found in {file}")
-            continue
+        df = parse_pytorch_result_sub(name, path / file)
+        dfs.append(df)
 
-    if len(times) == 0:
-        return 0
+    # merge dfs
+    df = pd.concat(dfs, ignore_index=True)
 
-    # return median value
-    return np.median(times)
+    return df
+
+
+def parse_tensorflow_result_sub(name: str, file: Path):
+    with open(file) as f:
+        lines = f.readlines()
+    # find a line starting with "Total throughput"
+    for line in lines:
+        if line.startswith("Total throughput"):
+            # example format:
+            # Total throughput (examples/sec): 9.26154306852012
+            time = float(line.split(":")[1].strip())
+            # create df
+            # | name | time |
+            df = pd.DataFrame({"name": [name], "time": [time]})
+            return df
+
+    print(f"XXX: No time found in {file}")
+    raise FileNotFoundError
 
 
 def parse_tensorflow_result(name: str, date: Optional[str] = None) -> float:
@@ -126,71 +151,68 @@ def parse_tensorflow_result(name: str, date: Optional[str] = None) -> float:
         print(f"XXX: No result found in {path}")
         return 0
 
-    print(f"{path}")
-
     # iterate over the files in the directory
-    times = []
+    dfs = []
     for file in os.listdir(path):
-        with open(path / file) as f:
-            lines = f.readlines()
-        # find a line starting with "Total throughput"
-        for line in lines:
-            if line.startswith("Total throughput"):
-                # example format:
-                # Total throughput (examples/sec): 9.26154306852012
-                time = float(line.split(":")[1].strip())
-                times.append(time)
-                break
-        else:
-            print(f"XXX: No time found in {file}")
-            continue
+        df = parse_tensorflow_result_sub(name, path / file)
+        dfs.append(df)
+    if len(dfs) == 0:
+        dfs.append(pd.DataFrame({"name": [name], "time": [0]}))
 
-    if len(times) == 0:
-        return 0
+    # merge dfs
+    df = pd.concat(dfs, ignore_index=True)
 
-    # return median value
-    return np.median(times)
+    return df
+
+
+def parse_sqlite_result_sub(name: str, workload: str, file: Path):
+    with open(file) as f:
+        lines = f.readlines()
+    # find a line starting with "Total elapsed time:"
+    for line in lines:
+        if line.startswith("Total elapsed time:"):
+            time = float(line.split(":")[1].strip())
+            # create df
+            # | name | time |
+            df = pd.DataFrame({"name": [name], "workload": [workload], "time": [time]})
+            return df
+
+    print(f"XXX: No time found in {file}")
+    raise FileNotFoundError
 
 
 # bench mark path:
 # ./bench-result/application/sqlite/{name}/{date}/
 def parse_sqlite_result(
-    name: str, date: Optional[str] = None, label: Optional[str] = None
+    name: str,
+    date: Optional[str] = None,
+    label: Optional[str] = None,
+    max_num: int = 10,
 ) -> pd.DataFrame:
+    dates = []
     if date is None:
-        # we use the latest result if date is not provided
-        date = sorted(os.listdir(BENCH_RESULT_DIR / "sqlite" / name))[-1]
+        # we use the latest results if date is not provided
+        dates = sorted(os.listdir(BENCH_RESULT_DIR / "sqlite" / name))[:max_num]
+    else:
+        dates.append(date)
     if label is None:
         label = name
-    path = BENCH_RESULT_DIR / "sqlite" / name / date
-
-    if not os.path.exists(path):
-        print(f"XXX: No result found in {path}")
-        return 0
-
-    print(f"{path}")
 
     workloads = ["seq", "rand", "update", "update_rand"]
 
-    # create data frame like
-    # | name | workload | time |
+    dfs = []
+    for date in dates:
+        path = BENCH_RESULT_DIR / "sqlite" / name / date
+        if not os.path.exists(path):
+            print(f"XXX: No result found in {path}")
+            return 0
+        for workload in workloads:
+            file = path / f"{workload}.log"
+            df = parse_sqlite_result_sub(label, workload, file)
+            dfs.append(df)
 
-    # iterate over the files in the directory
-    rows = []
-    for workload in workloads:
-        path = BENCH_RESULT_DIR / "sqlite" / name / date / f"{workload}.log"
-        with open(path) as f:
-            lines = f.readlines()
-        for line in lines:
-            if line.startswith("Total elapsed time:"):
-                time = float(line.split(":")[1].strip())
-                rows.append({"name": label, "workload": workload, "time": time})
-                break
-        else:
-            print(f"XXX: No time found in {file}")
-            continue
-
-    df = pd.DataFrame(rows, columns=["name", "workload", "time"])
+    # merge dfs
+    df = pd.concat(dfs, ignore_index=True)
 
     return df
 
@@ -204,7 +226,15 @@ def plot_application(
     sizes=[],
     labels=[],
     rel=True,
+    tmebypass=False,
+    poll=False,
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
+    pvm = ""
+    pcvm = ""
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -213,10 +243,15 @@ def plot_application(
         vm = "intel"
         vm_label = "vm"
         cvm_label = "td"
+        if tmebypass:
+            pvm = "-tmebypass"
+    if poll:
+        pvm += "-poll"
+        pcvm += "-poll"
 
     if len(sizes) == 0:
-        sizes = ["small", "medium", "large", "numa"]
-        #labels = ["small", "medium", "large", "xlarge"]
+        # labels = ["small", "medium", "large", "numa"]
+        sizes = ["small", "medium", "large", "xlarge"]
         labels = ["S", "M", "L", "X"]
 
     # create a data frame like
@@ -224,32 +259,38 @@ def plot_application(
     # |----|------|-------------|------|
     # |    |      |             |      |
     data = []
-    for vmname, vmlabel in zip([vm, cvm], [vm_label, cvm_label]):
+    for vmname, vmlabel, p in zip([vm, cvm], [vm_label, cvm_label], [pvm, pcvm]):
         for size, label in zip(sizes, labels):
-            data.append(
-                {
-                    "VM": vmlabel,
-                    "Size": label,
-                    "Application": "Blender",
-                    "Time": parse_blender_result(f"{vmname}-direct-{size}"),
-                },
-            )
-            data.append(
-                {
-                    "VM": vmlabel,
-                    "Size": label,
-                    "Application": "Tensorflow",
-                    "Time": parse_tensorflow_result(f"{vmname}-direct-{size}"),
-                },
-            )
-            data.append(
-                {
-                    "VM": vmlabel,
-                    "Size": label,
-                    "Application": "Pytorch",
-                    "Time": parse_pytorch_result(f"{vmname}-direct-{size}"),
-                },
-            )
+            bl_df = parse_blender_result(f"{vmname}-direct-{size}{p}")
+            for i, row in bl_df.iterrows():
+                data.append(
+                    {
+                        "VM": vmlabel,
+                        "Size": label,
+                        "Application": "Blender",
+                        "Time": row["time"],
+                    },
+                )
+            tf_df = parse_tensorflow_result(f"{vmname}-direct-{size}{p}")
+            for i, row in tf_df.iterrows():
+                data.append(
+                    {
+                        "VM": vmlabel,
+                        "Size": label,
+                        "Application": "Tensorflow",
+                        "Time": row["time"],
+                    },
+                )
+            pt_df = parse_pytorch_result(f"{vmname}-direct-{size}{p}")
+            for i, row in pt_df.iterrows():
+                data.append(
+                    {
+                        "VM": vmlabel,
+                        "Size": label,
+                        "Application": "Pytorch",
+                        "Time": row["time"],
+                    },
+                )
     df = pd.DataFrame(data)
     print(df)
 
@@ -262,6 +303,7 @@ def plot_application(
         ax=ax[0],
         palette=palette,
         edgecolor="black",
+        err_kws={"linewidth": 1},
     )
     sns.barplot(
         data=df[df["Application"] == "Pytorch"],
@@ -271,6 +313,7 @@ def plot_application(
         ax=ax[1],
         palette=palette,
         edgecolor="black",
+        err_kws={"linewidth": 1},
     )
     sns.barplot(
         data=df[df["Application"] == "Tensorflow"],
@@ -280,13 +323,22 @@ def plot_application(
         ax=ax[2],
         palette=palette,
         edgecolor="black",
+        err_kws={"linewidth": 1},
     )
 
     # calc relative values
     # type vm is the baseline
     for i, app in enumerate(["Blender", "Pytorch", "Tensorflow"]):
-        vm_index = df[(df["VM"] == vm_label) & (df["Application"] == app)]["Time"].values
-        cvm_index = df[(df["VM"] == cvm_label) & (df["Application"] == app)]["Time"].values
+        # choose mean values of each size
+        vm_mean = df[(df["VM"] == vm_label) & (df["Application"] == app)]
+        vm_mean = vm_mean.groupby("Size")["Time"].mean()
+        vm_index = np.array([vm_mean[label] for label in labels])
+        cvm_mean = df[(df["VM"] == cvm_label) & (df["Application"] == app)]
+        cvm_mean = cvm_mean.groupby("Size")["Time"].mean()
+        cvm_index = np.array([cvm_mean[label] for label in labels])
+
+        print("vm_index:", vm_index, cvm_index)
+
         if app == "Tensorflow":
             vm_index[0] = 1
             cvm_index[0] = 1
@@ -324,7 +376,8 @@ def plot_application(
                 # remove ylabel
                 ax2.set_ylabel("")
 
-            ax2.set_ylim([0, 1.5])
+            # ax2.set_ylim([0, 1.5])
+            ax2.set_ylim([0.8, 1.2])
             # draw 1.0 line
             ax2.axhline(y=1.0, color="black", linestyle="--", linewidth=0.5)
 
@@ -358,10 +411,10 @@ def plot_application(
     ax[2].set_xlabel("")
 
     # rotate xticklabels
-    #rotation = 0
-    #ax[0].set_xticklabels(labels, fontsize=6, rotation=rotation, ha="right")
-    #ax[1].set_xticklabels(labels, fontsize=6, rotation=rotation, ha="right")
-    #ax[2].set_xticklabels(labels, fontsize=6, rotation=rotation, ha="right")
+    # rotation = 0
+    # ax[0].set_xticklabels(labels, fontsize=6, rotation=rotation, ha="right")
+    # ax[1].set_xticklabels(labels, fontsize=6, rotation=rotation, ha="right")
+    # ax[2].set_xticklabels(labels, fontsize=6, rotation=rotation, ha="right")
 
     # remove legend
     ax[1].get_legend().remove()
@@ -378,7 +431,7 @@ def plot_application(
                     txt = "N/A"
                     xy = (bar.get_x() + bar.get_width() / 2, 0)
                 else:
-                    txt = f"{bar.get_height():.2f}"
+                    txt = f"{bar.get_height():.1f}"
                     xy = (bar.get_x() + bar.get_width() / 2, bar.get_height())
                 ax[i].annotate(
                     txt,
@@ -390,13 +443,14 @@ def plot_application(
                     fontsize=5,
                 )
 
+    sns.despine(top = True)
     plt.tight_layout()
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     if not rel:
-        save_path = outdir / f"{outname}_norel.pdf"
+        save_path = outdir / f"{outname}_norel{pvm}.pdf"
     else:
-        save_path = outdir / f"{outname}.pdf"
+        save_path = outdir / f"{outname}{pvm}.pdf"
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
 
@@ -410,7 +464,11 @@ def plot_sqlite(
     size="medium",
     aio="native",
     device="nvme0n1",
+    result_dir=None,
 ):
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -420,9 +478,10 @@ def plot_sqlite(
         vm_label = "vm"
         cvm_label = "td"
 
-    vm_df = parse_sqlite_result(f"{vm}-direct-{size}{device}-{aio}", label=vm_label)
-    swiotlb_df = parse_sqlite_result(f"{vm}-direct-{size}{device}-{aio}-swiotlb",
-                                     label="swiotlb")
+    vm_df = parse_sqlite_result(f"{vm}-direct-{size}-{device}-{aio}", label=vm_label)
+    swiotlb_df = parse_sqlite_result(
+        f"{vm}-direct-{size}{device}-{aio}-swiotlb", label="swiotlb"
+    )
     cvm_df = parse_sqlite_result(f"{cvm}-direct-{size}{device}-{aio}", label=cvm_label)
     df = pd.concat([vm_df, swiotlb_df, cvm_df])
 
@@ -437,6 +496,7 @@ def plot_sqlite(
         ax=ax,
         palette=palette2,
         edgecolor="black",
+        err_kws={"linewidth": 1},
     )
     ax.set_xlabel("")
     ax.set_ylabel("Runtime [sec]")
@@ -462,8 +522,9 @@ def plot_sqlite(
 
     # annotate values with .2f
     for container in ax.containers:
-        ax.bar_label(container, fmt="%.2f")
+        ax.bar_label(container, fmt="%.1f")
 
+    sns.despine(top = True)
     plt.tight_layout()
 
     outdir = Path(outdir)

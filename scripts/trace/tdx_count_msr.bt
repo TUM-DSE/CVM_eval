@@ -1,0 +1,53 @@
+BEGIN {
+   @MSR_INDEX[0x6E0] = "IA32_TSC_DEADLINE";       /* 1760 */
+   @MSR_INDEX[0x830] = "IA32_X2APIC_ICR";         /* 2096 */
+   @MSR_INDEX[0x832] = "IA32_X2APIC_LVT_TIMER";   /* 2098 */
+   @MSR_INDEX[0x838] = "IA32_X2APIC_INIT_COUNT";  /* 2014 */
+
+   printf("RD_IA32_TSC_DEADLINE,RD_IA32_X2APIC_ICR,RD_IA32_X2APIC_LVT_TIMER,RD_IA32_X2APIC_INIT_COUNT,RD_OTHER,WR_IA32_TSC_DEADLINE,WR_IA32_X2APIC_ICR,WR_IA32_X2APIC_LVT_TIMER,WR_IA32_X2APIC_INIT_COUNT,WR_OTHER\n");
+}
+
+f:kvm_intel:handle_tdvmcall {
+    $leaf = args->vcpu->arch.regs[11];
+    $index = args->vcpu->arch.regs[12];
+    if ($leaf == 31) {
+        if ($index == 0x6E0 || $index == 0x830 || $index == 0x832 || $index == 0x838) {
+            @rdmsr[@MSR_INDEX[$index]]++;
+        } else {
+            @rdmsr2[$index]++;
+            @rdmsr["OTHER"]++;
+        }
+    }
+    if ($leaf == 32) {
+        if ($index == 0x6E0 || $index == 0x830 || $index == 0x832 || $index == 0x838) {
+            @wrmsr[@MSR_INDEX[$index]]++;
+        } else {
+            @wrmsr2[$index]++;
+            @wrmsr["OTHER"]++;
+        }
+    }
+} 
+
+i:s:1 {
+  printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+         @rdmsr["IA32_TSC_DEADLINE"], @rdmsr["IA32_X2APIC_ICR"],
+         @rdmsr["IA32_X2APIC_LVT_TIMER"], @rdmsr["IA32_X2APIC_INIT_COUNT"], @rdmsr["OTHER"],
+         @wrmsr["IA32_TSC_DEADLINE"], @wrmsr["IA32_X2APIC_ICR"],
+         @wrmsr["IA32_X2APIC_LVT_TIMER"], @wrmsr["IA32_X2APIC_INIT_COUNT"], @wrmsr["OTHER"]);
+  //print(@wrmsr);
+  //print(@wrmsr2);
+  //print(@rdmsr);
+  //print(@rdmsr2);
+  clear(@wrmsr); 
+  clear(@wrmsr2); 
+  clear(@rdmsr); 
+  clear(@rdmsr2); 
+}
+
+END {
+  clear(@wrmsr); 
+  clear(@wrmsr2); 
+  clear(@rdmsr); 
+  clear(@rdmsr2); 
+  clear(@MSR_INDEX); 
+}

@@ -8,6 +8,25 @@ from subprocess import CalledProcessError
 
 from config import PROJECT_ROOT
 from qemu import QemuVm
+from storage import mount_disk
+
+
+def setup_disk(vm: QemuVm, fail_stop=True) -> bool:
+    """Check if virtio-blk (/dev/vdb) is available. If so, prepare the disk for the evaluation"""
+    if vm.config["virtio_blk"] is None:
+        return False
+
+    r = mount_disk(vm, "/dev/vdb", "/mnt", format="auto")
+    if not r:
+        if fail_stop:
+            raise Exception("Failed to mount virtio-blk")
+        return False
+    output = vm.ssh_cmd(["rsync", "-a", "/share/benchmarks/application", "/mnt/"])
+    if output.returncode != 0:
+        print("rsync error")
+        return False
+
+    return True
 
 
 def run_blender(
@@ -22,10 +41,17 @@ def run_blender(
     outputdir = Path(f"./bench-result/application/blender/{name}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
+
+    disk = setup_disk(vm)
+    if disk:
+        rootdir = "/mnt/application"
+    else:
+        rootdir = "/share/benchmarks/application"
+
     cmd = [
         "just",
         "-f",
-        "/share/benchmarks/application/blender/justfile",
+        f"{rootdir}/blender/justfile",
         "run",
     ]
 
@@ -63,10 +89,16 @@ def run_tensorflow(
         else:
             thread_cnt = 1
 
+    disk = setup_disk(vm)
+    if disk:
+        rootdir = "/mnt/application"
+    else:
+        rootdir = "/share/benchmarks/application"
+
     cmd = [
         "just",
         "-f",
-        "/share/benchmarks/application/tensorflow/justfile",
+        f"{rootdir}/tensorflow/justfile",
         "run",
         f"{thread_cnt}",
     ]
@@ -110,10 +142,16 @@ def run_pytorch(
         else:
             thread_cnt = 1
 
+    disk = setup_disk(vm)
+    if disk:
+        rootdir = "/mnt/application"
+    else:
+        rootdir = "/share/benchmarks/application"
+
     cmd = [
         "just",
         "-f",
-        "/share/benchmarks/application/pytorch/justfile",
+        f"{rootdir}/pytorch/justfile",
         "run",
         f"{thread_cnt}",
     ]
@@ -144,11 +182,17 @@ def run_sqlite(
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
 
+    disk = setup_disk(vm)
+    if disk:
+        rootdir = "/mnt/application"
+    else:
+        rootdir = "/share/benchmarks/application"
+
     def init():
         cmd = [
             "just",
             "-f",
-            "/share/benchmarks/application/sqlite/justfile",
+            f"{rootdir}/sqlite/justfile",
             f"DBPATH={dbpath}",
             "init",
         ]
@@ -161,7 +205,7 @@ def run_sqlite(
         cmd = [
             "just",
             "-f",
-            "/share/benchmarks/application/sqlite/justfile",
+            f"{rootdir}/sqlite/justfile",
             f"DBPATH={dbpath}",
             f"run_{test}",
         ]

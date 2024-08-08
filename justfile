@@ -438,6 +438,14 @@ build-linux:
     cd {{ LINUX_DIR }}
     yes "" | {{ KERNEL_SHELL }} "make KCFLAGS=-Wno-error=missing-prototypes -C {{ LINUX_DIR }} -j$(nproc)"
 
+build-perf:
+    #!/usr/bin/env bash
+    set -xeu
+    cd {{ LINUX_DIR }}/tools/perf
+    {{ KERNEL_SHELL }} "NIX_CFLAGS_COMPILE='-idirafter /usr/include -O2' make -j$(nproc)"
+    mkdir -p guest-tools
+    cp {{ LINUX_DIR }}/tools/perf/perf guest-tools
+
 clean-linux:
     {{ KERNEL_SHELL }} "make -C {{ LINUX_DIR }} clean"
 
@@ -484,3 +492,106 @@ show_bridge_status:
     brctl show
     networkctl
 
+# ------------------------------
+# trace
+trace name duration="20" interval="1":
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    bash {{PROJECT_ROOT}}/trace/all.sh {{name}} {{duration}} {{interval}} $DATE &
+    just ssh "bash /share/trace/all.sh {{name}} {{duration}} {{interval}} $DATE"
+    wait $(jobs -p)
+    sleep 1
+    just flamegraph {{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host/perf.data {{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host/perf.svg
+    just flamegraph-guest {{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/guest/perf.data {{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/guest/perf.svg
+
+mpstat name:
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host
+    export OUTDIR
+    bash {{PROJECT_ROOT}}/trace/mpstat.sh {{name}} &
+    OUTDIR=/share/trace-result/{{name}}/$DATE/guest
+    just ssh "OUTDIR=$OUTDIR bash /share/trace/mpstat.sh"
+    wait $(jobs -p)
+
+vmstat name:
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host
+    export OUTDIR
+    bash {{PROJECT_ROOT}}/trace/vmstat.sh {{name}}
+    OUTDIR=/share/trace-result/{{name}}/$DATE/guest
+    just ssh "OUTDIR=$OUTDIR bash /share/trace/vmstat.sh"
+
+trace-host name:
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE
+    export OUTDIR
+    bash {{PROJECT_ROOT}}/trace/all.sh
+
+perf-host name:
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE
+    export OUTDIR
+    bash {{PROJECT_ROOT}}/trace/perf.sh
+
+stat-host name:
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE
+    export OUTDIR
+    bash {{PROJECT_ROOT}}/trace/stat.sh {{name}}
+
+mpstat-host name:
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE
+    export OUTDIR
+    bash {{PROJECT_ROOT}}/trace/mpstat.sh {{name}}
+
+trace-guest name:
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    OUTDIR=/share/trace-result/{{name}}/$DATE
+    just ssh "OUTDIR=$OUTDIR bash /share/trace/all.sh"
+
+perf-guest name:
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    OUTDIR=/share/trace-result/{{name}}/$DATE
+    just ssh "OUTDIR=$OUTDIR bash /share/trace/perf.sh"
+
+stat-guest name:
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    OUTDIR=/share/trace-result/{{name}}/$DATE
+    just ssh "OUTDIR=$OUTDIR bash /share/trace/stat.sh"
+
+mpstat-guest name:
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    OUTDIR=/share/trace-result/{{name}}/$DATE
+    just ssh "OUTDIR=$OUTDIR bash /share/trace/mpstat.sh"
+
+flamegraph in="perf.data" out="a.svg":
+    #!/usr/bin/env bash
+    TMP=$(mktemp -p /tmp)
+    trap 'rm -f $TMP' EXIT
+    perf script -i {{in}} | {{PROJECT_ROOT}}/../FlameGraph/stackcollapse-perf.pl > $TMP
+    {{PROJECT_ROOT}}/../FlameGraph/flamegraph.pl $TMP > {{out}}
+
+flamegraph-guest in="perf.data" out="a.svg":
+    #!/usr/bin/env bash
+    TMP=$(mktemp -p /tmp)
+    trap 'rm -f $TMP' EXIT
+    perf script -k {{LINUX_DIR}}/vmlinux -i {{in}} | {{PROJECT_ROOT}}/../FlameGraph/stackcollapse-perf.pl > $TMP
+    {{PROJECT_ROOT}}/../FlameGraph/flamegraph.pl $TMP > {{out}}
+
+# command for the guest (run in the guest)
+perf-record sec="10" out="perf.data":
+   {{KERNEL_SHELL}} "{{PROJECT_ROOT}}/guest-tools/perf record --output {{out}} -a -g -- sleep {{sec}}"
+
+perf-report in="perf.data" out="report.txt":
+   {{KERNEL_SHELL}} "{{PROJECT_ROOT}}/guest-tools/perf report -i {{in}} -k {{PROJECT_ROOT}}/guest-tools/vmlinux --no-children > {{out}}"

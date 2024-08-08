@@ -148,6 +148,8 @@ in
     iperf
     cryptsetup
     lvm2
+    jq
+    sysstat # mpstat, iostat, sar
 
     # phoronix test suite and dependencies to install tests
     #phoronix-test-suite

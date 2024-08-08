@@ -31,7 +31,8 @@ figwidth_full = 7
 FONTSIZE = 9
 
 palette = sns.color_palette("pastel")
-hatches = ["", "//"]
+hatches = ["", "//", "\\"]
+hatches2 = ["", "////", "\\\\"]
 
 
 # return a list of elapsed time of (1) VM start, (2) Linux start (OVMF end),
@@ -146,9 +147,44 @@ def create_df(vm, cvm, index) -> pd.DataFrame:
     return data
 
 
+def create_df2(vm, cvm, prealloc, index) -> pd.DataFrame:
+    columns = ["QEMU", "OVMF", "Linux", "Init"]
+
+    vm_qemu = [vm[index[i]][0] for i in range(len(index))]
+    vm_ovmf = [vm[index[i]][1] for i in range(len(index))]
+    vm_linux = [vm[index[i]][2] for i in range(len(index))]
+    vm_init = [vm[index[i]][3] for i in range(len(index))]
+    cvm_qemu = [cvm[index[i]][0] for i in range(len(index))]
+    cvm_ovmf = [cvm[index[i]][1] for i in range(len(index))]
+    cvm_linux = [cvm[index[i]][2] for i in range(len(index))]
+    cvm_init = [cvm[index[i]][3] for i in range(len(index))]
+    prealloc_qemu = [prealloc[index[i]][0] for i in range(len(index))]
+    prealloc_ovmf = [prealloc[index[i]][1] for i in range(len(index))]
+    prealloc_linux = [prealloc[index[i]][2] for i in range(len(index))]
+    prealloc_init = [prealloc[index[i]][3] for i in range(len(index))]
+
+    df1 = pd.DataFrame(
+        np.array([vm_qemu, vm_ovmf, vm_linux, vm_init]).T, index=index, columns=columns
+    )
+    df2 = pd.DataFrame(
+        np.array([cvm_qemu, cvm_ovmf, cvm_linux, cvm_init]).T,
+        index=index,
+        columns=columns,
+    )
+    df3 = pd.DataFrame(
+        np.array([prealloc_qemu, prealloc_ovmf, prealloc_linux, prealloc_init]).T,
+        index=index,
+        columns=columns,
+    )
+
+    data = [df1, df2, df3]
+
+    return data
+
+
 # https://stackoverflow.com/questions/22787209/how-to-have-clusters-of-stacked-bars
 def plot_clustered_stacked(
-    dfall, labels=None, title="multiple stacked bar plot", H="/", **kwargs
+    dfall, labels=None, title="multiple stacked bar plot", H="/", cvm="snp", **kwargs
 ):
     """Given a list of dataframes, with identical columns and index, create a clustered stacked bar plot.
     labels is a list of the names of the dataframe, used for the legend
@@ -172,14 +208,15 @@ def plot_clustered_stacked(
             **kwargs,
         )  # make bar plots
         for container in axe.containers:
-            axe.bar_label(container, fmt="%.2f", fontsize=5, label_type="center")
+            axe.bar_label(container, fmt="%.2f", fontsize=4, label_type="center")
 
     h, l = axe.get_legend_handles_labels()  # get the handles we want to modify
     for i in range(0, n_df * n_col, n_col):  # len(h) = n_col * n_df
         for j, pa in enumerate(h[i : i + n_col]):
             for rect in pa.patches:  # for each index
                 rect.set_x(rect.get_x() + 1 / float(n_df + 1) * i / float(n_col))
-                rect.set_hatch(H * int(i / n_col))  # edited part
+                rect.set_hatch(hatches[i % len(hatches)])  # edited part
+                #rect.set_hatch(H * int(i / n_col))  # edited part
                 rect.set_width(1 / float(n_df + 1))
 
     axe.set_xticks((np.arange(0, 2 * n_ind, 2) + 1 / float(n_df + 1)) / 2.0)
@@ -188,7 +225,8 @@ def plot_clustered_stacked(
     # Add invisible data to add another legend
     n = []
     for i in range(n_df):
-        n.append(axe.bar(0, 0, color="white", edgecolor="k", hatch=H * i * 2))
+        #n.append(axe.bar(0, 0, color="white", edgecolor="k", hatch=H * i * 2))
+        n.append(axe.bar(0, 0, color="white", edgecolor="k", hatch=hatches2[i % len(hatches2)]))
 
     # l1 = axe.legend(h[:n_col], l[:n_col], loc=[1.01, 0.5])
     l1 = axe.legend(
@@ -200,7 +238,7 @@ def plot_clustered_stacked(
         labelspacing=0.2,
         columnspacing=0.5,
         handletextpad=0.2,
-        fontsize=7,
+        fontsize=5,
         loc="upper left",
     )
     if labels is not None:
@@ -208,39 +246,60 @@ def plot_clustered_stacked(
         l2 = plt.legend(
             n,
             labels,
-            ncol=2,
-            bbox_to_anchor=[1.0, -0.15],
+            ncol=3,
             labelspacing=0.2,
             columnspacing=0.5,
             handletextpad=0.2,
-            fontsize=7,
+            fontsize=5,
+            # bbox_to_anchor=[1.0, -0.15],
+            bbox_to_anchor=[0, 0.90],
+            loc="upper left",
         )
     axe.add_artist(l1)
 
     # calculate the total time
-    vm_total_time = (dfall[0]["QEMU"] + dfall[0]["OVMF"] + dfall[0]["Linux"] + dfall[0]["Init"]).values
-    cvm_total_time = (dfall[1]["QEMU"] + dfall[1]["OVMF"] + dfall[1]["Linux"] + dfall[1]["Init"]).values
-    # put the total time on the top of the bar
-    for i in range(len(vm_total_time)):
-        p = axe.patches[i]
-        axe.text(
-            p.get_x() + p.get_width() / 2.0,
-            vm_total_time[i] + 0.1,
-            f"{vm_total_time[i]:.2f}",
-            ha="center",
-            va="bottom",
-            fontsize=5,
-        )
-    for i in range(len(cvm_total_time)):
-        p = axe.patches[i + len(vm_total_time)]
-        axe.text(
-            p.get_x() + 0.3 + p.get_width() / 2.0,
-            cvm_total_time[i] + 0.1,
-            f"{cvm_total_time[i]:.2f}",
-            ha="center",
-            va="bottom",
-            fontsize=5,
-        )
+    for i in range(n_df):
+        total_time = (
+            dfall[i]["QEMU"] + dfall[i]["OVMF"] + dfall[i]["Linux"] + dfall[i]["Init"]
+        ).values
+        # put the total time on the top of the bar
+        for j in range(len(total_time)):
+            p = axe.patches[j + i * len(total_time)]
+            if cvm == "snp":
+                space = 0.25
+            else:
+                space = 0.33
+            axe.text(
+                p.get_x() + (space) * i + p.get_width() / 2.0,
+                total_time[j] + 0.1,
+                f"{total_time[j]:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=5,
+            )
+    # vm_total_time = (dfall[0]["QEMU"] + dfall[0]["OVMF"] + dfall[0]["Linux"] + dfall[0]["Init"]).values
+    # cvm_total_time = (dfall[1]["QEMU"] + dfall[1]["OVMF"] + dfall[1]["Linux"] + dfall[1]["Init"]).values
+    ## put the total time on the top of the bar
+    # for i in range(len(vm_total_time)):
+    #    p = axe.patches[i]
+    #    axe.text(
+    #        p.get_x() + p.get_width() / 2.0,
+    #        vm_total_time[i] + 0.1,
+    #        f"{vm_total_time[i]:.2f}",
+    #        ha="center",
+    #        va="bottom",
+    #        fontsize=5,
+    #    )
+    # for i in range(len(cvm_total_time)):
+    #    p = axe.patches[i + len(vm_total_time)]
+    #    axe.text(
+    #        p.get_x() + 0.3 + p.get_width() / 2.0,
+    #        cvm_total_time[i] + 0.1,
+    #        f"{cvm_total_time[i]:.2f}",
+    #        ha="center",
+    #        va="bottom",
+    #        fontsize=5,
+    #    )
 
     return axe
 
@@ -253,7 +312,11 @@ def plot_boottime(
     outdir: str = "plot",
     sizes: list = [],
     labels: list = [],
+    result_dir=None,
 ) -> None:
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -282,7 +345,7 @@ def plot_boottime(
     df = create_df(vm_, cvm_, labels)
     print(df)
 
-    ax = plot_clustered_stacked(df, [vm_label, cvm_label], color=palette)
+    ax = plot_clustered_stacked(df, [vm_label, cvm_label],cvm=cvm, color=palette)
 
     ax.set_ylabel("Time (s)")
     ax.set_xlabel("")
@@ -315,7 +378,11 @@ def plot_boottime2(
     cpu: bool = False,
     prealloc: bool = True,
     outdir: str = "plot",
+    result_dir=None,
 ) -> None:
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
     if cvm == "snp":
         vm = "amd"
         vm_label = "vm"
@@ -347,7 +414,72 @@ def plot_boottime2(
         df = create_df(vm_, cvm_, memsize)
     print(df)
 
-    ax = plot_clustered_stacked(df, [vm_label, cvm_label], color=palette)
+    ax = plot_clustered_stacked(df, [vm_label, cvm_label], cvm=cvm, color=palette)
+
+    ax.set_ylabel("Time (s)")
+    if cpu:
+        ax.set_xlabel("Number of vCPUs")
+    else:
+        ax.set_xlabel("Memory size (GB)")
+    ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
+    # sns.despine()
+    sns.despine(top = True)
+    plt.tight_layout()
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    if cpu:
+        outname = f"boottime{p}_cpu.pdf"
+    else:
+        outname = f"boottime{p}_memory.pdf"
+
+    plt.savefig(outdir / outname, format="pdf", pad_inches=0, bbox_inches="tight")
+    print(f"Output written to {outdir}/{outname}")
+
+
+@task
+def plot_boottime3(
+    ctx: Any,
+    cvm: str = "snp",
+    cpu: bool = False,
+    outdir: str = "plot",
+    result_dir=None,
+) -> None:
+    if result_dir is not None:
+        global BENCH_RESULT_DIR
+        BENCH_RESULT_DIR = Path(result_dir)
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+        memsize = [8, 16, 32, 64, 128, 256]
+        cpusize = [1, 8, 16, 28, 56]
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+        memsize = [8, 16, 32, 64, 128, 256]
+        cpusize = [1, 8, 16, 28, 56]
+
+    vm_ = {}
+    cvm_ = {}
+    prealloc_ = {}
+
+    if cpu:
+        for cpu in cpusize:
+            vm_[cpu] = load_data(f"{vm}-direct-boot-cpu{cpu}")
+            cvm_[cpu] = load_data(f"{cvm}-direct-boot-cpu{cpu}-no-prealloc")
+            prealloc_[cpu] = load_data(f"{cvm}-direct-boot-cpu{cpu}")
+        df = create_df2(vm_, cvm_, prealloc_, cpusize)
+    else:
+        for mem in memsize:
+            vm_[mem] = load_data(f"{vm}-direct-boot-mem{mem}")
+            cvm_[mem] = load_data(f"{cvm}-direct-boot-mem{mem}-no-prealloc")
+            prealloc_[mem] = load_data(f"{cvm}-direct-boot-mem{mem}")
+        df = create_df2(vm_, cvm_, prealloc_, memsize)
+    print(df)
+
+    ax = plot_clustered_stacked(df, [vm_label, cvm_label, "preallcoc"], cvm=cvm, color=palette)
 
     ax.set_ylabel("Time (s)")
     if cpu:
@@ -361,9 +493,87 @@ def plot_boottime2(
     outdir.mkdir(parents=True, exist_ok=True)
 
     if cpu:
-        outname = f"boottime{p}_cpu.pdf"
+        outname = f"boottime_all_cpu.pdf"
     else:
-        outname = f"boottime{p}_memory.pdf"
+        outname = f"boottime_all_memory.pdf"
+
+    plt.savefig(outdir / outname, format="pdf", pad_inches=0, bbox_inches="tight")
+    print(f"Output written to {outdir}/{outname}")
+
+
+@task
+def plot_boottime_snp(
+    ctx: Any,
+    cvm: str = "snp",
+    cpu: bool = False,
+    version: str = "6.9",
+    outdir: str = "plot",
+    result_dir=None,
+) -> None:
+    global BENCH_RESULT_DIR
+    if result_dir is not None:
+        BENCH_RESULT_DIR = Path(result_dir)
+    if cvm == "snp":
+        vm = "amd"
+        vm_label = "vm"
+        cvm_label = "snp"
+        memsize = [8, 16, 32, 64, 128, 256]
+        cpusize = [1, 8, 16, 28, 56]
+    else:
+        vm = "intel"
+        vm_label = "vm"
+        cvm_label = "td"
+        memsize = [8, 16, 32, 64, 128, 256]
+        cpusize = [1, 8, 16, 28, 56]
+
+    vm_ = {}
+    cvm_ = {}
+    cvm2_ = {}
+
+    if cpu:
+        for cpu in cpusize:
+            vm_[cpu] = load_data(f"{vm}-direct-boot-cpu{cpu}")
+            cvm_[cpu] = load_data(f"{cvm}-direct-boot-cpu{cpu}-no-prealloc")
+            bench_result_dir_old = BENCH_RESULT_DIR
+            BENCH_RESULT_DIR = BENCH_RESULT_DIR / ".." / f"v{version}" / "boottime"
+            cvm2_[cpu] = load_data(f"{cvm}-direct-boot-cpu{cpu}-no-prealloc")
+            BENCH_RESULT_DIR = bench_result_dir_old
+        df = create_df2(vm_, cvm_, cvm2_, cpusize)
+    else:
+        for mem in memsize:
+            vm_[mem] = load_data(f"{vm}-direct-boot-mem{mem}")
+            cvm_[mem] = load_data(f"{cvm}-direct-boot-mem{mem}-no-prealloc")
+            bench_result_dir_old = BENCH_RESULT_DIR
+            BENCH_RESULT_DIR = BENCH_RESULT_DIR / ".." / f"v{version}" / "boottime"
+            cvm2_[mem] = load_data(f"{cvm}-direct-boot-mem{mem}-no-prealloc")
+            BENCH_RESULT_DIR = bench_result_dir_old
+        df = create_df2(vm_, cvm_, cvm2_, memsize)
+    print(df)
+
+    if "_" in version:
+        version_num = version.split("_")[0]
+    else:
+        version_num = version
+    ax = plot_clustered_stacked(
+        df, [vm_label, "snp6.8", f"snp{version_num}"], color=palette, cvm=cvm
+    )
+
+    ax.set_ylabel("Time (s)")
+    if cpu:
+        ax.set_xlabel("Number of vCPUs")
+    else:
+        ax.set_xlabel("Memory size (GB)")
+    ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
+    # sns.despine()
+    sns.despine(top = True)
+    plt.tight_layout()
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    if cpu:
+        outname = f"boottime_snp_cpu_{version}.pdf"
+    else:
+        outname = f"boottime_snp_memory_{version}.pdf"
 
     plt.savefig(outdir / outname, format="pdf", pad_inches=0, bbox_inches="tight")
     print(f"Output written to {outdir}/{outname}")
