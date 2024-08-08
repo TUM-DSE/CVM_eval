@@ -129,7 +129,7 @@ def plot_vmexit(ctx: Any, cvm="snp", outdir="plot", result_dir=None):
     data.plot(kind="bar", ax=ax, color=palette, edgecolor="black", fontsize=FONTSIZE)
     # annotate values
     for container in ax.containers:
-        ax.bar_label(container, fontsize=5)
+        ax.bar_label(container, fontsize=4, rotation=90, padding=0.5)
     # set hatch
     bars = ax.patches
     hs = []
@@ -154,7 +154,7 @@ def plot_vmexit(ctx: Any, cvm="snp", outdir="plot", result_dir=None):
         ncol=3,
     )
     ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
-    # sns.despine()
+    sns.despine(top = True)
     plt.tight_layout()
 
     outdir = Path(outdir)

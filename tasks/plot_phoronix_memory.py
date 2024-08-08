@@ -205,7 +205,7 @@ def plot_phoronix_memory(
         ax.bar_label(container, fontsize=5, fmt="%.2f", padding=2)
 
     # change ylabels
-    ax.set_yticklabels(LABELS, fontsize=5)
+    ax.set_yticklabels(LABELS, fontsize=9)
 
     # set hatch
     # bars = ax.patches
@@ -221,6 +221,7 @@ def plot_phoronix_memory(
 
     ax.set_title("Higher is better →", fontsize=FONTSIZE, color="navy")
     # sns.despine()
+    sns.despine(top = True)
     plt.tight_layout()
 
     outdir = Path(outdir)

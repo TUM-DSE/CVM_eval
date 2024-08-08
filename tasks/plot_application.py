@@ -443,6 +443,7 @@ def plot_application(
                     fontsize=5,
                 )
 
+    sns.despine(top = True)
     plt.tight_layout()
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -523,6 +524,7 @@ def plot_sqlite(
     for container in ax.containers:
         ax.bar_label(container, fmt="%.2f")
 
+    sns.despine(top = True)
     plt.tight_layout()
 
     outdir = Path(outdir)

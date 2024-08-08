@@ -29,6 +29,8 @@ inv boottime.plot-boottime2 --cvm $CVM --no-prealloc --cpu --outdir $OUT --resul
 if [ "$CVM" = "snp" ]; then
     inv boottime.plot-boottime-snp --cvm $CVM --cpu --outdir $OUT --result-dir $RESULTDIR/boottime
     inv boottime.plot-boottime-snp --cvm $CVM --cpu --outdir $OUT --result-dir $RESULTDIR/boottime --version 6.9_gmem_2m
+    inv boottime.plot-boottime-snp --cvm $CVM --outdir $OUT --result-dir $RESULTDIR/boottime
+    inv boottime.plot-boottime-snp --cvm $CVM --outdir $OUT --result-dir $RESULTDIR/boottime --version 6.9_gmem_2m
 fi
 
 inv vmexit.plot-vmexit --cvm $CVM --outdir $OUT --result-dir $RESULTDIR/vmexit
@@ -45,6 +47,7 @@ inv npb.plot-npb-omp --cvm $CVM --size medium --outdir $OUT --result-dir $RESULT
 inv npb.plot-npb-omp --cvm $CVM --size large --outdir $OUT --result-dir $RESULTDIR/npb-omp
 inv npb.plot-npb-omp --cvm $CVM --size xlarge --outdir $OUT --result-dir $RESULTDIR/npb-omp
 inv unixbench.plot-unixbench --cvm $CVM --size medium --outdir $OUT --result-dir $RESULTDIR/unixbench
+inv unixbench.plot-unixbench --cvm $CVM --size medium --poll --outdir $OUT --result-dir $RESULTDIR/unixbench
 inv unixbench.plot-unixbench --cvm $CVM --size medium --no-rel --outdir $OUT --result-dir $RESULTDIR/unixbench
 
 inv app.plot-application --cvm $CVM --outdir $OUT --result-dir $RESULTDIR/application

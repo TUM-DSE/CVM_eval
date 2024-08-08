@@ -38,7 +38,7 @@ swiotlb_col = pastel[1]
 cvm_col = pastel[2]
 palette = [vm_col, swiotlb_col, cvm_col]
 # hatches = ["", "//", "x", "//x"]
-hatches = ["", "", "//", "//", ""]
+hatches = ["", "o", "//", "x", ""]
 
 
 def read_json(file):
@@ -242,6 +242,7 @@ def plot_bw(df, outdir, outname, legend=True):
     plt.ylabel("Bandwidth [GiB/s]")
     plt.xlabel("")
     plt.title("Higher is better ↑", fontsize=9, color="navy", weight="bold")
+    sns.despine(top = True)
     plt.tight_layout()
     outfile = Path(outdir) / outname
     plt.savefig(outfile, format="pdf", pad_inches=0, bbox_inches="tight")
@@ -466,6 +467,7 @@ def plot_iops(df, outdir, outname="", legend=True):
     plt.ylabel("Throughput [K IOPS]")
     plt.xlabel("")
     plt.title("Higher is better ↑", fontsize=9, color="navy", weight="bold")
+    sns.despine(top = True)
     plt.tight_layout()
     outfile = Path(outdir) / outname
     plt.savefig(outfile, format="pdf", pad_inches=0, bbox_inches="tight")
@@ -650,6 +652,7 @@ def plot_latency(df, outdir, outname, legend=True):
     plt.ylabel("4KB Latency [us]")
     plt.xlabel("")
     plt.title("Lower is better ↓", fontsize=9, color="navy", weight="bold")
+    sns.despine(top = True)
     plt.tight_layout()
     outfile = Path(outdir) / outname
     plt.savefig(outfile, format="pdf", pad_inches=0, bbox_inches="tight")

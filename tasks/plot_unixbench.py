@@ -286,6 +286,7 @@ def plot_unixbench(
     for container in ax.containers:
         ax.bar_label(container, fmt="%.2f", fontsize=5, rotation=90)
 
+    sns.despine(top = True)
     plt.tight_layout()
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)

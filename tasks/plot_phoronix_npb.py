@@ -37,7 +37,7 @@ pastel = sns.color_palette("pastel")
 vm_col = pastel[0]
 cvm_col = pastel[2]
 palette = [vm_col, cvm_col]
-hatches = ["", "//"]
+hatches = ["", "//", "\\", "x"]
 
 BENCHMARK_ID = [
     "NAS Parallel Benchmarks: Test / Class: BT.C [Total Mop/s]",
@@ -159,6 +159,7 @@ def plot_npb_rel(
 
     ax.set_title("Higher is better →", fontsize=FONTSIZE, color="navy")
     # sns.despine()
+    sns.despine(top = True)
     plt.tight_layout()
 
     outdir = Path(outdir)
@@ -449,7 +450,8 @@ def plot_npb_omp(
     ax = sns.barplot(data=df, x='benchmark', y='time', hue='policy', ax=ax,
                      palette=palette, edgecolor="black", hue_order=hue_order)
 
-    hatches = ["", "//", "", "//"]
+    #hatches = ["", "//", "", "//"]
+    hatches = ["", "//", "\\", "xx"]
     num_benchmark = len(df['benchmark'].unique())
     for i, hatch in enumerate(hatches):
         for j in range(num_benchmark):
@@ -471,6 +473,7 @@ def plot_npb_omp(
     plt.xlabel('Benchmark')
     plt.ylabel('Execution Time [sec]')
     plt.legend(handles=handles, fontsize=7)
+    sns.despine(top = True)
     plt.tight_layout()
 
     outfile = f"{outdir}/npb-omp_{npb_size}_{size}.pdf"

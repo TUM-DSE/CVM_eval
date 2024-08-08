@@ -31,7 +31,8 @@ figwidth_full = 7
 FONTSIZE = 9
 
 palette = sns.color_palette("pastel")
-hatches = ["", "//", "x"]
+hatches = ["", "//", "\\"]
+hatches2 = ["", "////", "\\\\"]
 
 
 # return a list of elapsed time of (1) VM start, (2) Linux start (OVMF end),
@@ -183,7 +184,7 @@ def create_df2(vm, cvm, prealloc, index) -> pd.DataFrame:
 
 # https://stackoverflow.com/questions/22787209/how-to-have-clusters-of-stacked-bars
 def plot_clustered_stacked(
-    dfall, labels=None, title="multiple stacked bar plot", H="/", **kwargs
+    dfall, labels=None, title="multiple stacked bar plot", H="/", cvm="snp", **kwargs
 ):
     """Given a list of dataframes, with identical columns and index, create a clustered stacked bar plot.
     labels is a list of the names of the dataframe, used for the legend
@@ -214,7 +215,8 @@ def plot_clustered_stacked(
         for j, pa in enumerate(h[i : i + n_col]):
             for rect in pa.patches:  # for each index
                 rect.set_x(rect.get_x() + 1 / float(n_df + 1) * i / float(n_col))
-                rect.set_hatch(H * int(i / n_col))  # edited part
+                rect.set_hatch(hatches[i % len(hatches)])  # edited part
+                #rect.set_hatch(H * int(i / n_col))  # edited part
                 rect.set_width(1 / float(n_df + 1))
 
     axe.set_xticks((np.arange(0, 2 * n_ind, 2) + 1 / float(n_df + 1)) / 2.0)
@@ -223,7 +225,8 @@ def plot_clustered_stacked(
     # Add invisible data to add another legend
     n = []
     for i in range(n_df):
-        n.append(axe.bar(0, 0, color="white", edgecolor="k", hatch=H * i * 2))
+        #n.append(axe.bar(0, 0, color="white", edgecolor="k", hatch=H * i * 2))
+        n.append(axe.bar(0, 0, color="white", edgecolor="k", hatch=hatches2[i % len(hatches2)]))
 
     # l1 = axe.legend(h[:n_col], l[:n_col], loc=[1.01, 0.5])
     l1 = axe.legend(
@@ -262,8 +265,11 @@ def plot_clustered_stacked(
         # put the total time on the top of the bar
         for j in range(len(total_time)):
             p = axe.patches[j + i * len(total_time)]
+            space = 0.3
+            if cvm == "snp":
+                space = 0.2
             axe.text(
-                p.get_x() + (0.30) * i + p.get_width() / 2.0,
+                p.get_x() + (space) * i + p.get_width() / 2.0,
                 total_time[j] + 0.1,
                 f"{total_time[j]:.2f}",
                 ha="center",
@@ -338,7 +344,7 @@ def plot_boottime(
     df = create_df(vm_, cvm_, labels)
     print(df)
 
-    ax = plot_clustered_stacked(df, [vm_label, cvm_label], color=palette)
+    ax = plot_clustered_stacked(df, [vm_label, cvm_label],cvm=cvm, color=palette)
 
     ax.set_ylabel("Time (s)")
     ax.set_xlabel("")
@@ -407,7 +413,7 @@ def plot_boottime2(
         df = create_df(vm_, cvm_, memsize)
     print(df)
 
-    ax = plot_clustered_stacked(df, [vm_label, cvm_label], color=palette)
+    ax = plot_clustered_stacked(df, [vm_label, cvm_label], cvm=cvm, color=palette)
 
     ax.set_ylabel("Time (s)")
     if cpu:
@@ -416,6 +422,7 @@ def plot_boottime2(
         ax.set_xlabel("Memory size (GB)")
     ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
     # sns.despine()
+    sns.despine(top = True)
     plt.tight_layout()
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -471,7 +478,7 @@ def plot_boottime3(
         df = create_df2(vm_, cvm_, prealloc_, memsize)
     print(df)
 
-    ax = plot_clustered_stacked(df, [vm_label, cvm_label, "preallcoc"], color=palette)
+    ax = plot_clustered_stacked(df, [vm_label, cvm_label, "preallcoc"], cvm=cvm, color=palette)
 
     ax.set_ylabel("Time (s)")
     if cpu:
@@ -547,7 +554,7 @@ def plot_boottime_snp(
     else:
         version_num = version
     ax = plot_clustered_stacked(
-        df, [vm_label, "snp6.8", f"snp{version_num}"], color=palette
+        df, [vm_label, "snp6.8", f"snp{version_num}"], color=palette, cvm=cvm
     )
 
     ax.set_ylabel("Time (s)")
@@ -557,6 +564,7 @@ def plot_boottime_snp(
         ax.set_xlabel("Memory size (GB)")
     ax.set_title("Lower is better ↓", fontsize=FONTSIZE, color="navy")
     # sns.despine()
+    sns.despine(top = True)
     plt.tight_layout()
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
