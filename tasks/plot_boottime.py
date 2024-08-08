@@ -265,9 +265,10 @@ def plot_clustered_stacked(
         # put the total time on the top of the bar
         for j in range(len(total_time)):
             p = axe.patches[j + i * len(total_time)]
-            space = 0.3
             if cvm == "snp":
-                space = 0.2
+                space = 0.25
+            else:
+                space = 0.33
             axe.text(
                 p.get_x() + (space) * i + p.get_width() / 2.0,
                 total_time[j] + 0.1,

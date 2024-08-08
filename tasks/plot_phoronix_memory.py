@@ -186,8 +186,8 @@ def plot_phoronix_memory(
     print(f"geometric mean: {geomean}")
     print(f"overhead: {(1-geomean)*100}")
 
-    # fig, ax = plt.subplots(figsize=(4.5, 4.0))
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(figwidth_half, 2.5))
+    #fig, ax = plt.subplots()
 
     ax.barh(
         data["benchmark_id"],
@@ -195,6 +195,7 @@ def plot_phoronix_memory(
         color=palette,
         edgecolor="black",
         label=f"{cvm_label}",
+        linewidth=0.5
     )
 
     # draw a line at 1.0 to indicate the baseline
@@ -202,10 +203,10 @@ def plot_phoronix_memory(
 
     # annotate values
     for container in ax.containers:
-        ax.bar_label(container, fontsize=5, fmt="%.2f", padding=2)
+        ax.bar_label(container, fontsize=5, fmt="%.2f", padding=0.2)
 
     # change ylabels
-    ax.set_yticklabels(LABELS, fontsize=9)
+    ax.set_yticklabels(LABELS, fontsize=7)
 
     # set hatch
     # bars = ax.patches
@@ -216,10 +217,11 @@ def plot_phoronix_memory(
     # for bar, hatch in zip(bars, hs):
     #     bar.set_hatch(hatch)
 
-    ax.set_xlabel("Relative value")
+    #ax.set_xlabel("Relative value")
+    ax.set_xlabel("")
     ax.set_ylabel("")
 
-    ax.set_title("Higher is better →", fontsize=FONTSIZE, color="navy")
+    ax.set_title("Higher is better →", fontsize=9, color="navy")
     # sns.despine()
     sns.despine(top = True)
     plt.tight_layout()

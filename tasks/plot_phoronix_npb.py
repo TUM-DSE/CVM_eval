@@ -140,7 +140,7 @@ def plot_npb_rel(
 
     # annotate values
     for container in ax.containers:
-        ax.bar_label(container, fontsize=5, fmt="%.2f", padding=2)
+        ax.bar_label(container, fontsize=5, fmt="%.1f", padding=2)
 
     # change ylabels
     ax.set_yticklabels(LABELS, fontsize=5)
@@ -460,7 +460,7 @@ def plot_npb_omp(
 
     # annotate values with .2f
     for container in ax.containers:
-        ax.bar_label(container, fmt="%.02f", fontsize=5, rotation=90, padding=2)
+        ax.bar_label(container, fmt="%.01f", fontsize=5, rotation=90, padding=2)
 
     # Create custom legend
     handles = [

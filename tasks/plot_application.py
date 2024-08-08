@@ -431,7 +431,7 @@ def plot_application(
                     txt = "N/A"
                     xy = (bar.get_x() + bar.get_width() / 2, 0)
                 else:
-                    txt = f"{bar.get_height():.2f}"
+                    txt = f"{bar.get_height():.1f}"
                     xy = (bar.get_x() + bar.get_width() / 2, bar.get_height())
                 ax[i].annotate(
                     txt,
@@ -522,7 +522,7 @@ def plot_sqlite(
 
     # annotate values with .2f
     for container in ax.containers:
-        ax.bar_label(container, fmt="%.2f")
+        ax.bar_label(container, fmt="%.1f")
 
     sns.despine(top = True)
     plt.tight_layout()

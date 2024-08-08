@@ -37,18 +37,18 @@ vshot_swiotlb_col = pastel[5]
 cvm_col = pastel[2]
 cvm_vhost_col = pastel[3]
 poll_col = pastel[6]
-palette = [vm_col, swiotlb_col, vhost_col, vshot_swiotlb_col, cvm_col, cvm_vhost_col]
+palette = [vm_col, swiotlb_col, vhost_col, vshot_swiotlb_col, cvm_col,
+           cvm_vhost_col, *pastel[6:]]
 # hatches = ["", "//"]
 #hatches = ["", "", "", "", "//", "//", "//", "//", "//", "//"]
 hatches = ["", "o", "*", ".", "//", "-", "\\", ".", "o-", "*-"]
 
-palette2 = [vm_col, vhost_col, cvm_col, cvm_vhost_col]
+palette2 = [vm_col, vhost_col, cvm_col, cvm_vhost_col, *pastel[6:]]
 #hatches2 = ["", "", "//", "//"]
 hatches2 = ["", "*", "//", "+"]
 
 #palette3 = [vm_col, vhost_col, cvm_col, cvm_vhost_col, poll_col, cvm_col, cvm_vhost_col, poll_col]
-palette3 = [vm_col, vhost_col, cvm_col, cvm_vhost_col, vm_col, swiotlb_col,
-            vhost_col, vshot_swiotlb_col]
+palette3 = [vm_col, vhost_col, cvm_col, cvm_vhost_col, *pastel[6:]]
 #hatches3 = ["", "", "//", "//", "//", "x", "x", "x", "x"]
 hatches3 = ["", "*", "//", "-", "\\", ".", "o-", "*-"]
 
@@ -434,15 +434,16 @@ def plot_iperf(
 
     # set hatch
     if mode == "udp":
-        bars = ax.patches
-        hs = []
-        num_x = len(df["size"].unique())
-        for hatch in hatches:
-            hs.extend([hatch] * num_x)
-        num_legend = len(bars) - len(hs)
-        hs.extend([""] * num_legend)
-        for bar, hatch in zip(bars, hs):
-            bar.set_hatch(hatch)
+        pass
+        #bars = ax.patches
+        #hs = []
+        #num_x = len(df["size"].unique())
+        #for hatch in hatches:
+        #    hs.extend([hatch] * num_x)
+        #num_legend = len(bars) - len(hs)
+        #hs.extend([""] * num_legend)
+        #for bar, hatch in zip(bars, hs):
+        #    bar.set_hatch(hatch)
     else:
         #for bar in ax.patches[4:6]:
         #    bar.set_hatch("//")
@@ -450,12 +451,12 @@ def plot_iperf(
             patch = hatches[i % len(hatches)]
             bar.set_hatch(patch)
 
-    # set hatch for the legend
     plt.legend(fontsize=5)
-    #for patch in ax.get_legend().get_patches()[4:]:
-    #    patch.set_hatch("//")
-    for i, patch in enumerate(ax.get_legend().get_patches()):
-        patch.set_hatch(hatches[i % len(hatches)])
+
+    if mode != "udp":
+        # set hatch for the legend
+        for i, patch in enumerate(ax.get_legend().get_patches()):
+            patch.set_hatch(hatches[i % len(hatches)])
 
 
     # annotate values with .2f

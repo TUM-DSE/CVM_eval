@@ -287,7 +287,7 @@ def plot_iops(df, outdir, outname="", legend=True):
         yerr=iops["read_iops_stddev"],
         fmt="none",
         c="k",
-        elinewidth=1,
+        elinewidth=0.8,
     )
     ax.get_legend().set_title("")
     for i, bar in enumerate(ax.patches[:n]):
@@ -327,7 +327,7 @@ def plot_iops(df, outdir, outname="", legend=True):
         yerr=iops["write_iops_stddev"],
         fmt="none",
         c="k",
-        elinewidth=1,
+        elinewidth=0.8,
     )
     ax.get_legend().set_title("")
     for i, bar in enumerate(ax.patches[:n]):
