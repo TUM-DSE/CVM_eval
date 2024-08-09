@@ -8,6 +8,21 @@ import config
 import sqlite3
 import pandas as pd
 
+COLUMNS = {
+    "date": "TIMESTAMP",
+    "name": "VARCHAR(50)",
+}
+
+PING_COLS = {
+    **COLUMNS,
+    "pkt_size": "INT",
+    "min": "FLOAT",
+    "avg": "FLOAT",
+    "max": "FLOAT",
+    "mdev": "FLOAT",
+    "PRIMARY KEY": "(date, pkt_size)",
+}
+
 
 @task
 def show_config(ctx):

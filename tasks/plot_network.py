@@ -11,6 +11,7 @@ import numpy as np
 from pathlib import Path
 
 from invoke import task
+from utils import *
 
 mpl.use("Agg")
 mpl.rcParams["text.latex.preamble"] = r"\usepackage{amsmath}"
@@ -998,8 +999,36 @@ def plot_nginx(
 
 
 @task
+def plot_ping_db(ctx, remote: bool = False):
+    if remote:
+        df = query_db("SELECT * FROM ping WHERE name LIKE '%remote%'")
+    else:
+        df = query_db("SELECT * FROM ping WHERE name NOT LIKE '%remote%'")
+    df["name"] = df.apply(
+        lambda row: row["name"].replace("-direct", "").replace("-medium", ""), axis=1
+    )
+    fig, ax = plt.subplots()
+    sns.barplot(
+        data=df,
+        x="pkt_size",
+        y="avg",
+        ax=ax,
+        hue="name",
+        palette=palette,
+        edgecolor="black",
+    )
+    ax.set_xlabel("Packet size in bytes")
+    ax.set_ylabel("Average latency in ms")
+    ax.set_title("Lower is better ↓", fontsize=12, color="navy")
+    plt.tight_layout()
+    plt.savefig(
+        f"plot/ping" + ("-remote" if remote else "") + ".pdf", bbox_inches="tight"
+    )
+
+
+@task
 def plot_iperf_db_tcp(ctx):
-    df = utils.query_db(f"SELECT * FROM iperf WHERE proto='tcp'")
+    df = query_db(f"SELECT * FROM iperf WHERE proto='tcp'")
     df["combined"] = df.apply(
         lambda row: f"{row['type'].upper()}"
         + ("_VHOST" if row["vhost"] else "")

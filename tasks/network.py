@@ -1,3 +1,4 @@
+import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -5,37 +6,66 @@ import subprocess
 import time
 from typing import Optional
 
-from config import PROJECT_ROOT, VM_IP
+from config import PROJECT_ROOT, VM_IP, DATE_FORMAT, SSH_CONF_PATH
 from qemu import QemuVm
+from utils import connect_to_db, ensure_db, insert_into_db, PING_COLS
 
 
 def run_ping(name: str, vm: QemuVm, pin_base=20):
     """Ping the VM.
     The results are saved in ./bench-results/network/ping/{name}/{date}
     """
-    date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    # File setup
+    date = datetime.now().strftime(DATE_FORMAT)
     outputdir = Path(f"./bench-result/network/ping/{name}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
-
+    # Database setup
+    connection = connect_to_db()
+    ensure_db(connection, table="ping", columns=PING_COLS)
+    # Benchmark
     for pkt_size in [64, 128, 256, 512, 1024]:
-        process = subprocess.Popen(
-            f"taskset -c {pin_base} ping -c 30 -i0.1 -s {pkt_size} {VM_IP}".split(" "),
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-        )
-
-        stdout, stderr = process.communicate()
-        exit_code = process.wait()
-
-        if exit_code != 0:
-            print(f"Error running ping: {stderr}")
+        cmd = f"taskset -c {pin_base} ping -c 30 -i0.1 -s {pkt_size} {VM_IP}".split(" ")
+        print(cmd)
+        try:
+            result = (
+                remote_ssh_cmd(cmd)
+                if "remote" in name
+                else subprocess.run(cmd, capture_output=True, text=True)
+            )
+        except subprocess.CalledProcessError as e:
+            print(f"Error running ping: {result.stderr}")
             continue
-
-        with open(outputdir_host / f"{pkt_size}.log", "wb") as f:
-            f.write(stdout)
-
-    print(f"Results saved in {outputdir_host}")
+        # pattern matching
+        pattern = re.compile(
+            r"rtt min/avg/max/mdev = ([\d.]+)/([\d.]+)/([\d.]+)/([\d.]+) ms"
+        )
+        match = pattern.search(result.stdout)
+        if match:
+            min_rtt, avg_rtt, max_rtt, mdev_rtt = match.groups()
+            min_rtt, avg_rtt, max_rtt, mdev_rtt = map(
+                float, [min_rtt, avg_rtt, max_rtt, mdev_rtt]
+            )
+            print(f"Min: {min_rtt}, Avg: {avg_rtt}, Max: {max_rtt}, Mdev: {mdev_rtt}")
+            insert_into_db(
+                connection,
+                "ping",
+                {
+                    "date": date,
+                    "name": name,
+                    "pkt_size": pkt_size,
+                    "min": min_rtt,
+                    "avg": avg_rtt,
+                    "max": max_rtt,
+                    "mdev": mdev_rtt,
+                },
+            )
+        else:
+            print("No match, stdout: " + result.stdout + "stderr: " + result.stderr)
+        with open(outputdir_host / f"{pkt_size}.log", "w") as f:
+            f.write(result.stdout)
+    connection.close()
+    print(f"Results saved in {outputdir_host} and in the database")
 
 
 def run_iperf(
@@ -278,3 +308,14 @@ def run_nginx(
         f.write("\n".join(lines))
 
     print(f"Results saved in {outputdir_host}")
+
+
+def remote_ssh_cmd(command: list[str]):
+    """Execute a command with ssh on a remote machine."""
+    ssh_command = [
+        "ssh",
+        "-F",
+        f"{SSH_CONF_PATH}",
+        "graham.tum",
+    ] + command
+    return subprocess.run(ssh_command, capture_output=True, text=True)

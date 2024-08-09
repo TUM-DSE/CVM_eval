@@ -964,6 +964,8 @@ def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
             and "swiotlb" in kargs["config"]["extra_cmdline"]
         ):
             name += f"-swiotlb"
+        if kargs["config"]["remote"]:
+            name += f"-remote"
         run_ping(name, vm)
         vm.shutdown()
 
@@ -1193,6 +1195,7 @@ def start(
     virtio_blk_direct: bool = True,
     virtio_blk_iothread: bool = True,
     tls: bool = False,
+    remote: bool = False,
     fio_job: str = "test",
     warn: bool = True,
     name_extra: str = "",

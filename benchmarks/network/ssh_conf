@@ -1,0 +1,7 @@
+Host graham.tum
+  HostName graham.dos.cit.tum.de
+  ProxyJump tunnel@login.dos.cit.tum.de
+  Port 22
+  User luca
+  ForwardAgent yes
+  AddKeysToAgent yes

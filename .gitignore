@@ -12,6 +12,7 @@ __pycache__/
 
 .direnv/
 build/
+plot/
 result
 result-fd
 bench-result
