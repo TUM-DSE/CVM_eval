@@ -462,6 +462,7 @@ setup_bridge:
     if [ $? ]; then
         sudo brctl addbr {{BRIDGE_NAME}}
         sudo ip a a 172.44.0.1/24 dev {{BRIDGE_NAME}}
+        sudo ip a a 192.168.100.10/24 dev {{BRIDGE_NAME}}
         sudo ip l set dev {{BRIDGE_NAME}} up
     fi
 
