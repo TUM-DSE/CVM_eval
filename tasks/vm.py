@@ -293,6 +293,7 @@ def get_vm_config(name: str) -> VMConfig:
 def get_amd_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config("amd")
     ssh_port = config["ssh_port"]
+    image = config["image"] or vmconfig.image
 
     qemu_cmd = f"""
     {vmconfig.qemu}
@@ -302,7 +303,7 @@ def get_amd_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -m {resource.memory}G
     -machine q35
 
-    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
     -device virtio-blk-pci,drive=q2,bootindex=0
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
@@ -319,6 +320,7 @@ def get_amd_vm_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config("amd-direct")
     ssh_port = config.get("ssh_port", SSH_PORT)
     extra_cmdline = config.get("extra_cmdline", "")
+    image = config["image"] or vmconfig.image
 
     qemu_cmd = f"""
     {vmconfig.qemu}
@@ -331,7 +333,7 @@ def get_amd_vm_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -kernel {vmconfig.kernel}
     -append "{vmconfig.cmdline} {extra_cmdline}"
 
-    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
     -device virtio-blk-pci,drive=q2,
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
@@ -356,6 +358,7 @@ def get_snp_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
         prealloc = "on"
     else:
         prealloc = "off"
+    image = config["image"] or vmconfig.image
 
     qemu_cmd = f"""
     {vmconfig.qemu}
@@ -368,7 +371,7 @@ def get_snp_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,policy=0x30000
     -object memory-backend-memfd,id=ram1,size={resource.memory}G,share=true,prealloc={prealloc}
 
-    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
     -device virtio-blk-pci,drive=q2,bootindex=0
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
@@ -389,6 +392,7 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
         prealloc = "on"
     else:
         prealloc = "off"
+    image = config["image"] or vmconfig.image
 
     qemu_cmd = f"""
     {vmconfig.qemu}
@@ -404,7 +408,7 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -kernel {vmconfig.kernel}
     -append "{vmconfig.cmdline} {extra_cmdline}"
 
-    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
     -device virtio-blk-pci,drive=q2,
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
@@ -425,6 +429,7 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 def get_intel_qemu_cmd(type: str, resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config(type)
     ssh_port = config["ssh_port"]
+    image = config["image"] or vmconfig.image
 
     qemu_cmd = f"""
     {vmconfig.qemu}
@@ -439,7 +444,7 @@ def get_intel_qemu_cmd(type: str, resource: VMResource, config: dict) -> List[st
         -nodefaults
         -serial stdio
 
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
         -device virtio-blk-pci,drive=q2,bootindex=0
         -device virtio-net-pci,netdev=net0
         -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
@@ -453,6 +458,7 @@ def get_intel_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     vmconfig: VMConfig = get_vm_config("intel-direct")
     ssh_port = config["ssh_port"]
     extra_cmdline = config.get("extra_cmdline", "")
+    image = config["image"] or vmconfig.image
 
     if resource.vnuma is not None:
         # FIXME: the current vnuma config is static
@@ -484,7 +490,7 @@ def get_intel_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
         -nographic
         -nodefaults
 
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
         -device virtio-blk-pci,drive=q2
         -device virtio-net-pci,netdev=net0
         -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
@@ -507,6 +513,7 @@ def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
         prealloc = "on"
     else:
         prealloc = "off"
+    image = config["image"] or vmconfig.image
 
     qemu_cmd = f"""
     {vmconfig.qemu}
@@ -523,7 +530,7 @@ def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
         -nodefaults
         -serial stdio
 
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
         -device virtio-blk-pci,drive=q2,bootindex=0
         -device virtio-net-pci,netdev=net0
         -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
@@ -544,6 +551,7 @@ def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
         prealloc = "on"
     else:
         prealloc = "off"
+    image = config["image"] or vmconfig.image
 
     if resource.vnuma is not None:
         memory = f"""
@@ -574,7 +582,7 @@ def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
         -nographic
         -nodefaults
 
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
         -device virtio-blk-pci,drive=q2
         -device virtio-net-pci,netdev=net0
         -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
@@ -1203,6 +1211,7 @@ def start(
     fio_job: str = "test",
     warn: bool = True,
     name_extra: str = "",
+    image: Optional[str] = None,
 ) -> None:
     config: dict = locals()
     resource: VMResource = get_vm_resource(type, size)

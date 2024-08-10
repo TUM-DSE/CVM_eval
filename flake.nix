@@ -32,6 +32,18 @@
         #  makeFlags = pkgs.linuxPackages_6_8.kernel.makeFlags;
         #  kernelOlder = x: false;
         #};
+
+        serverless-bench = { config, contents }: make-disk-image {
+          config = config;
+          inherit (pkgs) lib;
+          inherit pkgs;
+          format = "qcow2";
+          partitionTableType = "none";
+          # installBootLoader option set up /sbin/init, etc.
+          installBootLoader = true;
+          diskSize = 32768;
+          contents = contents;
+        };
       in
       rec {
         packages = {
@@ -100,6 +112,60 @@
               {
                 source = ./config/phoronix/phoronix-test-suite.xml;
                 target = "/etc/phoronix-test-suite.xml";
+              }
+            ];
+          };
+
+          # file system images w/o kernel for serverless bench
+          guest-fs-serverless-bench-c = serverless-bench {
+            config = self.nixosConfigurations.fs-serverless-bench-c.config;
+            contents = [
+              {
+                source = ./benchmarks/serverless-bench/C-hello;
+                target = "/opt/C-hello";
+              }
+              {
+                source = ./benchmarks/serverless-bench/C-app;
+                target = "/opt/C-app";
+              }
+            ];
+          };
+          guest-fs-serverless-bench-python = serverless-bench {
+            config = self.nixosConfigurations.fs-serverless-bench-python.config;
+            contents = [
+              {
+                source = ./benchmarks/serverless-bench/Python-hello;
+                target = "/opt/Python-hello";
+              }
+              {
+                source = ./benchmarks/serverless-bench/Python-app;
+                target = "/opt/Python-app";
+              }
+            ];
+          };
+          guest-fs-serverless-bench-ruby = serverless-bench {
+            config = self.nixosConfigurations.fs-serverless-bench-ruby.config;
+            contents = [
+              {
+                source = ./benchmarks/serverless-bench/Ruby-hello;
+                target = "/opt/Ruby-hello";
+              }
+              {
+                source = ./benchmarks/serverless-bench/Ruby-app;
+                target = "/opt/Ruby-app";
+              }
+            ];
+          };
+          guest-fs-serverless-bench-node = serverless-bench {
+            config = self.nixosConfigurations.fs-serverless-bench-node.config;
+            contents = [
+              {
+                source = ./benchmarks/serverless-bench/Nodejs-hello;
+                target = "/opt/Nodejs-hello";
+              }
+              {
+                source = ./benchmarks/serverless-bench/Nodejs-app;
+                target = "/opt/Nodejs-app";
               }
             ];
           };
@@ -200,6 +266,31 @@
             system = "x86_64-linux";
             modules = [
               guestConfig
+            ];
+          };
+
+          fs-serverless-bench-c = nixosSystem {
+            system = "x86_64-linux";
+            modules = [
+              (import ./nix/guest-config.nix { _gcc = gcc; })
+            ];
+          };
+          fs-serverless-bench-python = nixosSystem {
+            system = "x86_64-linux";
+            modules = [
+              (import ./nix/guest-config.nix { extraEnvPackages = [ (pkgs.python3.withPackages (python-pkgs: [ python-pkgs.django ])) ]; _gcc = gcc; })
+            ];
+          };
+          fs-serverless-bench-ruby = nixosSystem {
+            system = "x86_64-linux";
+            modules = [
+              (import ./nix/guest-config.nix { extraEnvPackages = [ (pkgs.ruby.withPackages (ruby-pkgs: [ ruby-pkgs.sinatra ])) ]; _gcc = gcc; })
+            ];
+          };
+          fs-serverless-bench-node = nixosSystem {
+            system = "x86_64-linux";
+            modules = [
+              (import ./nix/guest-config.nix { extraEnvPackages = [ pkgs.nodejs-slim_20 ]; _gcc = gcc; })
             ];
           };
 
