@@ -152,6 +152,7 @@ in
     git
     fio
     iperf
+    just
     cryptsetup
     lvm2
     jq
