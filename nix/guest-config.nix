@@ -153,6 +153,7 @@ in
     fio
     iperf
     just
+    psmisc # killall
     cryptsetup
     lvm2
     jq
