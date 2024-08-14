@@ -503,14 +503,14 @@ trace name duration="20" interval="1":
     just flamegraph {{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host/perf.data {{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host/perf.svg
     just flamegraph-guest {{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/guest/perf.data {{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/guest/perf.svg
 
-mpstat name:
+mpstat name duration:
     #!/usr/bin/env bash
     DATE=$(date '+%Y-%m-%d-%H-%M-%S')
     OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host
     export OUTDIR
-    bash {{PROJECT_ROOT}}/trace/mpstat.sh {{name}} &
+    DURATION={{duration}} bash {{PROJECT_ROOT}}/trace/mpstat.sh {{name}} &
     OUTDIR=/share/trace-result/{{name}}/$DATE/guest
-    just ssh "OUTDIR=$OUTDIR bash /share/trace/mpstat.sh"
+    just ssh "OUTDIR=$OUTDIR DURATION={{duration}} bash /share/trace/mpstat.sh"
     wait $(jobs -p)
 
 vmstat name:
@@ -543,12 +543,12 @@ stat-host name:
     export OUTDIR
     bash {{PROJECT_ROOT}}/trace/stat.sh {{name}}
 
-mpstat-host name:
+mpstat-host name duration:
     #!/usr/bin/env bash
     DATE=$(date '+%Y-%m-%d-%H-%M-%S')
-    OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE
+    OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host
     export OUTDIR
-    bash {{PROJECT_ROOT}}/trace/mpstat.sh {{name}}
+    DURATION={{duration}} bash {{PROJECT_ROOT}}/trace/mpstat.sh {{name}}
 
 trace-guest name:
     #!/usr/bin/env bash
@@ -568,11 +568,11 @@ stat-guest name:
     OUTDIR=/share/trace-result/{{name}}/$DATE
     just ssh "OUTDIR=$OUTDIR bash /share/trace/stat.sh"
 
-mpstat-guest name:
+mpstat-guest name duration:
     #!/usr/bin/env bash
     DATE=$(date '+%Y-%m-%d-%H-%M-%S')
-    OUTDIR=/share/trace-result/{{name}}/$DATE
-    just ssh "OUTDIR=$OUTDIR bash /share/trace/mpstat.sh"
+    OUTDIR=/share/trace-result/{{name}}/$DATE/guest
+    just ssh "DURATION={{duration}} OUTDIR=$OUTDIR bash /share/trace/mpstat.sh"
 
 flamegraph in="perf.data" out="a.svg":
     #!/usr/bin/env bash

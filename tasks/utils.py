@@ -11,6 +11,23 @@ import pandas as pd
 COLUMNS = {
     "date": "TIMESTAMP",
     "name": "VARCHAR(50)",
+    "mpstat_guest": "INTEGER REFERENCES mpstat(id)",
+    "mpstat_host": "INTEGER REFERENCES mpstat(id)",
+    "vmexits": "INTEGER",
+}
+
+MPSTAT_COLS = {
+    "id": "INTEGER PRIMARY KEY",
+    "usr": "FLOAT",
+    "nice": "FLOAT",
+    "sys": "FLOAT",
+    "iowait": "FLOAT",
+    "irq": "FLOAT",
+    "soft": "FLOAT",
+    "steal": "FLOAT",
+    "guest": "FLOAT",
+    "gnice": "FLOAT",
+    "idle": "FLOAT",
 }
 
 PING_COLS = {
@@ -20,6 +37,16 @@ PING_COLS = {
     "avg": "FLOAT",
     "max": "FLOAT",
     "mdev": "FLOAT",
+    "PRIMARY KEY": "(date, pkt_size)",
+}
+
+IPERF_COLS = {
+    **COLUMNS,
+    "streams": "INT",
+    "pkt_size": "VARCHAR(6)",
+    "bitrate": "FLOAT",
+    "transfer": "FLOAT",
+    "proto": "VARCHAR(3)",
     "PRIMARY KEY": "(date, pkt_size)",
 }
 
@@ -73,7 +100,9 @@ def insert_into_db(connection, table: str, values: dict):
     values = ", ".join(formatted_values)
     cursor.execute(f"INSERT INTO {table} ({columns}) VALUES ({values})")
     connection.commit()
+    id = cursor.lastrowid
     cursor.close()
+    return id
 
 
 def query_db(query: str):

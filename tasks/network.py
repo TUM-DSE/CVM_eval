@@ -8,12 +8,22 @@ from typing import Optional
 
 from config import PROJECT_ROOT, VM_IP, DATE_FORMAT, SSH_CONF_PATH
 from qemu import QemuVm
-from utils import connect_to_db, ensure_db, insert_into_db, PING_COLS
+from utils import (
+    IPERF_COLS,
+    MPSTAT_COLS,
+    connect_to_db,
+    ensure_db,
+    insert_into_db,
+    PING_COLS,
+)
+
+JUSTFILE_VM = PROJECT_ROOT / "benchmarks/network/justfile"
 
 
 def run_ping(name: str, vm: QemuVm, pin_base=20):
     """Ping the VM.
     The results are saved in ./bench-results/network/ping/{name}/{date}
+    And in the ping table of the database.
     """
     # File setup
     date = datetime.now().strftime(DATE_FORMAT)
@@ -35,7 +45,7 @@ def run_ping(name: str, vm: QemuVm, pin_base=20):
             )
         except subprocess.CalledProcessError as e:
             print(f"Error running ping: {result.stderr}")
-            continue
+            break
         # pattern matching
         pattern = re.compile(
             r"rtt min/avg/max/mdev = ([\d.]+)/([\d.]+)/([\d.]+)/([\d.]+) ms"
@@ -62,6 +72,7 @@ def run_ping(name: str, vm: QemuVm, pin_base=20):
             )
         else:
             print("No match, stdout: " + result.stdout + "stderr: " + result.stderr)
+            break
         with open(outputdir_host / f"{pkt_size}.log", "w") as f:
             f.write(result.stdout)
     connection.close()
@@ -79,6 +90,7 @@ def run_iperf(
 ):
     """Run the iperf benchmark on the VM.
     The results are saved in ./bench-result/network/iperf/{name}/{proto}/{date}/
+    and in the iperf table of the database.
     """
     if udp:
         proto = "udp"
@@ -86,23 +98,34 @@ def run_iperf(
         if parallel is None:
             parallel = 8
     else:
-        pkt_sizes = ["128K"]
+        pkt_sizes = [64, 128, 256, 512, 1024, "32K", "128K"]
         proto = "tcp"
         if parallel is None:
             parallel = 32
     if pin_end is None:
         pin_end = pin_start + parallel - 1
 
-    date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    # File setup
+    date = datetime.now().strftime(DATE_FORMAT)
     outputdir = Path(f"./bench-result/network/iperf/{name}/{proto}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
-
+    # Database setup
+    connection = connect_to_db()
+    ensure_db(connection, table="iperf", columns=IPERF_COLS)
     # start server
-    server_cmd = ["iperf", "-s", "-p", f"{port}", "-D"]
+    server_cmd = [
+        "taskset",
+        "-c",
+        f"0-{pin_start-1}",
+        "iperf",
+        "-s",
+        "-p",
+        f"{port}",
+        "-D",
+    ]
     vm.ssh_cmd(server_cmd)
     time.sleep(1)
-
     # run client
     for pkt_size in pkt_sizes:
         cmd = [
@@ -126,15 +149,49 @@ def run_iperf(
         if udp:
             cmd.append("-u")
         print(cmd)
-        output = subprocess.check_output(cmd).decode()
-        lines = output.split("\n")
+        # Capture metrics for host and guest
+        host, guest = start_metrics(name, 9)
+        try:
+            bench_res = (
+                remote_ssh_cmd(cmd)
+                if "remote" in name
+                else subprocess.run(cmd, capture_output=True, text=True)
+            )
+        except subprocess.CalledProcessError as _:
+            print(f"Error running iperf: {bench_res.stderr}")
+            break
+        ids = stop_metrics(host, guest)
+        pattern = r"\[SUM\].*sec\s+(\d+\.\d+)\s+.*\s+(\d+\.\d+)\s+.*receiver"
+        match = re.search(pattern, bench_res.stdout, re.DOTALL)
+        if match:
+            bitrate, transfer = map(float, match.groups())
+            print(f"Bitrate: {bitrate}, Transfer: {transfer}")
+            insert_into_db(
+                connection,
+                "iperf",
+                {
+                    "date": date,
+                    "name": name,
+                    "mpstat_host": ids[0],
+                    "mpstat_guest": ids[1],
+                    "streams": parallel,
+                    "pkt_size": pkt_size,
+                    "bitrate": bitrate,  # in Gbits/sec
+                    "transfer": transfer,  # in GBytes
+                    "proto": proto,
+                },
+            )
+            time.sleep(1)
+        else:
+            print(
+                "No match, stdout: " + bench_res.stdout + "stderr: " + bench_res.stderr
+            )
+            break
         with open(outputdir_host / f"{pkt_size}.log", "w") as f:
-            f.write("\n".join(lines))
-
+            f.write(bench_res.stdout)
         # workaround to avoid "iperf3: error - unable to receive control message - port may not be available"
         time.sleep(1)
-
-    print(f"Results saved in {outputdir_host}")
+    print(f"Results saved in {outputdir_host} and in table iperf of the database")
 
 
 def run_memtier(
@@ -319,3 +376,52 @@ def remote_ssh_cmd(command: list[str]):
         "graham.tum",
     ] + command
     return subprocess.run(ssh_command, capture_output=True, text=True)
+
+
+def start_metrics(name: str, duration: int = 5):
+    """Caputre relevant metrics for the given duration."""
+    cmd_host = ["just", "mpstat-host", name, str(duration)]
+    cmd_guest = ["just", "mpstat-guest", name, str(duration)]
+    host = subprocess.Popen(cmd_host, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    guest = subprocess.Popen(cmd_guest, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print("Metrics started")
+    return host, guest
+
+
+def stop_metrics(host, guest):
+    """Stop the metrics capture and save results to the database."""
+    host.terminate()
+    guest.terminate()
+    hout, herr = host.communicate()
+    gout, gerr = guest.communicate()
+    print("Metrics stopped")
+    # parse and save results
+    pattern = r"Average:\s+all\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)"
+    connection = connect_to_db()
+    ensure_db(connection, table="mpstat", columns=MPSTAT_COLS)
+    ids = []
+    # Parse and save results
+    for output in [hout, gout]:
+        match = re.search(pattern, output.decode())
+        if not match:
+            print("No match, output: " + output.decode())
+            continue
+        usr, nice, sys, iowait, irq, soft, steal, guest, gnice, idle = match.groups()
+        id = insert_into_db(
+            connection,
+            "mpstat",
+            {
+                "usr": usr,
+                "nice": nice,
+                "sys": sys,
+                "iowait": iowait,
+                "irq": irq,
+                "soft": soft,
+                "steal": steal,
+                "guest": guest,
+                "gnice": gnice,
+                "idle": idle,
+            },
+        )
+        ids.append(id)
+    return ids
