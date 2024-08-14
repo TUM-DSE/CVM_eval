@@ -1027,13 +1027,10 @@ def plot_ping_db(ctx, remote: bool = False):
 
 
 @task
-def plot_iperf_db_tcp(ctx):
-    df = query_db(f"SELECT * FROM iperf WHERE proto='tcp'")
-    df["combined"] = df.apply(
-        lambda row: f"{row['type'].upper()}"
-        + ("_VHOST" if row["vhost"] else "")
-        + ("_R" if row["remote"] else ""),
-        axis=1,
+def plot_iperf_db(ctx, proto: str = "tcp"):
+    df = query_db(f"SELECT * FROM iperf WHERE proto LIKE '{proto}'")
+    df["name"] = df.apply(
+        lambda row: row["name"].replace("-direct", "").replace("-medium", ""), axis=1
     )
     fig, ax = plt.subplots()
     sns.barplot(
@@ -1041,15 +1038,15 @@ def plot_iperf_db_tcp(ctx):
         x="pkt_size",
         y="bitrate",
         ax=ax,
-        hue="combined",
+        hue="name",
         palette=palette,
         edgecolor="black",
     )
     ax.set_xlabel("Packet size in bytes")
     ax.set_ylabel("Bitrate in Gbits/sec")
-    ax.set_title("Bitrate of iperf using TCP")
+    ax.set_title("Higher is better ↑", fontsize=12, color="navy")
     plt.tight_layout()
-    plt.savefig(f"plot/iperf_tcp.pdf", bbox_inches="tight")
+    plt.savefig(f"plot/iperf_{proto}.pdf", bbox_inches="tight")
 
 
 @task
