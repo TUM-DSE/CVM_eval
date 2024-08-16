@@ -164,7 +164,7 @@ class QemuVm:
                 == 0
             ):
                 break
-            time.sleep(0.1)
+            time.sleep(0.050)
 
     def ssh_Popen(
         self,
