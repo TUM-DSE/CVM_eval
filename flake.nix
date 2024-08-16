@@ -141,6 +141,10 @@
                 source = ./benchmarks/serverless-bench/Python-app;
                 target = "/opt/Python-app";
               }
+              {
+                source = ./benchmarks/serverless-bench/hello/exec;
+                target = "/home/hello";
+              }
             ];
           };
           guest-fs-serverless-bench-ruby = serverless-bench {
@@ -153,6 +157,10 @@
               {
                 source = ./benchmarks/serverless-bench/Ruby-app;
                 target = "/opt/Ruby-app";
+              }
+              {
+                source = ./benchmarks/serverless-bench/hello/exec;
+                target = "/home/hello";
               }
             ];
           };
@@ -272,7 +280,7 @@
           fs-serverless-bench-c = nixosSystem {
             system = "x86_64-linux";
             modules = [
-              (import ./nix/guest-config.nix { _gcc = gcc; })
+              (import ./nix/guest-config.nix { extraEnvPackages = [ pkgs.primesieve ]; _gcc = gcc; })
             ];
           };
           fs-serverless-bench-python = nixosSystem {
