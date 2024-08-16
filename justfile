@@ -47,8 +47,7 @@ start-vm-disk:
         -machine q35 \
         -enable-kvm \
         -nographic \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{NORMAL_IMAGE}} \
-        -device virtio-blk-pci,drive=q2,bootindex=0 \
+        -drive format=qcow2,file.driver=file,file.filename={{NORMAL_IMAGE}},if=virtio,bootindex=0,snapshot=on \
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
@@ -66,8 +65,7 @@ start-vm-direct:
         -nographic \
         -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
         -append "root=/dev/vda console=hvc0" \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS}} \
-        -device virtio-blk-pci,drive=q2 \
+        -drive format=qcow2,file.driver=file,file.filename={{GUEST_FS}},if=virtio,snapshot=on \
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
@@ -88,8 +86,7 @@ start-vm-direct-vhost:
         -nographic \
         -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
         -append "root=/dev/vda console=hvc0" \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS}} \
-        -device virtio-blk-pci,drive=q2 \
+        -drive format=qcow2,file.driver=file,file.filename={{GUEST_FS}},if=virtio,snapshot=on \
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
@@ -112,8 +109,7 @@ start-snp-disk:
         -object memory-backend-memfd,id=ram1,size={{mem}},share=true,prealloc=false \
         -enable-kvm \
         -nographic \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{SNP_IMAGE}} \
-        -device virtio-blk-pci,drive=q2 \
+        -drive format=qcow2,file.driver=file,file.filename={{SNP_IMAGE}},if=virtio,snapshot=on \
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
@@ -131,8 +127,7 @@ start-snp-direct:
         -nographic \
         -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
         -append "root=/dev/vda console=hvc0" \
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS}} \
-        -device virtio-blk-pci,drive=q2 \
+        -drive format=qcow2,file.driver=file,file.filename={{GUEST_FS}},if=virtio,snapshot=on \
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
@@ -171,8 +166,7 @@ start-tdx-vm:
         -serial stdio \
         -device virtio-net-pci,netdev=nic0_td \
         -netdev user,id=nic0_td,hostfwd=tcp::{{SSH_PORT}}-:22 \
-        -drive file={{TD_IMG}},if=none,id=virtio-disk0 \
-        -device virtio-blk-pci,drive=virtio-disk0 \
+        -drive file={{TD_IMG}},if=virtio,id=virtio-disk0,snapshot=on \
         {{QUOTE_ARGS}}
 
 start-tdx-direct:
@@ -191,8 +185,7 @@ start-tdx-direct:
         -nodefaults \
         -device virtio-net-pci,netdev=nic0_td \
         -netdev user,id=nic0_td,hostfwd=tcp::{{SSH_PORT}}-:22 \
-        -drive file={{GUEST_FS}},if=none,id=virtio-disk0 \
-        -device virtio-blk-pci,drive=virtio-disk0 \
+        -drive file={{GUEST_FS}},if=virtio,id=virtio-disk0,snapshot=on \
         -serial null \
         -device virtio-serial \
         -chardev stdio,mux=on,id=char0,signal=off \
@@ -241,8 +234,7 @@ start-intel-direct:
         -nodefaults \
         -device virtio-net-pci,netdev=nic0_td \
         -netdev user,id=nic0_td,hostfwd=tcp::{{SSH_PORT}}-:22 \
-        -drive file={{GUEST_FS}},if=none,id=virtio-disk0 \
-        -device virtio-blk-pci,drive=virtio-disk0 \
+        -drive file={{GUEST_FS}},if=virtio,id=virtio-disk0,snapshot=on \
         -serial null \
         -device virtio-serial \
         -chardev stdio,mux=on,id=char0,signal=off \

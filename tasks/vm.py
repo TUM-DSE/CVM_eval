@@ -303,8 +303,7 @@ def get_amd_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -m {resource.memory}G
     -machine q35
 
-    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
-    -device virtio-blk-pci,drive=q2,bootindex=0
+    -drive format=qcow2,file.driver=file,file.filename={image},if=virtio,bootindex=0,snapshot=on
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
@@ -333,8 +332,7 @@ def get_amd_vm_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -kernel {vmconfig.kernel}
     -append "{vmconfig.cmdline} {extra_cmdline}"
 
-    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
-    -device virtio-blk-pci,drive=q2,
+    -drive format=qcow2,file.driver=file,file.filename={image},if=virtio,snapshot=on
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
@@ -371,8 +369,7 @@ def get_snp_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,policy=0x30000
     -object memory-backend-memfd,id=ram1,size={resource.memory}G,share=true,prealloc={prealloc}
 
-    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
-    -device virtio-blk-pci,drive=q2,bootindex=0
+    -drive format=qcow2,file.driver=file,file.filename={image},if=virtio,bootindex=0,snapshot=on
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
@@ -408,8 +405,7 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -kernel {vmconfig.kernel}
     -append "{vmconfig.cmdline} {extra_cmdline}"
 
-    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
-    -device virtio-blk-pci,drive=q2,
+    -drive format=qcow2,file.driver=file,file.filename={image},if=virtio,snapshot=on
     -device virtio-net-pci,netdev=net0
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
@@ -444,8 +440,7 @@ def get_intel_qemu_cmd(type: str, resource: VMResource, config: dict) -> List[st
         -nodefaults
         -serial stdio
 
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
-        -device virtio-blk-pci,drive=q2,bootindex=0
+        -drive format=qcow2,file.driver=file,file.filename={image},if=virtio,bootindex=0,snapshot=on
         -device virtio-net-pci,netdev=net0
         -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
         -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
@@ -490,8 +485,7 @@ def get_intel_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
         -nographic
         -nodefaults
 
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
-        -device virtio-blk-pci,drive=q2
+        -drive format=qcow2,file.driver=file,file.filename={image},if=virtio,snapshot=on
         -device virtio-net-pci,netdev=net0
         -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
         -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
@@ -530,8 +524,7 @@ def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
         -nodefaults
         -serial stdio
 
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
-        -device virtio-blk-pci,drive=q2,bootindex=0
+        -drive format=qcow2,file.driver=file,file.filename={image},if=virtio,bootindex=0,snapshot=on
         -device virtio-net-pci,netdev=net0
         -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
         -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
@@ -582,8 +575,7 @@ def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
         -nographic
         -nodefaults
 
-        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={image}
-        -device virtio-blk-pci,drive=q2
+        -drive format=qcow2,file.driver=file,file.filename={image},if=virtio,snapshot=on
         -device virtio-net-pci,netdev=net0
         -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
         -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
