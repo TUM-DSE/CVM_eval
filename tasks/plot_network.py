@@ -1027,10 +1027,10 @@ def plot_ping_db(ctx, remote: bool = False):
 
 
 @task
-def plot_iperf_tcp(ctx):
+def plot_iperf_tcp(ctx, remote: bool = False):
     # Iperf Results
     df = query_db(
-        f"SELECT iperf.*, mpstat.idle as cpu FROM iperf LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id WHERE proto LIKE 'tcp'"
+        f"SELECT iperf.*, mpstat.idle as cpu FROM iperf LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id WHERE proto LIKE 'tcp' and remote = {remote}"
     )
     df["Configuration"] = df.apply(
         lambda row: row["name"]
@@ -1112,13 +1112,19 @@ def plot_iperf_tcp(ctx):
 
 
 @task
-def plot_iperf_db_udp(ctx, proto: str = "udp"):
+def plot_iperf_db_udp(ctx, remote: bool = False):
     # Iperf Results
     df = query_db(
-        f"SELECT iperf.*, 100 - mpstat.idle as cpu FROM iperf LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id WHERE proto LIKE '{proto}'"
+        f"SELECT iperf.*, mpstat.idle as cpu FROM iperf LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id WHERE proto LIKE 'udp' AND remote = {remote}"
     )
     df["Configuration"] = df.apply(
-        lambda row: row["name"].replace("-direct", "").replace("-medium", ""), axis=1
+        lambda row: row["name"]
+        .replace("-direct", "")
+        .replace("-medium", "")
+        .replace("-mq", "")
+        .replace("amd-", "")
+        .replace("amd", "vm"),
+        axis=1,
     )
 
     fig, ax1 = plt.subplots()
@@ -1153,7 +1159,7 @@ def plot_iperf_db_udp(ctx, proto: str = "udp"):
     h2, l2 = ax2.get_legend_handles_labels()
     ax1.legend(h1 + h2, l1 + l2, loc="upper left")
     plt.tight_layout()
-    plt.savefig(f"plot/iperf_{proto}.pdf", bbox_inches="tight")
+    plt.savefig(f"plot/iperf_udp.pdf", bbox_inches="tight")
 
 
 @task

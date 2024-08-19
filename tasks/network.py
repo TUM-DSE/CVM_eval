@@ -167,11 +167,16 @@ def run_iperf(
             r"\s+", " ", out.decode().strip().split("\n")[-3]
         )  # only search relevant line
         print(last_line)
-        pattern = r"\[SUM\] .* sec (\d+\.\d+|\d+) GBytes|MBytes (\d+\.\d+|\d+) Gbits/sec|Mbits/sec .* receiver"
+        pattern = r"\[SUM\] .* sec (\d+\.\d+|\d+) (GBytes|MBytes) (\d+\.\d+|\d+) (Gbits/sec|Mbits/sec) .*receiver"
         match = re.search(pattern, last_line, re.DOTALL)
         if match:
-            transfer, bitrate = map(float, match.groups())
-            print(f"Transfer: {transfer}, Bitrate: {bitrate}")
+            transfer, tunit, bitrate, bunit = match.groups()
+            transfer, bitrate = map(float, [transfer, bitrate])
+            transfer = transfer if tunit == "GBytes" else transfer / 1000  # in GBytes
+            bitrate = (
+                bitrate if bunit == "Gbits/sec" else bitrate / 1000
+            )  # in Gbits/sec
+            print(f"Transfer: {transfer} GBytes, Bitrate: {bitrate} Gbits/sec")
             insert_into_db(
                 connection,
                 "iperf",
@@ -182,12 +187,8 @@ def run_iperf(
                     "mpstat_guest": ids[1],
                     "streams": parallel,
                     "pkt_size": pkt_size,
-                    "bitrate": (
-                        bitrate if "Gbits/s" in last_line else bitrate / 10
-                    ),  # in Gbits/sec
-                    "transfer": (
-                        transfer if "GBytes" in last_line else transfer / 10
-                    ),  # in GBytes
+                    "bitrate": bitrate,  # in Gbits/sec
+                    "transfer": transfer,  # in GBytes
                     "proto": proto,
                     **counters,
                 },
