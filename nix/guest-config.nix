@@ -22,13 +22,12 @@ in
 {
   imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
 
-  nix.extraOptions =
-    ''
-      experimental-features = nix-command flakes
-      keep-outputs = true
-      keep-derivations = true
-      auto-optimise-store = false
-    '';
+  nix.extraOptions = ''
+    experimental-features = nix-command flakes
+    keep-outputs = true
+    keep-derivations = true
+    auto-optimise-store = false
+  '';
   nix.package = pkgs.nixFlakes;
   nix.gc.automatic = false;
 
@@ -36,7 +35,8 @@ in
   # (somehow udev does not pick up hvc0?)
   systemd.services."serial-getty" = {
     wantedBy = [ "multi-user.target" ];
-    serviceConfig.ExecStart = "${pkgs.util-linux}/sbin/agetty  --login-program ${pkgs.shadow}/bin/login --autologin root hvc0 --keep-baud vt100";
+    serviceConfig.ExecStart =
+      "${pkgs.util-linux}/sbin/agetty  --login-program ${pkgs.shadow}/bin/login --autologin root hvc0 --keep-baud vt100";
   };
   systemd.services."serial-getty@hvc0".enable = false;
 
@@ -144,53 +144,55 @@ in
   programs.bash.enableCompletion = false;
   programs.command-not-found.enable = false;
 
-  environment.systemPackages = with pkgs; [
-    devmem2
-    bpftrace
-    tmux
-    vim
-    git
-    fio
-    iperf
-    just
-    psmisc # killall
-    cryptsetup
-    lvm2
-    jq
-    sysstat # mpstat, iostat, sar
+  environment.systemPackages = with pkgs;
+    [
+      devmem2
+      bpftrace
+      tmux
+      vim
+      git
+      fio
+      iperf
+      just
+      psmisc # killall
+      cryptsetup
+      lvm2
+      jq
+      sysstat # mpstat, iostat, sar
+      pkgs.linuxPackages_latest.perf
 
-    # phoronix test suite and dependencies to install tests
-    #phoronix-test-suite
-    pts
-    # pts/memory
-    unzip
-    # pts/sysbench
-    libaio
-    libtool
-    autoconf
-    automake
-    pkg-config
-    # pts/npb => use OpenMPI version of NPB
-    _gcc
-    gfortran13
-    gnumake
-    mpi
-    bc
-    # pts/compression
-    cmake
-    p7zip
-    ## pts/llm => requires ~100GB disk
-    ## blas
-    ## pts/build-linux-kernel => requires FHS env
-    ## bc
-    ## bison
-    ## flex
-    ## openssl
+      # phoronix test suite and dependencies to install tests
+      #phoronix-test-suite
+      pts
+      # pts/memory
+      unzip
+      # pts/sysbench
+      libaio
+      libtool
+      autoconf
+      automake
+      pkg-config
+      # pts/npb => use OpenMPI version of NPB
+      _gcc
+      gfortran13
+      gnumake
+      mpi
+      bc
+      # pts/compression
+      cmake
+      p7zip
+      ## pts/llm => requires ~100GB disk
+      ## blas
+      ## pts/build-linux-kernel => requires FHS env
+      ## bc
+      ## bison
+      ## flex
+      ## openssl
 
-    # custom tools
-    outb
-    test-dmcrypt
-  ] ++ extraEnvPackages;
+      # custom tools
+      outb
+      test-dmcrypt
+    ] ++ extraEnvPackages;
 
   # additonal kernel parameters
   # boot.kernelParams = [ ];

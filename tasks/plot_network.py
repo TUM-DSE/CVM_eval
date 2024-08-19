@@ -1027,52 +1027,133 @@ def plot_ping_db(ctx, remote: bool = False):
 
 
 @task
-def plot_iperf_db(ctx, proto: str = "tcp"):
-    df = query_db(f"SELECT * FROM iperf WHERE proto LIKE '{proto}'")
-    df["name"] = df.apply(
-        lambda row: row["name"].replace("-direct", "").replace("-medium", ""), axis=1
+def plot_iperf_tcp(ctx):
+    # Iperf Results
+    df = query_db(
+        f"SELECT iperf.*, mpstat.idle as cpu FROM iperf LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id WHERE proto LIKE 'tcp'"
     )
-    fig, ax = plt.subplots()
-    sns.barplot(
+    df["Configuration"] = df.apply(
+        lambda row: row["name"]
+        .replace("-direct", "")
+        .replace("-medium", "")
+        .replace("-mq", "")
+        .replace("amd-", "")
+        .replace("amd", "vm"),
+        axis=1,
+    )
+
+    df = df.sort_values(by=["pkt_size", "bitrate"], ascending=True)
+
+    fig, ax1 = plt.subplots()
+
+    barplot = sns.barplot(
         data=df,
-        x="pkt_size",
+        x="Configuration",
         y="bitrate",
-        ax=ax,
-        hue="name",
-        palette=palette,
+        ax=ax1,
         edgecolor="black",
+        palette=palette,
+        hue="Configuration",
     )
-    ax.set_xlabel("Packet size in bytes")
-    ax.set_ylabel("Bitrate in Gbits/sec")
-    ax.set_title("Higher is better ↑", fontsize=12, color="navy")
+    ax1.set_ylabel("Bitrate in Gbits/sec")
+    ax1.set_xticklabels([])
+    ax1.set_xlabel("")
+    ax1.set_title("Higher is better ↑", fontsize=12, color="navy")
+    # Handles und Labels für die Legende manuell erstellen
+    handles = [plt.Line2D([0], [0], color=palette[i], lw=4) for i in range(len(df))]
+    labels = df["Configuration"].tolist()
+
+    # Legende hinzufügen
+    ax1.legend(handles=handles, labels=labels, title="Configuration", loc="upper left")
+
+    ax2 = ax1.twinx()
+
+    ax2.plot(
+        df["Configuration"],
+        100 - df["cpu"],
+        color="red",
+        marker="x",
+        linestyle="--",
+        label="CPU Utilization (%)",
+    )
+
+    ax2.spines["right"].set_position(("outward", 30))
+    ax2.spines["right"].set_color("red")
+    ax2.yaxis.label.set_color("red")
+    ax2.tick_params(axis="y", colors="red")
+
+    ax3 = ax1.twinx()
+
+    ax3.plot(
+        df["Configuration"],
+        df["vmexits"],
+        color="green",
+        marker="x",
+        linestyle="--",
+        label="VM Exits (mio.)",
+    )
+
+    ax3.spines["right"].set_color("green")
+    ax3.yaxis.label.set_color("green")
+    ax3.tick_params(axis="y", colors="green")
+
+    for p, bitrate in zip(barplot.patches, df["bitrate"]):
+        height = p.get_height()
+        ax1.text(
+            p.get_x() + p.get_width() / 2.0,
+            height + 1,
+            f"{bitrate:.2f}",
+            ha="center",
+            va="bottom",
+        )
+    sns.despine(top=True, right=False)
     plt.tight_layout()
-    plt.savefig(f"plot/iperf_{proto}.pdf", bbox_inches="tight")
+    plt.savefig(f"plot/iperf_tcp.pdf", bbox_inches="tight")
 
 
 @task
-def plot_iperf_db_udp(ctx):
-    df = utils.query_db(f"SELECT * FROM iperf WHERE proto='udp'")
-    df["combined"] = df.apply(
-        lambda row: f"{row['type']}"
-        + ("_vhost" if row["vhost"] else "")
-        + ("_remote" if row["remote"] else ""),
-        axis=1,
+def plot_iperf_db_udp(ctx, proto: str = "udp"):
+    # Iperf Results
+    df = query_db(
+        f"SELECT iperf.*, 100 - mpstat.idle as cpu FROM iperf LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id WHERE proto LIKE '{proto}'"
     )
-    fig, ax = plt.subplots()
+    df["Configuration"] = df.apply(
+        lambda row: row["name"].replace("-direct", "").replace("-medium", ""), axis=1
+    )
+
+    fig, ax1 = plt.subplots()
     sns.barplot(
         data=df,
         x="pkt_size",
         y="bitrate",
-        ax=ax,
-        hue="combined",
+        ax=ax1,
+        hue="Configuration",
         palette=palette,
         edgecolor="black",
     )
-    ax.set_xlabel("Packet size in bytes")
-    ax.set_ylabel("Bitrate in Gbits/sec")
-    ax.set_title("Bitrate of iperf using UDP")
+    ax1.set_xlabel("Packet size in bytes")
+    ax1.set_ylabel("Bitrate in Gbits/sec")
+    ax1.set_title("Higher is better ↑", fontsize=12, color="navy")
+
+    ax2 = ax1.twinx()
+    sns.lineplot(
+        data=df,
+        x="pkt_size",
+        y="cpu",
+        ax=ax2,
+        hue="Configuration",
+        palette=palette,
+        linewidth=1,
+        linestyle="--",
+        marker="o",
+        legend=False,
+    )
+    ax2.set_ylabel("CPU load (%)")
+    h1, l1 = ax1.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax1.legend(h1 + h2, l1 + l2, loc="upper left")
     plt.tight_layout()
-    plt.savefig(f"plot/iperf_udp.pdf", bbox_inches="tight")
+    plt.savefig(f"plot/iperf_{proto}.pdf", bbox_inches="tight")
 
 
 @task

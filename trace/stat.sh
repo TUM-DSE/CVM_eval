@@ -15,7 +15,7 @@ fi
 
 DATE=$(date '+%Y-%m-%d-%H-%M-%S')
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-OUTDIR=${OUTDIR:-$SCRIPTDIR/../trace-result/$V/stat/$DATE}
+# OUTDIR=${OUTDIR:-$SCRIPTDIR/../trace-result/$V/stat/$DATE}
 DURATION=${DURATION:-10}
 INTERVAL=${INTERVAL:-1}
 

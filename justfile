@@ -529,12 +529,12 @@ trace-host name:
     export OUTDIR
     bash {{PROJECT_ROOT}}/trace/all.sh
 
-perf-host name:
+perf-host name duration:
     #!/usr/bin/env bash
     DATE=$(date '+%Y-%m-%d-%H-%M-%S')
-    OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE
+    OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host
     export OUTDIR
-    bash {{PROJECT_ROOT}}/trace/perf.sh
+    DURATION={{duration}} bash {{PROJECT_ROOT}}/trace/perf.sh
 
 stat-host name:
     #!/usr/bin/env bash
@@ -556,11 +556,11 @@ trace-guest name:
     OUTDIR=/share/trace-result/{{name}}/$DATE
     just ssh "OUTDIR=$OUTDIR bash /share/trace/all.sh"
 
-perf-guest name:
+perf-guest name duration:
     #!/usr/bin/env bash
     DATE=$(date '+%Y-%m-%d-%H-%M-%S')
-    OUTDIR=/share/trace-result/{{name}}/$DATE
-    just ssh "OUTDIR=$OUTDIR bash /share/trace/perf.sh"
+    OUTDIR=/share/trace-result/{{name}}/$DATE/guest
+    just ssh "OUTDIR=$OUTDIR DURATION={{duration}} bash /share/trace/perf.sh"
 
 stat-guest name:
     #!/usr/bin/env bash

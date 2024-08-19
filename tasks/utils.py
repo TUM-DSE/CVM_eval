@@ -14,6 +14,10 @@ COLUMNS = {
     "mpstat_guest": "INTEGER REFERENCES mpstat(id)",
     "mpstat_host": "INTEGER REFERENCES mpstat(id)",
     "vmexits": "INTEGER",
+    "dTLB_load_misses": "INTEGER",
+    "iTLB_load_misses": "INTEGER",
+    "cache_misses": "INTEGER",
+    "branch_misses": "INTEGER",
 }
 
 MPSTAT_COLS = {
@@ -48,6 +52,33 @@ IPERF_COLS = {
     "transfer": "FLOAT",
     "proto": "VARCHAR(3)",
     "PRIMARY KEY": "(date, pkt_size)",
+}
+
+MEMTIER_COLS = {
+    **COLUMNS,
+    "tls": "BOOLEAN",
+    "hits_per_sec": "FLOAT",
+    "misses_per_sec": "FLOAT",
+    "lat_max": "FLOAT",
+    "lat_avg": "FLOAT",
+    "ops_per_sec": "FLOAT",
+    "transfer_rate": "FLOAT",  # in KB/s
+    "server": "VARCHAR(10)",
+    "proto": "VARCHAR(20)",
+    "client_threads": "INT",
+    "server_threads": "INT",
+    "PRIMARY KEY": "(date)",
+}
+
+NGINX_COLS = {
+    **COLUMNS,
+    "tls": "BOOLEAN",
+    "lat_max": "FLOAT",
+    "lat_avg": "FLOAT",
+    "lat_stdev": "FLOAT",
+    "req_per_sec": "FLOAT",  # in Requests/s
+    "transfer_rate": "FLOAT",  # in KB/s
+    "PRIMARY KEY": "(date, tls)",
 }
 
 

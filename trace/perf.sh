@@ -10,7 +10,7 @@ else
 fi
 
 DATE=$(date '+%Y-%m-%d-%H-%M-%S')
-SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPTDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 OUTDIR=${OUTDIR:-$SCRIPTDIR/../trace-result/$V/perf/$DATE}
 DURATION=${DURATION:-10}
 
@@ -21,13 +21,9 @@ mkdir -p $OUTDIR
 cd $OUTDIR
 
 if [ $V = "host" ]; then
-    perf record -a -g -- sleep $DURATION
-    perf report -i ./perf.data --no-children > report.txt
+    perf stat -e kvm:kvm_exit -a sleep $DURATION 2>&1 | tee $OUTDIR/perf-stat.txt
 else
-    just -f /share/justfile perf-record $DURATION $OUTDIR/perf.data
-    # FIXME: currently report in the guest fails for some reason
-    #just -f /share/justfile perf-report $OUTDIR/perf.data $OUTDIR/report.txt
+    perf stat -e branch-misses,cache-misses,dTLB-load-misses,iTLB-load-misses -a sleep $DURATION 2>&1 | tee $OUTDIR/perf-stat.txt
 fi
 
-echo "Resut saved: ${OUTDIR}"
-
+echo "Result saved: ${OUTDIR}"

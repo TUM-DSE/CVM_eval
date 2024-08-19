@@ -10,7 +10,9 @@ from config import PROJECT_ROOT, VM_IP, DATE_FORMAT, SSH_CONF_PATH
 from qemu import QemuVm
 from utils import (
     IPERF_COLS,
+    MEMTIER_COLS,
     MPSTAT_COLS,
+    NGINX_COLS,
     connect_to_db,
     ensure_db,
     insert_into_db,
@@ -37,20 +39,19 @@ def run_ping(name: str, vm: QemuVm, pin_base=20):
     for pkt_size in [64, 128, 256, 512, 1024]:
         cmd = f"taskset -c {pin_base} ping -c 30 -i0.1 -s {pkt_size} {VM_IP}".split(" ")
         print(cmd)
-        try:
-            result = (
-                remote_ssh_cmd(cmd)
-                if "remote" in name
-                else subprocess.run(cmd, capture_output=True, text=True)
-            )
-        except subprocess.CalledProcessError as e:
-            print(f"Error running ping: {result.stderr}")
-            break
+        process = (
+            remote_ssh_cmd(cmd)
+            if "remote" in name
+            else subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        )
         # pattern matching
         pattern = re.compile(
             r"rtt min/avg/max/mdev = ([\d.]+)/([\d.]+)/([\d.]+)/([\d.]+) ms"
         )
-        match = pattern.search(result.stdout)
+        out, err = process.communicate()
+        if process.returncode != 0:
+            print(f"Error running ping: {err.decode()}")
+        match = pattern.search(out.decode())
         if match:
             min_rtt, avg_rtt, max_rtt, mdev_rtt = match.groups()
             min_rtt, avg_rtt, max_rtt, mdev_rtt = map(
@@ -71,10 +72,10 @@ def run_ping(name: str, vm: QemuVm, pin_base=20):
                 },
             )
         else:
-            print("No match, stdout: " + result.stdout + "stderr: " + result.stderr)
+            print("No match, stdout: " + out.decode() + "stderr: " + err.decode())
             break
         with open(outputdir_host / f"{pkt_size}.log", "w") as f:
-            f.write(result.stdout)
+            f.write(out.decode())
     connection.close()
     print(f"Results saved in {outputdir_host} and in the database")
 
@@ -98,7 +99,7 @@ def run_iperf(
         if parallel is None:
             parallel = 8
     else:
-        pkt_sizes = [64, 128, 256, 512, 1024, "32K", "128K"]
+        pkt_sizes = ["128K"]
         proto = "tcp"
         if parallel is None:
             parallel = 32
@@ -143,29 +144,34 @@ def run_iperf(
             "1",
             "-l",
             f"{pkt_size}",
+            "-t",
+            "30",
             "-P",
             f"{parallel}",
         ]
         if udp:
             cmd.append("-u")
         print(cmd)
+        bench_res = (
+            remote_ssh_cmd(cmd)
+            if "remote" in name
+            else subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        )
+        time.sleep(10)
         # Capture metrics for host and guest
-        host, guest = start_metrics(name, 9)
-        try:
-            bench_res = (
-                remote_ssh_cmd(cmd)
-                if "remote" in name
-                else subprocess.run(cmd, capture_output=True, text=True)
-            )
-        except subprocess.CalledProcessError as _:
-            print(f"Error running iperf: {bench_res.stderr}")
-            break
-        ids = stop_metrics(host, guest)
-        pattern = r"\[SUM\].*sec\s+(\d+\.\d+)\s+.*\s+(\d+\.\d+)\s+.*receiver"
-        match = re.search(pattern, bench_res.stdout, re.DOTALL)
+        ids, counters = capture_metrics(name, 10)
+        out, err = bench_res.communicate()
+        if bench_res.returncode != 0:
+            print(f"Error running iperf: {err.decode()}")
+        last_line = re.sub(
+            r"\s+", " ", out.decode().strip().split("\n")[-3]
+        )  # only search relevant line
+        print(last_line)
+        pattern = r"\[SUM\] .* sec (\d+\.\d+|\d+) GBytes|MBytes (\d+\.\d+|\d+) Gbits/sec|Mbits/sec .* receiver"
+        match = re.search(pattern, last_line, re.DOTALL)
         if match:
-            bitrate, transfer = map(float, match.groups())
-            print(f"Bitrate: {bitrate}, Transfer: {transfer}")
+            transfer, bitrate = map(float, match.groups())
+            print(f"Transfer: {transfer}, Bitrate: {bitrate}")
             insert_into_db(
                 connection,
                 "iperf",
@@ -176,19 +182,22 @@ def run_iperf(
                     "mpstat_guest": ids[1],
                     "streams": parallel,
                     "pkt_size": pkt_size,
-                    "bitrate": bitrate,  # in Gbits/sec
-                    "transfer": transfer,  # in GBytes
+                    "bitrate": (
+                        bitrate if "Gbits/s" in last_line else bitrate / 10
+                    ),  # in Gbits/sec
+                    "transfer": (
+                        transfer if "GBytes" in last_line else transfer / 10
+                    ),  # in GBytes
                     "proto": proto,
+                    **counters,
                 },
             )
-            time.sleep(1)
         else:
-            print(
-                "No match, stdout: " + bench_res.stdout + "stderr: " + bench_res.stderr
-            )
+            print("No match, stdout: " + out.decode() + "stderr: " + err.decode())
+            print(last_line)
             break
         with open(outputdir_host / f"{pkt_size}.log", "w") as f:
-            f.write(bench_res.stdout)
+            f.write(out.decode())
         # workaround to avoid "iperf3: error - unable to receive control message - port may not be available"
         time.sleep(1)
     print(f"Results saved in {outputdir_host} and in table iperf of the database")
@@ -211,17 +220,22 @@ def run_memtier(
 ):
     """Run the memtier benchmark on the VM using redis or memcached.
     `server_threads` is only valid for memcached.
-    The results are saved in ./bench-result/network/memtier/{server}[-tls]/{name}/{date}/
+    The results are saved in ./bench-result/network/memtier/{server}[-tls]/{name}/{date}/ and in the memtier table of the database.
     """
     if tls:
         tls_ = "-tls"
     else:
         tls_ = ""
-    date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    date = datetime.now().strftime(DATE_FORMAT)
+    # File setup
     outputdir = Path(f"./bench-result/network/memtier/{server}{tls_}/{name}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
+    # Database setup
+    connection = connect_to_db()
+    ensure_db(connection, table="memtier", columns=MEMTIER_COLS)
 
+    # Benchmark
     if server == "redis":
         proto = "redis"
     elif server == "memcached":
@@ -239,7 +253,7 @@ def run_memtier(
         if server == "redis":
             client_threads = 8
         else:
-            client_threads = vm.config["resource"].cpu
+            client_threads = server_threads
 
     if pin_end is None:
         pin_end = pin_start + client_threads - 1
@@ -276,6 +290,7 @@ def run_memtier(
             f"--cert={client_cert}",
             f"--key={client_key}",
             f"--cacert={ca_cert}",
+            "--test-time=30",
         ]
     else:
         cmd = [
@@ -292,14 +307,59 @@ def run_memtier(
             "100",
             "--pipeline=40",
             f"--protocol={proto}",
+            "--test-time=30",
         ]
-    print(cmd)
-    output = subprocess.check_output(cmd).decode()
-    lines = output.split("\n")
-    with open(outputdir_host / f"memtier.log", "w") as f:
-        f.write("\n".join(lines))
+    bench_res = (
+        remote_ssh_cmd(cmd)
+        if "remote" in name
+        else subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    )
+    time.sleep(10)
+    # Capture metrics for host and guest
+    ids, counters = capture_metrics(name, 10)
+    out, err = bench_res.communicate()
+    if bench_res.returncode != 0:
+        print(f"Error running memtier: {err.decode()}")
 
-    print(f"Results saved in {outputdir_host}")
+    pattern = r"(\d+)\s+Threads.*?Totals\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+\d+\.\d+\s+\d+\.\d+\s+(\d+\.\d+)\s+(\d+\.\d+)"
+    match = re.search(pattern, out.decode(), re.DOTALL)
+    if match:
+        threads, ops_per_sec, hits, misses, lat_avg, lat_max, transfer_rate = map(
+            float, match.groups()
+        )
+        print(
+            f"Threads: {threads}, Latency: {lat_avg}ms, Max: {lat_max}ms, Ops/s: {ops_per_sec}, Transfer rate: {transfer_rate}KB/s"
+        )
+        insert_into_db(
+            connection,
+            "memtier",
+            {
+                "date": date,
+                "name": name,
+                "mpstat_host": ids[0],
+                "mpstat_guest": ids[1],
+                "tls": tls,
+                "hits_per_sec": hits,
+                "misses_per_sec": misses,
+                "lat_max": lat_max,
+                "lat_avg": lat_avg,
+                "ops_per_sec": ops_per_sec,
+                "transfer_rate": transfer_rate,
+                "server": server,
+                "proto": proto,
+                "client_threads": threads,
+                "server_threads": server_threads,
+                **counters,
+            },
+        )
+
+    else:
+        print("No match")
+
+    with open(outputdir_host / f"memtier.log", "w") as f:
+        f.write(out.decode())
+
+    print(f"Results saved in {outputdir_host}and in the database")
 
 
 def run_nginx(
@@ -312,13 +372,17 @@ def run_nginx(
     pin_end: Optional[int] = None,
 ):
     """Run the nginx on the VM and the wrk benchmark on the host.
-    The results are saved in ./bench-result/network/nginx/{name}/{date}/
+    The results are saved in ./bench-result/network/nginx/{name}/{date}/ and in the nginx table of the database.
     """
-    date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    date = datetime.now().strftime(DATE_FORMAT)
+    # File setup
     outputdir = Path(f"./bench-result/network/nginx/{name}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
-
+    # Database setup
+    connection = connect_to_db()
+    ensure_db(connection, table="nginx", columns=NGINX_COLS)
+    # Benchmark
     if pin_end is None:
         pin_end = pin_start + threads - 1
 
@@ -338,13 +402,48 @@ def run_nginx(
         f"-d{duration}",
     ]
     print(cmd)
-    output = subprocess.run(cmd, capture_output=True, text=True)
-    if output.returncode != 0:
-        print(f"Error running wrk: {output.stderr}")
-    lines = output.stdout.split("\n")
+    bench_res = (
+        remote_ssh_cmd(cmd)
+        if "remote" in name
+        else subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    )
+    time.sleep(10)
+    # capture metrics for host and guest
+    ids, counters = capture_metrics(name, 10)
+    out, err = bench_res.communicate()
+    if bench_res.returncode != 0:
+        print(f"Error running wrk: {err.decode()}")
     with open(outputdir_host / f"http.log", "w") as f:
-        f.write("\n".join(lines))
-
+        f.write(out.decode())
+    pattern = r"Latency\s+(\d+\.\d+).?s\s+(\d+\.\d+).s\s+(\d+\.\d+).?s.*?Requests/sec:\s+(\d+\.\d+).*?Transfer/sec:\s+(\d+\.\d+).?B"
+    match = re.search(pattern, out.decode(), re.DOTALL)
+    if match:
+        lat_avg, lat_stdev, lat_max, req_per_sec, transfer_rate = map(
+            float, match.groups()
+        )
+        print(
+            f"HTTP Latency: {lat_avg}ms, Max: {lat_max}ms, Req/s: {req_per_sec}, Transfer rate: {transfer_rate}KB/s"
+        )
+        insert_into_db(
+            connection,
+            "nginx",
+            {
+                "date": date,
+                "name": name,
+                "tls": False,
+                "lat_max": lat_max,
+                "lat_stdev": lat_stdev,
+                "lat_avg": lat_avg,
+                "req_per_sec": req_per_sec,
+                "transfer_rate": transfer_rate,
+                "mpstat_host": ids[0],
+                "mpstat_guest": ids[1],
+                **counters,
+            },
+        )
+    else:
+        print("HTTP no match")
+    time.sleep(1)
     # HTTPS
     cmd = [
         "taskset",
@@ -357,14 +456,47 @@ def run_nginx(
         f"-d{duration}",
     ]
     print(cmd)
-    output = subprocess.run(cmd, capture_output=True, text=True)
-    if output.returncode != 0:
-        print(f"Error running wrk: {output.stderr}")
-    lines = output.stdout.split("\n")
+    bench_res = (
+        remote_ssh_cmd(cmd)
+        if "remote" in name
+        else subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    )
+    time.sleep(10)
+    # capture metrics for host and guest
+    ids, counters = capture_metrics(name, 10)
+    out, err = bench_res.communicate()
+    if bench_res.returncode != 0:
+        print(f"Error running wrk: {err.decode()}")
     with open(outputdir_host / f"https.log", "w") as f:
-        f.write("\n".join(lines))
-
-    print(f"Results saved in {outputdir_host}")
+        f.write(out.decode())
+    match = re.search(pattern, out.decode(), re.DOTALL)
+    if match:
+        lat_avg, lat_stdev, lat_max, req_per_sec, transfer_rate = map(
+            float, match.groups()
+        )
+        print(
+            f"HTTPS Latency: {lat_avg}ms, Max: {lat_max}ms, Req/s: {req_per_sec}, Transfer rate: {transfer_rate}KB/s"
+        )
+        insert_into_db(
+            connection,
+            "nginx",
+            {
+                "date": date,
+                "name": name,
+                "tls": True,
+                "lat_max": lat_max,
+                "lat_stdev": lat_stdev,
+                "lat_avg": lat_avg,
+                "req_per_sec": req_per_sec,
+                "transfer_rate": transfer_rate,
+                "mpstat_host": ids[0],
+                "mpstat_guest": ids[1],
+                **counters,
+            },
+        )
+    else:
+        print("HTTPS no match")
+    print(f"Results saved in {outputdir_host} and in the database")
 
 
 def remote_ssh_cmd(command: list[str]):
@@ -375,27 +507,63 @@ def remote_ssh_cmd(command: list[str]):
         f"{SSH_CONF_PATH}",
         "graham.tum",
     ] + command
-    return subprocess.run(ssh_command, capture_output=True, text=True)
+    return subprocess.Popen(ssh_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
-def start_metrics(name: str, duration: int = 5):
-    """Caputre relevant metrics for the given duration."""
-    cmd_host = ["just", "mpstat-host", name, str(duration)]
-    cmd_guest = ["just", "mpstat-guest", name, str(duration)]
-    host = subprocess.Popen(cmd_host, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    guest = subprocess.Popen(cmd_guest, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+def capture_metrics(name: str, duration: int = 5):
+    """Capture some metrics and save results to the database."""
+    # mpstat
+    mpstat_host = subprocess.Popen(
+        ["just", "mpstat-host", name, str(duration)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    mpstat_guest = subprocess.Popen(
+        ["just", "mpstat-guest", name, str(duration)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    # perf
+    perf_host = subprocess.Popen(
+        ["just", "perf-host", name, str(duration)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    perf_guest = subprocess.Popen(
+        ["just", "perf-guest", name, str(duration)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
     print("Metrics started")
-    return host, guest
 
+    # mpstat
+    mpstat_hout, herr = mpstat_host.communicate()
+    if mpstat_host.returncode != 0:
+        print(f"Error running mpstat: {herr.decode()}")
+    mpstat_gout, gerr = mpstat_guest.communicate()
+    if mpstat_guest.returncode != 0:
+        print(f"Error running mpstat: {gerr.decode()}")
 
-def stop_metrics(host, guest):
-    """Stop the metrics capture and save results to the database."""
-    host.terminate()
-    guest.terminate()
-    hout, herr = host.communicate()
-    gout, gerr = guest.communicate()
+    # perf
+    perf_hout, herr = perf_host.communicate()
+    if perf_host.returncode != 0:
+        print(f"Error running perf: {herr.decode()}")
+    perf_gout, gerr = perf_guest.communicate()
+    if perf_guest.returncode != 0:
+        print(f"Error running perf: {gerr.decode()}")
     print("Metrics stopped")
+
     # parse and save results
+    connection = connect_to_db()
+    ensure_db(connection, table="mpstat", columns=MPSTAT_COLS)
+    ids = parse_mpstat(mpstat_hout, mpstat_gout)
+    counters = parse_perf(perf_hout, perf_gout)
+    return ids, counters
+
+
+def parse_mpstat(hout, gout):
+    """Parse mpstat output and save to database"""
     pattern = r"Average:\s+all\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)"
     connection = connect_to_db()
     ensure_db(connection, table="mpstat", columns=MPSTAT_COLS)
@@ -425,3 +593,21 @@ def stop_metrics(host, guest):
         )
         ids.append(id)
     return ids
+
+
+def parse_perf(hout, gout):
+    """Parse perf output and return dict of metrics"""
+    host_pattern = r"^\s*(\d+)\s+kvm:kvm_exit"
+    hmatch = re.search(host_pattern, hout.decode().replace(",", ""), re.MULTILINE)
+    if hmatch:
+        host_exits = int(hmatch.group(1))
+    else:
+        print("No match, output: " + hout.decode())
+        host_exits = 0
+    guest_pattern = pattern = r"^\s*([\d,]+)\s+([\w-]+)"
+    matches = re.findall(pattern, gout.decode(), re.MULTILINE)
+    metrics = {
+        metric.replace("-", "_"): count.replace(",", "") for count, metric in matches
+    }
+    metrics["vmexits"] = host_exits
+    return metrics
