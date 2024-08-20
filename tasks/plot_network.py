@@ -1028,9 +1028,9 @@ def plot_ping_db(ctx, remote: bool = False):
 
 @task
 def plot_iperf_tcp(ctx, remote: bool = False):
-    # Iperf Results
     df = query_db(
-        f"SELECT iperf.*, mpstat.idle as cpu FROM iperf LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id WHERE proto LIKE 'tcp' and remote = {remote}"
+        f"SELECT iperf.*, mpstat.idle as idle FROM iperf LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id WHERE proto LIKE 'tcp'"
+        + (f" AND name LIKE '%remote%'" if remote else "")
     )
     df["Configuration"] = df.apply(
         lambda row: row["name"]
@@ -1048,61 +1048,25 @@ def plot_iperf_tcp(ctx, remote: bool = False):
 
     barplot = sns.barplot(
         data=df,
-        x="Configuration",
+        x="pkt_size",
         y="bitrate",
         ax=ax1,
         edgecolor="black",
         palette=palette,
         hue="Configuration",
     )
+
     ax1.set_ylabel("Bitrate in Gbits/sec")
     ax1.set_xticklabels([])
     ax1.set_xlabel("")
     ax1.set_title("Higher is better ↑", fontsize=12, color="navy")
-    # Handles und Labels für die Legende manuell erstellen
-    handles = [plt.Line2D([0], [0], color=palette[i], lw=4) for i in range(len(df))]
-    labels = df["Configuration"].tolist()
-
-    # Legende hinzufügen
-    ax1.legend(handles=handles, labels=labels, title="Configuration", loc="upper left")
-
-    ax2 = ax1.twinx()
-
-    ax2.plot(
-        df["Configuration"],
-        100 - df["cpu"],
-        color="red",
-        marker="x",
-        linestyle="--",
-        label="CPU Utilization (%)",
-    )
-
-    ax2.spines["right"].set_position(("outward", 30))
-    ax2.spines["right"].set_color("red")
-    ax2.yaxis.label.set_color("red")
-    ax2.tick_params(axis="y", colors="red")
-
-    ax3 = ax1.twinx()
-
-    ax3.plot(
-        df["Configuration"],
-        df["vmexits"],
-        color="green",
-        marker="x",
-        linestyle="--",
-        label="VM Exits (mio.)",
-    )
-
-    ax3.spines["right"].set_color("green")
-    ax3.yaxis.label.set_color("green")
-    ax3.tick_params(axis="y", colors="green")
 
     for p, bitrate in zip(barplot.patches, df["bitrate"]):
         height = p.get_height()
         ax1.text(
             p.get_x() + p.get_width() / 2.0,
             height + 1,
-            f"{bitrate:.2f}",
+            f"{bitrate}",
             ha="center",
             va="bottom",
         )
@@ -1112,10 +1076,10 @@ def plot_iperf_tcp(ctx, remote: bool = False):
 
 
 @task
-def plot_iperf_db_udp(ctx, remote: bool = False):
-    # Iperf Results
+def plot_iperf_udp(ctx, metric: str = "vmexits", remote: bool = False):
     df = query_db(
-        f"SELECT iperf.*, mpstat.idle as cpu FROM iperf LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id WHERE proto LIKE 'udp' AND remote = {remote}"
+        f"SELECT iperf.*, mpstat.idle as idle FROM iperf LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id WHERE proto LIKE 'udp'"
+        + (f" AND name LIKE '%remote%'" if remote else "")
     )
     df["Configuration"] = df.apply(
         lambda row: row["name"]
@@ -1142,75 +1106,137 @@ def plot_iperf_db_udp(ctx, remote: bool = False):
     ax1.set_title("Higher is better ↑", fontsize=12, color="navy")
 
     ax2 = ax1.twinx()
+
     sns.lineplot(
         data=df,
         x="pkt_size",
-        y="cpu",
+        y=(100 - df["idle"]) if metric == "cpu" else df[f"{metric}"] / 1e6,
         ax=ax2,
         hue="Configuration",
         palette=palette,
-        linewidth=1,
-        linestyle="--",
         marker="o",
+        linestyle="dotted",
         legend=False,
+        errorbar=None,
     )
-    ax2.set_ylabel("CPU load (%)")
-    h1, l1 = ax1.get_legend_handles_labels()
-    h2, l2 = ax2.get_legend_handles_labels()
-    ax1.legend(h1 + h2, l1 + l2, loc="upper left")
+
+    ax2.set_ylabel(f"{metric} (mio.)" if metric != "cpu" else "CPU Utilization (%)")
+
+    sns.despine(top=True, right=False)
+
+    plt.ticklabel_format(style="plain", axis="y")
     plt.tight_layout()
-    plt.savefig(f"plot/iperf_udp.pdf", bbox_inches="tight")
+    plt.savefig(f"plot/iperf/iperf_udp_{metric}.pdf", bbox_inches="tight")
 
 
 @task
-def plot_memtier_db(ctx):
-    df = utils.query_db(f"SELECT * FROM memtier")
-    df["group"] = df.apply(
-        lambda row: f"{row['type']}"
-        + ("_v" if row["vhost"] else "")
-        + ("_r" if row["remote"] else ""),
+def plot_memtier_db(ctx, metric: str = "vmexits"):
+    df = query_db(
+        f"SELECT memtier.*, mpstat.idle as idle FROM memtier LEFT JOIN mpstat ON memtier.mpstat_guest = mpstat.id"
+    )
+    df["Configuration"] = df.apply(
+        lambda row: row["name"]
+        .replace("-direct", "")
+        .replace("-medium", "")
+        .replace("-mq", "")
+        .replace("amd-", "")
+        .replace("amd", "vm"),
         axis=1,
     )
     df["Protocol, TLS"] = df.apply(
-        lambda row: f"{row['proto'].upper()}" + (", TLS" if row["tls"] == 1 else ""),
+        lambda row: f"{row['proto'].upper()}".replace("MEMCACHE", "MC")
+        + (", TLS" if row["tls"] == 1 else ""),
         axis=1,
     )
+    df = df.sort_values(by=["tls"], ascending=False).sort_values(by=["transfer_rate"])
     fig, ax = plt.subplots()
     sns.barplot(
         data=df,
-        x="group",
-        y="ops_per_sec",
+        x="Protocol, TLS",
+        y=df["transfer_rate"] / 1000,
         ax=ax,
-        hue="Protocol, TLS",
+        hue="Configuration",
         palette=palette,
         edgecolor="black",
     )
-    ax.set_xlabel("VM Config")
-    ax.set_ylabel("Operations/sec")
+    ax.set_xlabel("Protocol, TLS")
+    ax.set_ylabel("Throughput in MBytes/s")
+    ax.set_title("Higher is better ↑", fontsize=12, color="navy")
+
+    ax2 = ax.twinx()
+
+    sns.lineplot(
+        data=df,
+        x="Protocol, TLS",
+        y=(100 - df["idle"]) if metric == "cpu" else df[f"{metric}"] / 1e6,
+        ax=ax2,
+        hue="Configuration",
+        palette=palette,
+        marker="o",
+        linestyle="dotted",
+        legend=False,
+        errorbar=None,
+    )
+
+    ax2.set_ylabel(f"{metric} (mio.)" if metric != "cpu" else "CPU Utilization (%)")
+
+    sns.despine(top=True, right=False)
+
+    plt.ticklabel_format(style="plain", axis="y")
     plt.tight_layout()
-    plt.savefig(f"plot/memtier.pdf", bbox_inches="tight")
+    plt.savefig(f"plot/memtier/memtier_{metric}.pdf", bbox_inches="tight")
 
 
 @task
-def plot_nginx_db(ctx):
-    df = utils.query_db(f"SELECT * FROM nginx")
-    df["group"] = df.apply(
-        lambda row: f"{row['type']}"
-        + ("_v" if row["vhost"] else "")
-        + ("_r" if row["remote"] else ""),
+def plot_nginx_db(ctx, metric: str = "vmexits"):
+    df = query_db(
+        f"SELECT nginx.*, mpstat.idle as idle FROM nginx LEFT JOIN mpstat ON nginx.mpstat_guest = mpstat.id"
+    )
+    df["Configuration"] = df.apply(
+        lambda row: row["name"]
+        .replace("-direct", "")
+        .replace("-medium", "")
+        .replace("-mq", "")
+        .replace("amd-", "")
+        .replace("amd", "vm"),
+        axis=1,
+    )
+    df["TLS"] = df.apply(
+        lambda row: "HTTPS" if row["tls"] == 1 else "HTTP",
         axis=1,
     )
     fig, ax = plt.subplots()
     sns.barplot(
         data=df,
-        x="group",
-        y="lat_avg",
+        x="TLS",
+        y=df["transfer_rate"] / 1000,
         ax=ax,
-        hue="tls",
+        hue="Configuration",
         palette=palette,
         edgecolor="black",
     )
-    ax.set_xlabel("VM Config")
-    ax.set_ylabel("Average latency in ms")
+    ax.set_ylabel("Throughput in MBytes/s")
+    ax.set_title("Higher is better ↑", fontsize=12, color="navy")
+
+    ax2 = ax.twinx()
+
+    sns.lineplot(
+        data=df,
+        x="TLS",
+        y=(100 - df["idle"]) if metric == "cpu" else df[f"{metric}"] / 1e6,
+        ax=ax2,
+        hue="Configuration",
+        palette=palette,
+        marker="o",
+        linestyle="dotted",
+        legend=False,
+        errorbar=None,
+    )
+
+    ax2.set_ylabel(f"{metric} (mio.)" if metric != "cpu" else "CPU Utilization (%)")
+
+    sns.despine(top=True, right=False)
+
+    plt.ticklabel_format(style="plain", axis="y")
     plt.tight_layout()
-    plt.savefig(f"plot/nginx.pdf", bbox_inches="tight")
+    plt.savefig(f"plot/nginx/nginx_{metric}.pdf", bbox_inches="tight")
