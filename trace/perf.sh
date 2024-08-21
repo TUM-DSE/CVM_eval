@@ -21,9 +21,9 @@ mkdir -p $OUTDIR
 cd $OUTDIR
 
 if [ $V = "host" ]; then
-    perf stat -e kvm:kvm_exit -a sleep $DURATION 2>&1 | tee $OUTDIR/perf-stat.txt
+    perf stat -e instructions,cycles,kvm:kvm_exit -a sleep $DURATION 2>&1 | tee $OUTDIR/perf-stat.txt
 else
-    perf stat -e branch-misses,cache-misses,dTLB-load-misses,iTLB-load-misses -a sleep $DURATION 2>&1 | tee $OUTDIR/perf-stat.txt
+    perf stat -e instructions,cycles,branch-misses,cache-misses,dTLB-load-misses,iTLB-load-misses -a sleep $DURATION 2>&1 | tee $OUTDIR/perf-stat.txt
 fi
 
 echo "Result saved: ${OUTDIR}"

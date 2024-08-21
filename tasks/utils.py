@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 from pathlib import Path
+import re
+import subprocess
 
 from invoke import task
 
@@ -13,11 +15,8 @@ COLUMNS = {
     "name": "VARCHAR(50)",
     "mpstat_guest": "INTEGER REFERENCES mpstat(id)",
     "mpstat_host": "INTEGER REFERENCES mpstat(id)",
-    "vmexits": "INTEGER",
-    "dTLB_load_misses": "INTEGER",
-    "iTLB_load_misses": "INTEGER",
-    "cache_misses": "INTEGER",
-    "branch_misses": "INTEGER",
+    "perf_guest": "INTEGER REFERENCES perf(id)",
+    "perf_host": "INTEGER REFERENCES perf(id)",
 }
 
 MPSTAT_COLS = {
@@ -32,6 +31,17 @@ MPSTAT_COLS = {
     "guest": "FLOAT",
     "gnice": "FLOAT",
     "idle": "FLOAT",
+}
+
+PERF_COLS = {
+    "id": "INTEGER PRIMARY KEY",
+    "vmexits": "INTEGER",
+    "dTLB_load_misses": "INTEGER",
+    "iTLB_load_misses": "INTEGER",
+    "cache_misses": "INTEGER",
+    "branch_misses": "INTEGER",
+    "instructions": "INTEGER",
+    "cycles": "INTEGER",
 }
 
 PING_COLS = {
@@ -142,3 +152,127 @@ def query_db(query: str):
     df = pd.read_sql_query(query, connection)
     connection.close()
     return df
+
+
+def parse_mpstat(hout, gout):
+    """Parse mpstat output and save to database"""
+    all_pattern = r"Average:\s+all\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)"
+    single_pattern = r"Average:\s+\d+\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)"
+    connection = connect_to_db()
+    ensure_db(connection, table="mpstat_guest", columns=MPSTAT_COLS)
+    ensure_db(connection, table="mpstat_host", columns=MPSTAT_COLS)
+    ids = []
+    # Parse and save results
+    gmatch = re.search(all_pattern, gout.decode())
+    if not gmatch:
+        print("No match in guest output: " + gout.decode())
+        return
+    gvals = [float(val) for val in gmatch.groups()]
+    hmatch = re.search(all_pattern, hout.decode())
+    hvals = [0] * 10
+    if not hmatch:
+        hmatches = re.findall(single_pattern, hout.decode(), re.MULTILINE)
+        if not hmatches:
+            print("No match in host output: " + hout.decode())
+            return
+        for match in hmatches:
+            for i in range(10):
+                hvals[i] += float(match[i])
+        for i in range(10):
+            hvals[i] /= len(hmatches)
+
+    for vals in [hvals, gvals]:
+        usr, nice, sys, iowait, irq, soft, steal, guest, gnice, idle = vals
+        id = insert_into_db(
+            connection,
+            f"mpstat_{'guest' if vals == gvals else 'host'}",
+            {
+                "usr": usr,
+                "nice": nice,
+                "sys": sys,
+                "iowait": iowait,
+                "irq": irq,
+                "soft": soft,
+                "steal": steal,
+                "guest": guest,
+                "gnice": gnice,
+                "idle": idle,
+            },
+        )
+        ids.append(id)
+    return ids
+
+
+def parse_perf(hout, gout):
+    """Parse perf output and return dict of metrics"""
+    pattern = r"^\s*([\d,]+)\s+([\w-]+)"
+    matches = re.findall(
+        pattern,
+        hout.decode().replace("kvm:kvm_exit", "vmexits"),
+        re.MULTILINE,
+    )
+    host_metrics = {
+        metric.replace("-", "_"): count.replace(",", "") for count, metric in matches
+    }
+    matches = re.findall(pattern, gout.decode(), re.MULTILINE)
+    guest_metrics = {
+        metric.replace("-", "_"): count.replace(",", "") for count, metric in matches
+    }
+    connection = connect_to_db()
+    ensure_db(connection, table="perf_guest", columns=PERF_COLS)
+    ensure_db(connection, table="perf_host", columns=PERF_COLS)
+    g_id = insert_into_db(connection, "perf_guest", guest_metrics)
+    h_id = insert_into_db(connection, "perf_host", host_metrics)
+    return [h_id, g_id]
+
+
+def capture_metrics(name: str, duration: int = 5, range: str = "ALL"):
+    """Capture some metrics and save results to the database."""
+    # mpstat
+    mpstat_host = subprocess.Popen(
+        ["just", "mpstat-host", name, str(duration), range],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    mpstat_guest = subprocess.Popen(
+        ["just", "mpstat-guest", name, str(duration)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    # perf
+    perf_host = subprocess.Popen(
+        ["just", "perf-host", name, str(duration)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    perf_guest = subprocess.Popen(
+        ["just", "perf-guest", name, str(duration)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    print("Metrics started")
+
+    # mpstat
+    mpstat_hout, herr = mpstat_host.communicate()
+    if mpstat_host.returncode != 0:
+        print(f"Error running mpstat: {herr.decode()}")
+    mpstat_gout, gerr = mpstat_guest.communicate()
+    if mpstat_guest.returncode != 0:
+        print(f"Error running mpstat: {gerr.decode()}")
+
+    # perf
+    perf_hout, herr = perf_host.communicate()
+    if perf_host.returncode != 0:
+        print(f"Error running perf: {herr.decode()}")
+    perf_gout, gerr = perf_guest.communicate()
+    if perf_guest.returncode != 0:
+        print(f"Error running perf: {gerr.decode()}")
+    print("Metrics stopped")
+
+    # parse and save results
+    connection = connect_to_db()
+    ensure_db(connection, table="mpstat", columns=MPSTAT_COLS)
+    mids = parse_mpstat(mpstat_hout, mpstat_gout)
+    pids = parse_perf(perf_hout, perf_gout)
+    return mids, pids

@@ -28,3 +28,4 @@ guest-tools
 *.mod.o
 Module.symvers
 modules.order
+benchmarks/network/nginx/nginx.pid

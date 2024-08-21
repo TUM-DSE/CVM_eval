@@ -1007,6 +1007,7 @@ def plot_ping_db(ctx, remote: bool = False):
     df["name"] = df.apply(
         lambda row: row["name"].replace("-direct", "").replace("-medium", ""), axis=1
     )
+
     fig, ax = plt.subplots()
     sns.barplot(
         data=df,
@@ -1027,7 +1028,7 @@ def plot_ping_db(ctx, remote: bool = False):
 
 
 @task
-def plot_iperf_tcp(ctx, remote: bool = False):
+def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
     df = query_db(
         f"SELECT iperf.*, mpstat.idle as idle FROM iperf LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id WHERE proto LIKE 'tcp'"
         + (f" AND name LIKE '%remote%'" if remote else "")
@@ -1037,18 +1038,17 @@ def plot_iperf_tcp(ctx, remote: bool = False):
         .replace("-direct", "")
         .replace("-medium", "")
         .replace("-mq", "")
-        .replace("amd-", "")
-        .replace("amd", "vm"),
+        .replace("amd-", ""),
         axis=1,
     )
 
-    df = df.sort_values(by=["pkt_size", "bitrate"], ascending=True)
+    df = df.sort_values(by=["bitrate"], ascending=True)
 
     fig, ax1 = plt.subplots()
 
     barplot = sns.barplot(
         data=df,
-        x="pkt_size",
+        x="name",
         y="bitrate",
         ax=ax1,
         edgecolor="black",
@@ -1056,30 +1056,60 @@ def plot_iperf_tcp(ctx, remote: bool = False):
         hue="Configuration",
     )
 
+    for p in barplot.patches:
+        height = p.get_height()
+        ax1.text(
+            p.get_x() + p.get_width() / 2.0,
+            height + 1,
+            f"{height:.2f}",
+            ha="center",
+            va="bottom",
+        )
+    if metric is not None:
+        ax2 = ax1.twinx()
+        sns.lineplot(
+            data=df,
+            x="name",
+            y=(100 - df["idle"]) if metric == "cpu" else df[f"{metric}"] / 1e6,
+            ax=ax2,
+            marker="o",
+            linestyle="dotted",
+            legend=False,
+            errorbar=None,
+        )
+        ax2.set_ylabel(f"{metric} (mio.)" if metric != "cpu" else "CPU Utilization (%)")
+
     ax1.set_ylabel("Bitrate in Gbits/sec")
     ax1.set_xticklabels([])
     ax1.set_xlabel("")
     ax1.set_title("Higher is better ↑", fontsize=12, color="navy")
 
-    for p, bitrate in zip(barplot.patches, df["bitrate"]):
-        height = p.get_height()
-        ax1.text(
-            p.get_x() + p.get_width() / 2.0,
-            height + 1,
-            f"{bitrate}",
-            ha="center",
-            va="bottom",
-        )
     sns.despine(top=True, right=False)
     plt.tight_layout()
-    plt.savefig(f"plot/iperf_tcp.pdf", bbox_inches="tight")
+    plt.savefig(
+        f"plot/iperf/iperf_tcp"
+        + (f"_{metric}" if metric else "")
+        + ("_remote" if remote else "")
+        + ".pdf",
+        bbox_inches="tight",
+    )
 
 
 @task
-def plot_iperf_udp(ctx, metric: str = "vmexits", remote: bool = False):
+def plot_iperf_udp(ctx, metric: Optional[str] = None, remote: bool = False):
+    metric_col = (
+        f", gperf.{metric} AS {metric} "
+        if "cpu" not in metric and "vmexit" not in metric
+        else " "
+    )
     df = query_db(
-        f"SELECT iperf.*, mpstat.idle as idle FROM iperf LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id WHERE proto LIKE 'udp'"
-        + (f" AND name LIKE '%remote%'" if remote else "")
+        "SELECT iperf.*, mpstat.idle, gperf.instructions AS ginst, "
+        f"hperf.vmexits, hperf.instructions AS hinst{metric_col}"
+        "FROM iperf "
+        "LEFT JOIN mpstat ON iperf.mpstat_guest = mpstat.id "
+        "LEFT JOIN perf_guest AS gperf ON iperf.perf_guest = gperf.id "
+        "LEFT JOIN perf_host AS hperf ON iperf.perf_host = hperf.id "
+        "WHERE proto LIKE 'udp'" + (f" AND name LIKE '%remote%'" if remote else "")
     )
     df["Configuration"] = df.apply(
         lambda row: row["name"]
@@ -1105,34 +1135,49 @@ def plot_iperf_udp(ctx, metric: str = "vmexits", remote: bool = False):
     ax1.set_ylabel("Bitrate in Gbits/sec")
     ax1.set_title("Higher is better ↑", fontsize=12, color="navy")
 
-    ax2 = ax1.twinx()
+    if metric is not None:
+        ax2 = ax1.twinx()
 
-    sns.lineplot(
-        data=df,
-        x="pkt_size",
-        y=(100 - df["idle"]) if metric == "cpu" else df[f"{metric}"] / 1e6,
-        ax=ax2,
-        hue="Configuration",
-        palette=palette,
-        marker="o",
-        linestyle="dotted",
-        legend=False,
-        errorbar=None,
-    )
+        sns.lineplot(
+            data=df,
+            x="pkt_size",
+            y=(
+                (100 - df["idle"])
+                if metric == "cpu"
+                else df[f"{metric}"] / (df["ginst"] / 1e6)
+            ),
+            ax=ax2,
+            hue="Configuration",
+            palette=palette,
+            marker="o",
+            linestyle="dotted",
+            legend=False,
+            errorbar=None,
+        )
 
-    ax2.set_ylabel(f"{metric} (mio.)" if metric != "cpu" else "CPU Utilization (%)")
-
+        ax2.set_ylabel(
+            f"{metric.upper()} per 1M Instructions"
+            if metric != "cpu"
+            else "CPU Utilization (%)"
+        )
     sns.despine(top=True, right=False)
 
     plt.ticklabel_format(style="plain", axis="y")
     plt.tight_layout()
-    plt.savefig(f"plot/iperf/iperf_udp_{metric}.pdf", bbox_inches="tight")
+    plt.savefig(
+        f"plot/iperf/iperf_udp"
+        + (f"_{metric}" if metric else "")
+        + ("_remote" if remote else "")
+        + ".pdf",
+        bbox_inches="tight",
+    )
 
 
 @task
-def plot_memtier_db(ctx, metric: str = "vmexits"):
+def plot_memtier_db(ctx, metric: Optional[str] = None, remote: bool = False):
     df = query_db(
         f"SELECT memtier.*, mpstat.idle as idle FROM memtier LEFT JOIN mpstat ON memtier.mpstat_guest = mpstat.id"
+        + (f" WHERE name LIKE '%remote%'" if remote else "")
     )
     df["Configuration"] = df.apply(
         lambda row: row["name"]
@@ -1148,7 +1193,7 @@ def plot_memtier_db(ctx, metric: str = "vmexits"):
         + (", TLS" if row["tls"] == 1 else ""),
         axis=1,
     )
-    df = df.sort_values(by=["tls"], ascending=False).sort_values(by=["transfer_rate"])
+    # df = df.sort_values(by=["Protocol, TLS"], ascending=True)
     fig, ax = plt.subplots()
     sns.barplot(
         data=df,
@@ -1163,34 +1208,41 @@ def plot_memtier_db(ctx, metric: str = "vmexits"):
     ax.set_ylabel("Throughput in MBytes/s")
     ax.set_title("Higher is better ↑", fontsize=12, color="navy")
 
-    ax2 = ax.twinx()
+    if metric is not None:
+        ax2 = ax.twinx()
 
-    sns.lineplot(
-        data=df,
-        x="Protocol, TLS",
-        y=(100 - df["idle"]) if metric == "cpu" else df[f"{metric}"] / 1e6,
-        ax=ax2,
-        hue="Configuration",
-        palette=palette,
-        marker="o",
-        linestyle="dotted",
-        legend=False,
-        errorbar=None,
-    )
+        sns.lineplot(
+            data=df,
+            x="Protocol, TLS",
+            y=(100 - df["idle"]) if metric == "cpu" else df[f"{metric}"] / 1e6,
+            ax=ax2,
+            hue="Configuration",
+            palette=palette,
+            marker="o",
+            linestyle="dotted",
+            legend=False,
+            errorbar=None,
+        )
 
-    ax2.set_ylabel(f"{metric} (mio.)" if metric != "cpu" else "CPU Utilization (%)")
+        ax2.set_ylabel(f"{metric} (mio.)" if metric != "cpu" else "CPU Utilization (%)")
 
     sns.despine(top=True, right=False)
-
     plt.ticklabel_format(style="plain", axis="y")
     plt.tight_layout()
-    plt.savefig(f"plot/memtier/memtier_{metric}.pdf", bbox_inches="tight")
+    plt.savefig(
+        f"plot/memtier/memtier"
+        + (f"_{metric}" if metric else "")
+        + ("_remote" if remote else "")
+        + ".pdf",
+        bbox_inches="tight",
+    )
 
 
 @task
-def plot_nginx_db(ctx, metric: str = "vmexits"):
+def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False):
     df = query_db(
         f"SELECT nginx.*, mpstat.idle as idle FROM nginx LEFT JOIN mpstat ON nginx.mpstat_guest = mpstat.id"
+        + (f" WHERE name LIKE '%remote%'" if remote else "")
     )
     df["Configuration"] = df.apply(
         lambda row: row["name"]
@@ -1208,7 +1260,7 @@ def plot_nginx_db(ctx, metric: str = "vmexits"):
     fig, ax = plt.subplots()
     sns.barplot(
         data=df,
-        x="TLS",
+        x=df["TLS"],
         y=df["transfer_rate"] / 1000,
         ax=ax,
         hue="Configuration",
@@ -1220,23 +1272,29 @@ def plot_nginx_db(ctx, metric: str = "vmexits"):
 
     ax2 = ax.twinx()
 
-    sns.lineplot(
-        data=df,
-        x="TLS",
-        y=(100 - df["idle"]) if metric == "cpu" else df[f"{metric}"] / 1e6,
-        ax=ax2,
-        hue="Configuration",
-        palette=palette,
-        marker="o",
-        linestyle="dotted",
-        legend=False,
-        errorbar=None,
-    )
+    if metric is not None:
+        sns.lineplot(
+            data=df,
+            x=df["TLS"],
+            y=(100 - df["idle"]) if metric == "cpu" else df[f"{metric}"] / 1e6,
+            hue="Configuration",
+            ax=ax2,
+            palette=palette,
+            marker="o",
+            linestyle="dotted",
+            legend=False,
+            errorbar=None,
+        )
 
-    ax2.set_ylabel(f"{metric} (mio.)" if metric != "cpu" else "CPU Utilization (%)")
+        ax2.set_ylabel(f"{metric} (mio.)" if metric != "cpu" else "CPU Utilization (%)")
 
     sns.despine(top=True, right=False)
-
     plt.ticklabel_format(style="plain", axis="y")
     plt.tight_layout()
-    plt.savefig(f"plot/nginx/nginx_{metric}.pdf", bbox_inches="tight")
+    plt.savefig(
+        f"plot/nginx/nginx"
+        + (f"_{metric}" if metric else "")
+        + ("_remote" if remote else "")
+        + ".pdf",
+        bbox_inches="tight",
+    )

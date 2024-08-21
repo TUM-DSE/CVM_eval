@@ -14,6 +14,7 @@ SCRIPTDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 OUTDIR=${OUTDIR:-$SCRIPTDIR/../trace-result/$V/mpstat/$DATE}
 DURATION=${DURATION:-20}
 INTERVAL=${INTERVAL:-1}
+RANGE ${RANGE:-"ALL"}
 
 set -u
 
@@ -22,7 +23,7 @@ cd $OUTDIR
 
 echo "Start collecting data $DURATION seconds"
 
-mpstat $INTERVAL $DURATION | tee mpstat.txt &
+mpstat -P $RANGE $INTERVAL $DURATION | tee mpstat.txt &
 
 wait $(jobs -p)
 

@@ -1139,7 +1139,9 @@ def do_action(action: str, **kwargs: Any) -> None:
     elif action == "run-memtier":
         run_memtier(server="redis", **kwargs)
     elif action == "run-memtier-memcached":
-        run_memtier(server="memcached", **kwargs)
+        run_memtier(server="memcached_b", **kwargs)
+    elif action == "run-memtier-memcached-text":
+        run_memtier(server="memcached_t", **kwargs)
     elif action == "run-nginx":
         run_nginx(**kwargs)
     elif action == "run-ping":

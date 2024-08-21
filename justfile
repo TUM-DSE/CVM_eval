@@ -543,12 +543,12 @@ stat-host name:
     export OUTDIR
     bash {{PROJECT_ROOT}}/trace/stat.sh {{name}}
 
-mpstat-host name duration:
+mpstat-host name duration range:
     #!/usr/bin/env bash
     DATE=$(date '+%Y-%m-%d-%H-%M-%S')
     OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host
     export OUTDIR
-    DURATION={{duration}} bash {{PROJECT_ROOT}}/trace/mpstat.sh {{name}}
+    RANGE={{range}} DURATION={{duration}} bash {{PROJECT_ROOT}}/trace/mpstat.sh {{name}}
 
 trace-guest name:
     #!/usr/bin/env bash
@@ -572,7 +572,7 @@ mpstat-guest name duration:
     #!/usr/bin/env bash
     DATE=$(date '+%Y-%m-%d-%H-%M-%S')
     OUTDIR=/share/trace-result/{{name}}/$DATE/guest
-    just ssh "DURATION={{duration}} OUTDIR=$OUTDIR bash /share/trace/mpstat.sh"
+    just ssh "DURATION={{duration}} RANGE=ALL OUTDIR=$OUTDIR bash /share/trace/mpstat.sh"
 
 flamegraph in="perf.data" out="a.svg":
     #!/usr/bin/env bash
