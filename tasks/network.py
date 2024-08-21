@@ -508,6 +508,6 @@ def remote_ssh_cmd(command: list[str]):
         "ssh",
         "-F",
         f"{SSH_CONF_PATH}",
-        "graham.tum",
+        "river.tum",
     ] + command
     return subprocess.Popen(ssh_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

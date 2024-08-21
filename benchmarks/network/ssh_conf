@@ -5,3 +5,12 @@ Host graham.tum
   User luca
   ForwardAgent yes
   AddKeysToAgent yes
+
+Host river.tum
+  HostName river.dos.cit.tum.de
+  ProxyJump tunnel@login.dos.cit.tum.de
+  Port 22
+  User luca
+  ForwardAgent yes
+  AddKeysToAgent yes
+  IdentityFile ~/.ssh/id_ed25519
