@@ -158,7 +158,7 @@ def run_iperf(
         )
         time.sleep(10)
         # Capture metrics for host and guest
-        mids, pids = capture_metrics(name, 10, f"{pin_start}-{pin_end}")
+        mpstat_id, perf_id = capture_metrics(name, 10, f"{pin_start}-{pin_end}")
         out, err = bench_res.communicate()
         if bench_res.returncode != 0:
             print(f"Error running iperf: {err.decode()}")
@@ -181,10 +181,8 @@ def run_iperf(
                 {
                     "date": date,
                     "name": name,
-                    "mpstat_host": mids[0],
-                    "mpstat_guest": mids[1],
-                    "perf_host": pids[0],
-                    "perf_guest": pids[1],
+                    "mpstat": mpstat_id,
+                    "perf": perf_id,
                     "streams": parallel,
                     "pkt_size": pkt_size,
                     "bitrate": bitrate,  # in Gbits/sec
@@ -316,7 +314,7 @@ def run_memtier(
     )
     time.sleep(10)
     # Capture metrics for host and guest
-    mids, pids = capture_metrics(name, 10, f"{pin_start}-{pin_end}")
+    mpstat_id, perf_id = capture_metrics(name, 10, f"{pin_start}-{pin_end}")
     out, err = bench_res.communicate()
     if bench_res.returncode != 0:
         print(f"Error running memtier: {err.decode()}")
@@ -336,10 +334,8 @@ def run_memtier(
             {
                 "date": date,
                 "name": name,
-                "mpstat_host": mids[0],
-                "mpstat_guest": pids[1],
-                "perf_host": pids[0],
-                "perf_guest": pids[1],
+                "mpstat": mpstat_id,
+                "perf": perf_id,
                 "tls": tls,
                 "hits_per_sec": hits,
                 "misses_per_sec": misses,
@@ -410,7 +406,7 @@ def run_nginx(
     )
     time.sleep(10)
     # capture metrics for host and guest
-    mids, pids = capture_metrics(name, 10, f"{pin_start}-{pin_end}")
+    mpstat_id, perf_id = capture_metrics(name, 10, f"{pin_start}-{pin_end}")
     out, err = bench_res.communicate()
     if bench_res.returncode != 0:
         print(f"Error running wrk: {err.decode()}")
@@ -437,10 +433,8 @@ def run_nginx(
                 "lat_avg": lat_avg,
                 "req_per_sec": req_per_sec,
                 "transfer_rate": transfer_rate,
-                "mpstat_host": mids[0],
-                "mpstat_guest": mids[1],
-                "perf_host": pids[0],
-                "perf_guest": pids[1],
+                "mpstat": mpstat_id,
+                "perf": perf_id,
             },
         )
     else:
@@ -465,7 +459,7 @@ def run_nginx(
     )
     time.sleep(10)
     # capture metrics for host and guest
-    mids, pids = capture_metrics(name, 10)
+    mpstat_id, perf_id = capture_metrics(name, 10)
     out, err = bench_res.communicate()
     if bench_res.returncode != 0:
         print(f"Error running wrk: {err.decode()}")
@@ -491,10 +485,8 @@ def run_nginx(
                 "lat_avg": lat_avg,
                 "req_per_sec": req_per_sec,
                 "transfer_rate": transfer_rate,
-                "mpstat_host": mids[0],
-                "mpstat_guest": mids[1],
-                "perf_host": pids[0],
-                "perf_guest": pids[1],
+                "mpstat": mpstat_id,
+                "perf": perf_id,
             },
         )
     else:

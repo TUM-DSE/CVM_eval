@@ -13,10 +13,8 @@ import pandas as pd
 COLUMNS = {
     "date": "TIMESTAMP",
     "name": "VARCHAR(50)",
-    "mpstat_guest": "INTEGER REFERENCES mpstat(id)",
-    "mpstat_host": "INTEGER REFERENCES mpstat(id)",
-    "perf_guest": "INTEGER REFERENCES perf(id)",
-    "perf_host": "INTEGER REFERENCES perf(id)",
+    "mpstat": "INTEGER REFERENCES mpstat(id)",
+    "perf": "INTEGER REFERENCES perf(id)",
 }
 
 MPSTAT_COLS = {
@@ -161,7 +159,7 @@ def parse_mpstat(hout, gout):
     connection = connect_to_db()
     ensure_db(connection, table="mpstat_guest", columns=MPSTAT_COLS)
     ensure_db(connection, table="mpstat_host", columns=MPSTAT_COLS)
-    ids = []
+    id = 0
     # Parse and save results
     gmatch = re.search(all_pattern, gout.decode())
     if not gmatch:
@@ -199,8 +197,7 @@ def parse_mpstat(hout, gout):
                 "idle": idle,
             },
         )
-        ids.append(id)
-    return ids
+    return id
 
 
 def parse_perf(hout, gout):
@@ -222,8 +219,7 @@ def parse_perf(hout, gout):
     ensure_db(connection, table="perf_guest", columns=PERF_COLS)
     ensure_db(connection, table="perf_host", columns=PERF_COLS)
     g_id = insert_into_db(connection, "perf_guest", guest_metrics)
-    h_id = insert_into_db(connection, "perf_host", host_metrics)
-    return [h_id, g_id]
+    return insert_into_db(connection, "perf_host", host_metrics)
 
 
 def capture_metrics(name: str, duration: int = 5, range: str = "ALL"):
@@ -271,8 +267,6 @@ def capture_metrics(name: str, duration: int = 5, range: str = "ALL"):
     print("Metrics stopped")
 
     # parse and save results
-    connection = connect_to_db()
-    ensure_db(connection, table="mpstat", columns=MPSTAT_COLS)
-    mids = parse_mpstat(mpstat_hout, mpstat_gout)
-    pids = parse_perf(perf_hout, perf_gout)
-    return mids, pids
+    mpstat_id = parse_mpstat(mpstat_hout, mpstat_gout)
+    perf_id = parse_perf(perf_hout, perf_gout)
+    return mpstat_id, perf_id

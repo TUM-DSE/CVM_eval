@@ -880,6 +880,8 @@ def run_iperf(
             name += f"-vhost"
         if kargs["config"]["virtio_nic_mq"]:
             name += f"-mq"
+        if kargs["config"]["remote"]:
+            name += f"-remote"
         if (
             kargs["config"]["virtio_iommu"]
             and "swiotlb" in kargs["config"]["extra_cmdline"]
@@ -909,6 +911,8 @@ def run_memtier(
             name += f"-vhost"
         if kargs["config"]["virtio_nic_mq"]:
             name += f"-mq"
+        if kargs["config"]["remote"]:
+            name += f"-remote"
         if (
             kargs["config"]["virtio_iommu"]
             and "swiotlb" in kargs["config"]["extra_cmdline"]
@@ -934,6 +938,8 @@ def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
             name += f"-vhost"
         if kargs["config"]["virtio_nic_mq"]:
             name += f"-mq"
+        if kargs["config"]["remote"]:
+            name += f"-remote"
         if (
             kargs["config"]["virtio_iommu"]
             and "swiotlb" in kargs["config"]["extra_cmdline"]
@@ -959,6 +965,8 @@ def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
             name += f"-vhost"
         if kargs["config"]["virtio_nic_mq"]:
             name += f"-mq"
+        if kargs["config"]["remote"]:
+            name += f"-remote"
         if (
             kargs["config"]["virtio_iommu"]
             and "swiotlb" in kargs["config"]["extra_cmdline"]
