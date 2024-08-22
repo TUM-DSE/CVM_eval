@@ -3,12 +3,15 @@
 
 from datetime import datetime
 from pathlib import Path
+import subprocess
+import multiprocessing
+import time
 from typing import Optional
-from subprocess import CalledProcessError
 
-from config import PROJECT_ROOT
+from config import PROJECT_ROOT, DATE_FORMAT
 from qemu import QemuVm
 from storage import mount_disk
+from utils import capture_metrics, ensure_db, insert_into_db, connect_to_db
 
 
 def setup_disk(vm: QemuVm, fail_stop=True) -> bool:
@@ -77,7 +80,7 @@ def run_tensorflow(
     """Run the tensorflow benchmark on the VM.
     The results are saved in ./bench-result/application/tensorflow/{name}/{date}/
     """
-    date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    date = datetime.now().strftime(DATE_FORMAT)
     outputdir = Path(f"./bench-result/application/tensorflow/{name}/{date}/")
     outputdir_host = PROJECT_ROOT / outputdir
     outputdir_host.mkdir(parents=True, exist_ok=True)
@@ -88,7 +91,6 @@ def run_tensorflow(
             thread_cnt = vm.config["resource"].cpu
         else:
             thread_cnt = 1
-
     disk = setup_disk(vm)
     if disk:
         rootdir = "/mnt/application"
@@ -102,23 +104,29 @@ def run_tensorflow(
         "run",
         f"{thread_cnt}",
     ]
-
     for i in range(repeat):
         print(f"Running tensorflow {i+1}/{repeat}")
-        try:
-            output = vm.ssh_cmd(cmd)
-        except CalledProcessError as e:
-            # Tensorflow may fail due to OOM, ignore that case
-            print(f"Error running tensorflow: {e}")
-            continue
+        parent_conn, child_conn = multiprocessing.Pipe()
+        process = multiprocessing.Process(
+            target=run_benchmark, args=(child_conn, vm, cmd)
+        )
+        process.start()
+        time.sleep(3)
+        # Scan the logfile for start of the benchmark
+        if scan_file_for_sequence(f"{PROJECT_ROOT}/tensorflow.log", "Start iteration"):
+            print("Benchmark started")
+        else:
+            print("Timeout: Benchmark not started")
+            return
+        mpstat_id, perf_id = capture_metrics(name, 20)
+        process.join()
+        output = parent_conn.recv()
         if output.returncode != 0:
             print(f"Error running tensorflow: {output.stderr}")
             continue
-        lines = output.stdout.split("\n")
         with open(outputdir_host / f"thread_{thread_cnt}-{i+1}.log", "w") as f:
-            f.write("\n".join(lines))
-
-    print(f"Results saved in {outputdir_host}")
+            f.write(output.stdout)
+    print(f"Results saved in {outputdir_host} and database")
 
 
 def run_pytorch(
@@ -238,3 +246,19 @@ def prepare(vm: QemuVm):
         output = vm.ssh_cmd(cmd)
         if output.returncode != 0:
             print(f"Error preparing {app}: {output.stderr}")
+
+
+# Scan file for 120 seconds
+def scan_file_for_sequence(file_path, sequence):
+    start_time = time.time()
+    while time.time() - start_time < 120:
+        with open(file_path, "r") as file:
+            for line in file.readlines():
+                if sequence in line:
+                    return True
+    return False
+
+
+def run_benchmark(pipe, vm, cmd):
+    output = vm.ssh_cmd(cmd)
+    pipe.send(output)

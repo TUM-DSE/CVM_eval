@@ -22,7 +22,9 @@ run thread_cnt='8':
     --do_predict=True \
     --mode=benchmark \
     --inter_op_parallelism_threads=1 \
-    --intra_op_parallelism_threads={{thread_cnt}}
+    --intra_op_parallelism_threads={{thread_cnt}} \
+    2> >(tee /share/tensorflow.log >&2) | tee /share/tensorflow.log 
+    rm /share/tensorflow.log
 
 run_bind thread_cnt='8':
     numactl --cpunodebind=0 --membind=0 \
