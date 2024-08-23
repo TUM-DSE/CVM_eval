@@ -11,6 +11,8 @@ import numpy as np
 from pathlib import Path
 
 from invoke import task
+from utils import query_db
+from tasks.plot_metrics import METRIC_FUNCS
 
 mpl.use("Agg")
 mpl.rcParams["text.latex.preamble"] = r"\usepackage{amsmath}"
@@ -32,8 +34,11 @@ pastel = sns.color_palette("pastel")
 vm_col = pastel[0]
 swiotlb_col = pastel[1]
 cvm_col = pastel[2]
+poll_col = pastel[3]
+hpoll_col = pastel[4]
 palette = [vm_col, cvm_col]
 palette2 = [vm_col, swiotlb_col, cvm_col]
+palette3 = [vm_col, cvm_col, poll_col, hpoll_col]
 hatches = ["", "//"]
 hatches2 = ["", "", "//"]
 
@@ -443,7 +448,7 @@ def plot_application(
                     fontsize=5,
                 )
 
-    sns.despine(top = True)
+    sns.despine(top=True)
     plt.tight_layout()
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -524,7 +529,7 @@ def plot_sqlite(
     for container in ax.containers:
         ax.bar_label(container, fmt="%.1f")
 
-    sns.despine(top = True)
+    sns.despine(top=True)
     plt.tight_layout()
 
     outdir = Path(outdir)
@@ -532,3 +537,51 @@ def plot_sqlite(
     save_path = outdir / f"{outname}_{device}.pdf"
     plt.savefig(save_path, bbox_inches="tight")
     print(f"Plot saved in {save_path}")
+
+
+@task
+def plot_tensorflow_db(ctx, metric: Optional[str] = None):
+    df = query_db("SELECT * FROM tensorflow")
+
+    def determine_size(row):
+        if "small" in row["name"]:
+            return "small"
+        elif "medium" in row["name"]:
+            return "medium"
+        elif "large" in row["name"]:
+            return "large"
+        else:
+            return "xlarge"
+
+    df["size"] = df.apply(determine_size, axis=1)
+    df["name"] = df.apply(
+        lambda row: row["name"]
+        .replace("-direct", "")
+        .replace("-medium", "")
+        .replace("-large", ""),
+        axis=1,
+    )
+
+    fig, ax = plt.subplots()
+    sns.barplot(
+        data=df,
+        x="size",
+        y="examples_per_sec",
+        ax=ax,
+        hue="name",
+        palette=palette3,
+        edgecolor="black",
+    )
+    ax.set_xlabel("")
+    ax.set_ylabel("Throughput (examples/s)")
+    ax.set_title("Higher is better ↑", fontsize=12, color="navy")
+
+    if metric:
+        ax2 = ax.twinx()
+        METRIC_FUNCS[metric](sns, ax2, "size", "name", df, palette3)
+
+    plt.tight_layout()
+    plt.savefig(
+        f"plot/tensorflow/tensorflow" + (f"_{metric}" if metric else "") + ".pdf",
+        bbox_inches="tight",
+    )

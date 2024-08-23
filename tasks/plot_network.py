@@ -12,6 +12,7 @@ from pathlib import Path
 
 from invoke import task
 from utils import *
+from tasks.plot_metrics import METRIC_FUNCS
 
 mpl.use("Agg")
 mpl.rcParams["text.latex.preamble"] = r"\usepackage{amsmath}"
@@ -1073,7 +1074,7 @@ def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
 
     if metric:
         ax2 = ax1.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "name", "Configuration", df)
+        METRIC_FUNCS[metric](sns, ax2, "name", None, df, palette)
 
     sns.despine(top=True, right=False)
     plt.tight_layout()
@@ -1118,7 +1119,7 @@ def plot_iperf_udp(ctx, metric: Optional[str] = None, remote: bool = False):
 
     if metric:
         ax2 = ax1.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "pkt_size", "Configuration", df)
+        METRIC_FUNCS[metric](sns, ax2, "pkt_size", "Configuration", df, palette)
 
     sns.despine(top=True, right=False)
     plt.ticklabel_format(style="plain", axis="y")
@@ -1169,7 +1170,7 @@ def plot_memtier_db(ctx, metric: Optional[str] = None, remote: bool = False):
 
     if metric:
         ax2 = ax.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "Protocol, TLS", "Configuration", df)
+        METRIC_FUNCS[metric](sns, ax2, "Protocol, TLS", "Configuration", df, palette)
 
     sns.despine(top=True, right=False)
     plt.ticklabel_format(style="plain", axis="y")
@@ -1217,7 +1218,7 @@ def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False):
 
     if metric:
         ax2 = ax.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "TLS", "Configuration", df)
+        METRIC_FUNCS[metric](sns, ax2, "TLS", "Configuration", df, palette)
 
     sns.despine(top=True, right=False)
     plt.ticklabel_format(style="plain", axis="y")
@@ -1229,180 +1230,3 @@ def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False):
         + ".pdf",
         bbox_inches="tight",
     )
-
-
-def plot_ipc(sns, ax, x, hue, df):
-    df = df.merge(
-        query_db("SELECT id as hid, cycles FROM perf_host"),
-        left_on="perf",
-        right_on="hid",
-        how="left",
-    )
-    df = df.merge(
-        query_db("SELECT id as gid, instructions FROM perf_guest"),
-        left_on="perf",
-        right_on="gid",
-        how="left",
-    )
-    sns.lineplot(
-        data=df,
-        x=x,
-        y=df["instructions"] / df["cycles"],
-        hue=hue,
-        ax=ax,
-        palette=palette,
-        marker="o",
-        linestyle="dotted",
-        legend=False,
-        errorbar=None,
-    )
-    ax.set_ylabel("Instructions per Cycle")
-
-
-def plot_cpu(sns, ax, x, hue, df):
-    df = df.merge(
-        query_db("SELECT id ,idle FROM mpstat_guest"),
-        left_on="mpstat",
-        right_on="id",
-        how="left",
-    )
-    sns.lineplot(
-        data=df,
-        x=x,
-        y=(100 - df["idle"]),
-        ax=ax,
-        palette=palette,
-        marker="o",
-        hue=hue,
-        linestyle="dotted",
-        legend=False,
-        errorbar=None,
-    )
-    ax.set_ylabel("CPU Utilization (%)")
-
-
-def plot_vmexit(sns, ax, x, hue, df):
-    df = df.merge(
-        query_db("SELECT id, vmexits FROM perf_host"),
-        left_on="perf",
-        right_on="id",
-        how="left",
-    )
-    df = df.merge(
-        query_db("SELECT id, instructions FROM perf_guest"),
-        left_on="perf",
-        right_on="id",
-        how="left",
-    )
-    sns.lineplot(
-        data=df,
-        x=x,
-        y=df["vmexits"] / (df["instructions"] / 1e6),
-        ax=ax,
-        palette=palette,
-        marker="o",
-        hue=hue,
-        linestyle="dotted",
-        legend=False,
-        errorbar=None,
-    )
-    ax.set_ylabel("VM Exits per 1M Instructions")
-
-
-def plot_dTLB_misses(sns, ax, x, hue, df):
-    df = df.merge(
-        query_db("SELECT id, dTLB_load_misses, instructions FROM perf_guest"),
-        left_on="perf",
-        right_on="id",
-        how="left",
-    )
-    sns.lineplot(
-        data=df,
-        x=x,
-        y=df["dTLB_load_misses"] / (df["instructions"] / 1e6),
-        ax=ax,
-        palette=palette,
-        marker="o",
-        hue=hue,
-        linestyle="dotted",
-        legend=False,
-        errorbar=None,
-    )
-    ax.set_ylabel("dTLB load misses per 1M Instructions")
-
-
-def plot_iTLB_misses(sns, ax, x, hue, df):
-    df = df.merge(
-        query_db("SELECT id, iTLB_load_misses, instructions FROM perf_guest"),
-        left_on="perf",
-        right_on="id",
-        how="left",
-    )
-    sns.lineplot(
-        data=df,
-        x=x,
-        y=df["iTLB_load_misses"] / (df["instructions"] / 1e6),
-        ax=ax,
-        palette=palette,
-        marker="o",
-        hue=hue,
-        linestyle="dotted",
-        legend=False,
-        errorbar=None,
-    )
-    ax.set_ylabel("iTLB misses per 1M Instructions")
-
-
-def plot_cache_misses(sns, ax, x, hue, df):
-    df = df.merge(
-        query_db("SELECT id, cache_misses, instructions FROM perf_guest"),
-        left_on="perf",
-        right_on="id",
-        how="left",
-    )
-    sns.lineplot(
-        data=df,
-        x=x,
-        y=df["cache_misses"] / (df["instructions"] / 1e6),
-        ax=ax,
-        palette=palette,
-        marker="o",
-        hue=hue,
-        linestyle="dotted",
-        legend=False,
-        errorbar=None,
-    )
-    ax.set_ylabel("Cache misses per 1M Instructions")
-
-
-def plot_branch_misses(sns, ax, x, hue, df):
-    df = df.merge(
-        query_db("SELECT id, branch_misses, instructions FROM perf_guest"),
-        left_on="perf",
-        right_on="id",
-        how="left",
-    )
-    sns.lineplot(
-        data=df,
-        x=x,
-        y=df["branch_misses"] / (df["instructions"] / 1e6),
-        ax=ax,
-        palette=palette,
-        marker="o",
-        hue=hue,
-        linestyle="dotted",
-        legend=False,
-        errorbar=None,
-    )
-    ax.set_ylabel("Branch misses per 1M Instructions")
-
-
-METRIC_FUNCS = {
-    "vmexits": plot_vmexit,
-    "cpu": plot_cpu,
-    "ipc": plot_ipc,
-    "dTLB_misses": plot_dTLB_misses,
-    "iTLB_misses": plot_iTLB_misses,
-    "cache_misses": plot_cache_misses,
-    "branch_misses": plot_branch_misses,
-}

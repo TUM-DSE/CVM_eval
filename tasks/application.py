@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from datetime import datetime
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -125,6 +126,7 @@ def run_tensorflow(
         else:
             print("Timeout: Benchmark not started")
             return
+        time.sleep(15)
         mpstat_id, perf_id = capture_metrics(name, 20)
         process.join()
         output = parent_conn.recv()
@@ -281,11 +283,12 @@ def prepare(vm: QemuVm):
 # Scan file for 120 seconds
 def scan_file_for_sequence(file_path, sequence):
     start_time = time.time()
-    while time.time() - start_time < 120:
-        with open(file_path, "r") as file:
-            for line in file.readlines():
-                if sequence in line:
-                    return True
+    while time.time() - start_time < 5 * 60:
+        if os.path.exists(file_path):
+            with open(file_path, "r") as file:
+                for line in file.readlines():
+                    if sequence in line:
+                        return True
     return False
 
 
