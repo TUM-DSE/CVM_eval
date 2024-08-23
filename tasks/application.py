@@ -3,6 +3,7 @@
 
 from datetime import datetime
 from pathlib import Path
+import re
 import subprocess
 import multiprocessing
 import time
@@ -11,7 +12,13 @@ from typing import Optional
 from config import PROJECT_ROOT, DATE_FORMAT
 from qemu import QemuVm
 from storage import mount_disk
-from utils import capture_metrics, ensure_db, insert_into_db, connect_to_db
+from utils import (
+    capture_metrics,
+    ensure_db,
+    insert_into_db,
+    connect_to_db,
+    TENSORFLOW_COLS,
+)
 
 
 def setup_disk(vm: QemuVm, fail_stop=True) -> bool:
@@ -121,6 +128,29 @@ def run_tensorflow(
         mpstat_id, perf_id = capture_metrics(name, 20)
         process.join()
         output = parent_conn.recv()
+        # parse output and save to db
+        pattern = r"Total throughput \(examples/sec\): (\d+\.\d+)"
+        match = re.search(pattern, output.stdout)
+        if match:
+            examples = match.group(1)
+            print(f"Total throughput (examples/sec): {examples}")
+            connection = connect_to_db()
+            ensure_db(connection, table="tensorflow", columns=TENSORFLOW_COLS)
+            insert_into_db(
+                connection,
+                "tensorflow",
+                {
+                    "date": date,
+                    "name": name,
+                    "examples_per_sec": examples,
+                    "thread_cnt": thread_cnt,
+                    "mpstat": mpstat_id,
+                    "perf": perf_id,
+                },
+            )
+        else:
+            print(f"No Match in output: {output.stdout}")
+            continue
         if output.returncode != 0:
             print(f"Error running tensorflow: {output.stderr}")
             continue

@@ -89,6 +89,13 @@ NGINX_COLS = {
     "PRIMARY KEY": "(date, tls)",
 }
 
+TENSORFLOW_COLS = {
+    **COLUMNS,
+    "thread_cnt": "INT",
+    "examples_per_sec": "FLOAT",
+    "PRIMARY KEY": "(date)",
+}
+
 
 @task
 def show_config(ctx):
