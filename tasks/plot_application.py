@@ -558,7 +558,8 @@ def plot_tensorflow_db(ctx, metric: Optional[str] = None):
         lambda row: row["name"]
         .replace("-direct", "")
         .replace("-medium", "")
-        .replace("-large", ""),
+        .replace("-large", "")
+        .replace("-numa", ""),
         axis=1,
     )
 
