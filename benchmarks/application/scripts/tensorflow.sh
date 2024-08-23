@@ -5,7 +5,6 @@ action="run-tensorflow"
 for size in medium large numa; do
     for type in amd snp; do
         inv vm.start --size $size --type ${type} --action=${action}
-        inv vm.start --size $size --type ${type} --action=${action}
     done
 
     #snp with idle polling
