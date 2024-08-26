@@ -1033,7 +1033,9 @@ def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
     and_clause = (
         " AND name LIKE '%remote%'" if remote else "AND name NOT LIKE '%remote%'"
     )
-    df = query_db(f"SELECT * FROM iperf WHERE proto LIKE 'tcp' {and_clause}")
+    df = query_db(
+        f"SELECT * FROM iperf WHERE proto LIKE 'tcp' AND name LIKE '%mq%' {and_clause}"
+    )
     df["Configuration"] = df.apply(
         lambda row: row["name"]
         .replace("-direct", "")
