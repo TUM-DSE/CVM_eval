@@ -14,6 +14,7 @@ from config import PROJECT_ROOT, DATE_FORMAT
 from qemu import QemuVm
 from storage import mount_disk
 from utils import (
+    NPB_COLS,
     capture_metrics,
     ensure_db,
     insert_into_db,
@@ -158,6 +159,72 @@ def run_tensorflow(
             continue
         with open(outputdir_host / f"thread_{thread_cnt}-{i+1}.log", "w") as f:
             f.write(output.stdout)
+    print(f"Results saved in {outputdir_host} and database")
+
+
+def run_npb(name: str, vm: QemuVm, prog: str = "ua", size: str = "C"):
+    """Run the NPB benchmark on the VM.
+    The results are saved in ./bench-result/application/npb/{name}/{date}/ and the database
+    """
+    date = datetime.now().strftime(DATE_FORMAT)
+    outputdir = Path(f"./bench-result/application/npb/{name}/{date}/")
+    outputdir_host = PROJECT_ROOT / outputdir
+    outputdir_host.mkdir(parents=True, exist_ok=True)
+
+    root_dir = "/share/benchmarks/application"
+
+    connection = connect_to_db()
+    ensure_db(connection, table="npb", columns=NPB_COLS)
+    for policy in ["ACTIVE", "PASSIVE"]:
+        cmd = [
+            "just",
+            "-f",
+            f"{root_dir}/npb/justfile",
+            "run",
+            f"{prog}",
+            f"{policy}",
+        ]
+        print(f"Running NPB {prog} {size}, policy: {policy}")
+        parent_conn, child_conn = multiprocessing.Pipe()
+        process = multiprocessing.Process(
+            target=run_benchmark, args=(child_conn, vm, cmd)
+        )
+        process.start()
+        mpstat_id, perf_id = capture_metrics(name, 1)
+        process.join()
+        output = parent_conn.recv()
+        pattern = r"Time in seconds\s*=\s*([\d.]+).*?Mop/s total\s*=\s*([\d.]+)"
+        match = re.search(pattern, output.stdout, re.DOTALL)
+        if match:
+            time, mops = match.groups()
+            print(f"Time in seconds: {time}, Mop/s total: {mops}")
+            insert_into_db(
+                connection,
+                "npb",
+                {
+                    "date": date,
+                    "name": name,
+                    "prog": prog,
+                    "size": size,
+                    "policy": policy,
+                    "threads": vm.config["resource"].cpu,
+                    "time": time,
+                    "mops": mops,
+                    "mpstat": mpstat_id,
+                    "perf": perf_id,
+                },
+            )
+
+        else:
+            print(f"No Match in output: {output.stdout}")
+            return
+        if output.returncode != 0:
+            print(f"Error running NPB: {output.stderr}")
+            return
+        lines = output.stdout.split("\n")
+        with open(outputdir_host / f"{prog}_{size}_{policy}.log", "w") as f:
+            f.write("\n".join(lines))
+
     print(f"Results saved in {outputdir_host} and database")
 
 

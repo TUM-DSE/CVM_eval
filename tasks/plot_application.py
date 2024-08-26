@@ -586,3 +586,40 @@ def plot_tensorflow_db(ctx, metric: Optional[str] = None):
         f"plot/tensorflow/tensorflow" + (f"_{metric}" if metric else "") + ".pdf",
         bbox_inches="tight",
     )
+
+
+@task
+def plot_npb(ctx, bench: str = "ua", metric: Optional[str] = None):
+    df = query_db(f"SELECT * FROM npb WHERE prog='{bench}'")
+    df["name"] = df.apply(
+        lambda row: row["name"]
+        .replace("-direct", "")
+        .replace("-medium", "")
+        .replace("-large", "")
+        .replace("-numa", ""),
+        axis=1,
+    )
+
+    fig, ax = plt.subplots()
+    sns.barplot(
+        data=df,
+        x="policy",
+        y="mops",
+        ax=ax,
+        hue="name",
+        palette=palette3,
+        edgecolor="black",
+    )
+    ax.set_xlabel("")
+    ax.set_ylabel("MOP/s")
+    ax.set_title("Higher is better ↑", fontsize=12, color="navy")
+
+    if metric:
+        ax2 = ax.twinx()
+        METRIC_FUNCS[metric](sns, ax2, "size", "policy", df, palette3)
+
+    plt.tight_layout()
+    plt.savefig(
+        f"plot/npb/{bench}" + (f"_{metric}" if metric else "") + ".pdf",
+        bbox_inches="tight",
+    )

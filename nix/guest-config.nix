@@ -160,7 +160,6 @@ in
       jq
       sysstat # mpstat, iostat, sar
       pkgs.linuxPackages_latest.perf
-      gfortran9
 
       # phoronix test suite and dependencies to install tests
       #phoronix-test-suite

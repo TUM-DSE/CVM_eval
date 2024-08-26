@@ -995,6 +995,23 @@ def run_tensorflow(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> N
         vm.shutdown()
 
 
+def run_npb(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
+    resource: VMResource = kargs["config"]["resource"]
+    pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
+    vm: QemuVM
+    with spawn_qemu(
+        qemu_cmd, numa_node=resource.numa_node, config=kargs["config"]
+    ) as vm:
+        if pin:
+            vm.pin_vcpu(pin_base)
+        vm.wait_for_ssh()
+        from application import run_npb
+
+        prog = kargs["config"]["npb_prog"] if "npb_prog" in kargs["config"] else "ua"
+        run_npb(name, vm, prog)
+        vm.shutdown()
+
+
 def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     repeat: int = kargs["config"].get("repeat", 1)
     resource: VMResource = kargs["config"]["resource"]
@@ -1134,6 +1151,8 @@ def do_action(action: str, **kwargs: Any) -> None:
         run_blender(**kwargs)
     elif action == "run-tensorflow":
         run_tensorflow(**kwargs)
+    elif action == "run-npb":
+        run_npb(**kwargs)
     elif action == "run-pytorch":
         run_pytorch(**kwargs)
     elif action == "run-sqlite":
@@ -1207,6 +1226,7 @@ def start(
     tls: bool = False,
     remote: bool = False,
     fio_job: str = "test",
+    npb_prog: str = "ua",
     warn: bool = True,
     name_extra: str = "",
 ) -> None:

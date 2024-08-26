@@ -96,6 +96,17 @@ TENSORFLOW_COLS = {
     "PRIMARY KEY": "(date)",
 }
 
+NPB_COLS = {
+    **COLUMNS,
+    "prog": "VARCHAR(2)",
+    "size": "VARCHAR(1)",
+    "policy": "VARCHAR(10)",
+    "threads": "INT",
+    "time": "FLOAT",  # in seconds
+    "mops": "FLOAT",
+    "PRIMARY KEY": "(date, policy)",
+}
+
 
 @task
 def show_config(ctx):

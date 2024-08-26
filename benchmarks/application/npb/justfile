@@ -12,9 +12,9 @@ prepare:
     cd ..
     make suite
 
-run prog, policy: 
+run prog policy: 
     #!/usr/bin/env bash
     cd {{justfile_directory()}}
-    OMP_DISPLAY_ENV=TRUE OMP_WAIT_POLICY={{policy}} ./NPB3.4.3/NPB3.4-OMP/bin/{{prog}}.C.x
+    OMP_DISPLAY_ENV=TRUE OMP_WAIT_POLICY={{policy}} OMP_NUM_THREADS=$(nproc) ./NPB3.4.3/NPB3.4-OMP/bin/{{prog}}.C.x
 
 
