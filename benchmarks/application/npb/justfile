@@ -1,2 +1,20 @@
-
 prepare:
+    #!/usr/bin/env bash
+    cd {{justfile_directory()}}
+    wget -nc https://www.nas.nasa.gov/assets/npb/NPB3.4.3.tar.gz
+    if [ ! -d "NPB3.4.3" ]; then 
+        tar -xzf NPB3.4.3.tar.gz; 
+    fi 
+    cd NPB3.4.3/NPB3.4-OMP/config
+    cp make.def.template make.def
+    cp suite.def.template suite.def
+    grep -v '^#' suite.def | sed 's/S/C/g' > suite.def.tmp && mv suite.def.tmp suite.def
+    cd ..
+    make suite
+
+run prog, policy: 
+    #!/usr/bin/env bash
+    cd {{justfile_directory()}}
+    OMP_DISPLAY_ENV=TRUE OMP_WAIT_POLICY={{policy}} ./NPB3.4.3/NPB3.4-OMP/bin/{{prog}}.C.x
+
+

@@ -145,6 +145,7 @@
                 hwloc
                 numactl
                 sysstat
+                gfortran9
 
                 fio
                 cryptsetup

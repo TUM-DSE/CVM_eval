@@ -268,7 +268,7 @@ def run_sqlite(
 
 
 def prepare(vm: QemuVm):
-    for app in ["pytorch", "tensorflow"]:
+    for app in ["pytorch", "tensorflow", "npb"]:
         cmd = [
             "just",
             "-f",
