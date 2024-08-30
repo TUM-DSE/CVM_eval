@@ -1,5 +1,3 @@
-# XXX: WIP
-
 { pkgs }:
 
 with pkgs;
@@ -14,6 +12,16 @@ qemu_full.overrideAttrs (new: old: {
     rev = "7a97b8940d938d0d5740c0513c9acf0053c6cb85";
     sha256 = "sha256-GoxklxWLuXXG60y6Z6UunV+S+0PH4RBJht4vJ740CEY=";
     fetchSubmodules = true;
+    postFetch = ''
+      cd "$out"
+      (
+        for p in subprojects/*.wrap; do
+            ${pkgs.meson}/bin/meson subprojects download "$(basename "$p" .wrap)"
+            rm -rf subprojects/$(basename "$p" .wrap/.git)
+        done
+      )
+      find subprojects -type d -name .git -prune -execdir rm -r {} +
+    '';
   };
   dontStrip = true;
   gtkSupport = false;
@@ -29,8 +37,6 @@ qemu_full.overrideAttrs (new: old: {
 
   # no patch
   patches = [ ];
-
-  dontUseMesonConfigure = true;
 
   # NOTE: The compiled binary is wrapped. (gtkSuppor=false does not prevent wrapping. why?)
   # The actual binary is ./result/bin/.qemu-system-x86_64-wrapped
