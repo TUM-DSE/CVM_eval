@@ -10,7 +10,7 @@ qemu_full.overrideAttrs (new: old: {
     #sha256 = "sha256-XecX9ZpJCVCYjUwGAXuoJJl3bAVsG+a91hwugzWCrQI=";
     # branch: tdx-qemu-next
     rev = "7a97b8940d938d0d5740c0513c9acf0053c6cb85";
-    sha256 = "sha256-GoxklxWLuXXG60y6Z6UunV+S+0PH4RBJht4vJ740CEY=";
+    sha256 = "sha256-uH2XZlxTAwaVmlgiUCM8N95EpNIe3haAuy9opjAuW3o=";
     fetchSubmodules = true;
     postFetch = ''
       cd "$out"
