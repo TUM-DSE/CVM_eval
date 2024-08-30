@@ -8,8 +8,11 @@ qemu_full.overrideAttrs (new: old: {
     owner = "intel-staging";
     repo = "qemu-tdx";
     # branch: tdx-qemu-upstream
-    rev = "97d7eee4450ca607d36acd2bb1d6137d193687cc";
-    sha256 = "sha256-XecX9ZpJCVCYjUwGAXuoJJl3bAVsG+a91hwugzWCrQI=";
+    #rev = "97d7eee4450ca607d36acd2bb1d6137d193687cc";
+    #sha256 = "sha256-XecX9ZpJCVCYjUwGAXuoJJl3bAVsG+a91hwugzWCrQI=";
+    # branch: tdx-qemu-next
+    rev = "7a97b8940d938d0d5740c0513c9acf0053c6cb85";
+    sha256 = "sha256-GoxklxWLuXXG60y6Z6UunV+S+0PH4RBJht4vJ740CEY=";
     fetchSubmodules = true;
   };
   dontStrip = true;
