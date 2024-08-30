@@ -23,6 +23,12 @@ Note: The latest kernel versions (6.9 >=) has a memory performance issue by defa
 ## Intel TDX
 - Intel summarizes TDX software information [here](https://github.com/intel/tdx/wiki/TDX-KVM).
 - Also, Canonical summarizes information on TDX on Ubuntu [here](https://github.com/canonical/tdx).
+    - Using Ubuntu would make life easier for the most cases
+
+### Sotware version table
+| host kernel version | linux | ovmf | qemu |
+| ------------------- | ----- | -----| -----|
+| 6.8.0-rc1           | [kvm-upstream-next-20240122](https://github.com/mmisono/linux/tree/tdx-kvm-upstream-next-20240122) | [TDVF-20240105](https://github.com/mmisono/edk2/tree/TDVF-20240105) | [tdx-qemu-next-20231208](https://github.com/mmisono/qemu/tree/tdx-qemu-next-20231208) |
 
 ### Ubuntu 23.10
 - Software stack: https://github.com/canonical/tdx/tree/mantic-23.10

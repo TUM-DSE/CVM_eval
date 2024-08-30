@@ -27,3 +27,28 @@
 - mmio (via ept violation)
     - Only [ept violation on shared memory is handled](https://github.com/torvalds/linux/blob/v6.8/arch/x86/coco/tdx/tdx.c#L673)
 
+## Enable TDX on Dell PowerEdge R760
+- Docs: https://infohub.delltechnologies.com/en-us/p/enabling-intel-r-tdx-on-dell-poweredge/
+
+### Prerequisite
+- 5th gen Intel Xeon Scalable Processors (or later)
+- Install identical DIMMs for memory slot 1 to 8 (at least) per CPU socket
+    - This is requirement to use SGX
+
+### BIOS configuration
+- Memory Settings
+    - Memory Operating Mode: Optimizer Mode
+    - Node interleaving: Disabled
+- Processor settings
+    - CPU Physical Address Limit: Disabled
+        - This option is required to enable "Multiple Keys" for memory encryption
+- System Security
+    - Intel TXT: ON
+    - Memory Encryption: Multiple Keys
+    - Global Memory Integrity: Disabled
+    - TME Encryption Bypass: Enabled (or Disabled)
+    - TME-MT/TDX Key Split: non-zero value
+    - TDX Secure Arbitration Mode Loader: Enabled
+    - SGX On
+        - We first need to enable SGX to enable TDX options
+
