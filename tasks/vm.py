@@ -887,7 +887,7 @@ def run_iperf(
             and "swiotlb" in kargs["config"]["extra_cmdline"]
         ):
             name += f"-swiotlb"
-        run_iperf(name, vm, udp=udp)
+        run_iperf(name, vm, udp=udp, metrics=kargs["config"]["metrics"])
 
         vm.shutdown()
 
@@ -918,7 +918,9 @@ def run_memtier(
             and "swiotlb" in kargs["config"]["extra_cmdline"]
         ):
             name += f"-swiotlb"
-        run_memtier(name, vm, server=server, tls=tls)
+        run_memtier(
+            name, vm, server=server, tls=tls, metrics=kargs["config"]["metrics"]
+        )
         vm.shutdown()
 
 
@@ -945,7 +947,7 @@ def run_nginx(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
             and "swiotlb" in kargs["config"]["extra_cmdline"]
         ):
             name += f"-swiotlb"
-        run_nginx(name, vm)
+        run_nginx(name, vm, metrics=kargs["config"]["metrics"])
         vm.shutdown()
 
 
@@ -991,7 +993,7 @@ def run_tensorflow(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> N
         vm.wait_for_ssh()
         from application import run_tensorflow
 
-        run_tensorflow(name, vm, repeat=repeat)
+        run_tensorflow(name, vm, repeat=repeat, metrics=kargs["config"]["metrics"])
         vm.shutdown()
 
 
@@ -1008,7 +1010,7 @@ def run_npb(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
         from application import run_npb
 
         prog = kargs["config"]["npb_prog"] if "npb_prog" in kargs["config"] else "ua"
-        run_npb(name, vm, prog)
+        run_npb(name, vm, prog, metrics=kargs["config"]["metrics"])
         vm.shutdown()
 
 
@@ -1227,6 +1229,7 @@ def start(
     remote: bool = False,
     fio_job: str = "test",
     npb_prog: str = "ua",
+    metrics: bool = False,
     warn: bool = True,
     name_extra: str = "",
 ) -> None:

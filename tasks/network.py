@@ -21,7 +21,7 @@ from utils import (
 )
 
 
-def run_ping(name: str, vm: QemuVm, pin_base=20):
+def run_ping(name: str, vm: QemuVm, pin_base=20, metrics: bool = False):
     """Ping the VM.
     The results are saved in ./bench-results/network/ping/{name}/{date}
     And in the ping table of the database.
@@ -87,6 +87,7 @@ def run_iperf(
     parallel: Optional[int] = None,
     pin_start: int = 20,
     pin_end: Optional[int] = None,
+    metrics: bool = False,
 ):
     """Run the iperf benchmark on the VM.
     The results are saved in ./bench-result/network/iperf/{name}/{proto}/{date}/
@@ -158,7 +159,11 @@ def run_iperf(
         )
         time.sleep(10)
         # Capture metrics for host and guest
-        mpstat_id, perf_id = capture_metrics(name, 10, f"{pin_start}-{pin_end}")
+        mpstat_ids, perf_ids = (
+            capture_metrics(name, 10, f"{pin_start}-{pin_end}")
+            if metrics
+            else ((None, None), (None, None))
+        )
         out, err = bench_res.communicate()
         if bench_res.returncode != 0:
             print(f"Error running iperf: {err.decode()}")
@@ -181,8 +186,10 @@ def run_iperf(
                 {
                     "date": date,
                     "name": name,
-                    "mpstat": mpstat_id,
-                    "perf": perf_id,
+                    "mpstat_host": mpstat_ids[0],
+                    "mpstat_guest": mpstat_ids[1],
+                    "perf_host": perf_ids[0],
+                    "perf_guest": perf_ids[1],
                     "streams": parallel,
                     "pkt_size": pkt_size,
                     "bitrate": bitrate,  # in Gbits/sec
@@ -214,6 +221,7 @@ def run_memtier(
     ca_cert: str = PROJECT_ROOT / "benchmarks/network/tls/pki/ca.crt",
     pin_start: int = 20,
     pin_end: Optional[int] = None,
+    metrics: bool = False,
 ):
     """Run the memtier benchmark on the VM using redis or memcached.
     `server_threads` is only valid for memcached.
@@ -314,7 +322,11 @@ def run_memtier(
     )
     time.sleep(10)
     # Capture metrics for host and guest
-    mpstat_id, perf_id = capture_metrics(name, 10, f"{pin_start}-{pin_end}")
+    mpstat_ids, perf_ids = (
+        capture_metrics(name, 10, f"{pin_start}-{pin_end}")
+        if metrics
+        else ((None, None), (None, None))
+    )
     out, err = bench_res.communicate()
     if bench_res.returncode != 0:
         print(f"Error running memtier: {err.decode()}")
@@ -334,8 +346,10 @@ def run_memtier(
             {
                 "date": date,
                 "name": name,
-                "mpstat": mpstat_id,
-                "perf": perf_id,
+                "mpstat_host": mpstat_ids[0],
+                "mpstat_guest": mpstat_ids[1],
+                "perf_host": perf_ids[0],
+                "perf_guest": perf_ids[1],
                 "tls": tls,
                 "hits_per_sec": hits,
                 "misses_per_sec": misses,
@@ -367,6 +381,7 @@ def run_nginx(
     duration: str = "30s",
     pin_start: int = 20,
     pin_end: Optional[int] = None,
+    metrics: bool = False,
 ):
     """Run the nginx on the VM and the wrk benchmark on the host.
     The results are saved in ./bench-result/network/nginx/{name}/{date}/ and in the nginx table of the database.
@@ -406,7 +421,11 @@ def run_nginx(
     )
     time.sleep(10)
     # capture metrics for host and guest
-    mpstat_id, perf_id = capture_metrics(name, 10, f"{pin_start}-{pin_end}")
+    mpstat_ids, perf_ids = (
+        capture_metrics(name, 10, f"{pin_start}-{pin_end}")
+        if metrics
+        else ((None, None), (None, None))
+    )
     out, err = bench_res.communicate()
     if bench_res.returncode != 0:
         print(f"Error running wrk: {err.decode()}")
@@ -433,8 +452,10 @@ def run_nginx(
                 "lat_avg": lat_avg,
                 "req_per_sec": req_per_sec,
                 "transfer_rate": transfer_rate,
-                "mpstat": mpstat_id,
-                "perf": perf_id,
+                "mpstat_host": mpstat_ids[0],
+                "mpstat_guest": mpstat_ids[1],
+                "perf_host": perf_ids[0],
+                "perf_guest": perf_ids[1],
             },
         )
     else:
@@ -459,7 +480,11 @@ def run_nginx(
     )
     time.sleep(10)
     # capture metrics for host and guest
-    mpstat_id, perf_id = capture_metrics(name, 10)
+    mpstat_ids, perf_ids = (
+        capture_metrics(name, 10, f"{pin_start}-{pin_end}")
+        if metrics
+        else ((None, None), (None, None))
+    )
     out, err = bench_res.communicate()
     if bench_res.returncode != 0:
         print(f"Error running wrk: {err.decode()}")
@@ -485,8 +510,10 @@ def run_nginx(
                 "lat_avg": lat_avg,
                 "req_per_sec": req_per_sec,
                 "transfer_rate": transfer_rate,
-                "mpstat": mpstat_id,
-                "perf": perf_id,
+                "mpstat_host": mpstat_ids[0],
+                "mpstat_guest": mpstat_ids[1],
+                "perf_host": perf_ids[0],
+                "perf_guest": perf_ids[1],
             },
         )
     else:

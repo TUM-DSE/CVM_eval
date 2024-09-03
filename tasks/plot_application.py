@@ -543,15 +543,12 @@ def plot_sqlite(
 def plot_tensorflow_db(ctx, metric: Optional[str] = None):
     df = query_db("SELECT * FROM tensorflow")
 
-    def determine_size(row):
-        if "small" in row["name"]:
-            return "small"
-        elif "medium" in row["name"]:
-            return "medium"
-        elif "large" in row["name"]:
-            return "large"
-        else:
-            return "xlarge"
+    if metric:
+        df = df[df["perf"].notnull()]
+        df = df[df["mpstat"].notnull()]
+    else:
+        df = df[df["perf"].isnull()]
+        df = df[df["mpstat"].isnull()]
 
     df["size"] = df.apply(determine_size, axis=1)
     df["name"] = df.apply(
@@ -591,19 +588,26 @@ def plot_tensorflow_db(ctx, metric: Optional[str] = None):
 @task
 def plot_npb(ctx, bench: str = "ua", metric: Optional[str] = None):
     df = query_db(f"SELECT * FROM npb WHERE prog='{bench}'")
+    df["size"] = df.apply(determine_size, axis=1)
+    df["config"] = df.apply(
+        lambda row: row["size"].upper()[0] + "-" + row["policy"][0].upper(),
+        axis=1,
+    )
     df["name"] = df.apply(
         lambda row: row["name"]
         .replace("-direct", "")
+        .replace("-small", "")
         .replace("-medium", "")
         .replace("-large", "")
         .replace("-numa", ""),
         axis=1,
     )
-
+    sort_order = ["S-P", "S-A", "M-P", "M-A", "L-P", "L-A", "X-P", "X-A"]
+    df["config"] = pd.Categorical(df["config"], categories=sort_order, ordered=True)
     fig, ax = plt.subplots()
     sns.barplot(
         data=df,
-        x="policy",
+        x="config",
         y="mops",
         ax=ax,
         hue="name",
@@ -616,10 +620,21 @@ def plot_npb(ctx, bench: str = "ua", metric: Optional[str] = None):
 
     if metric:
         ax2 = ax.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "size", "policy", df, palette3)
+        METRIC_FUNCS[metric](sns, ax2, "config", "name", df, palette3)
 
     plt.tight_layout()
     plt.savefig(
         f"plot/npb/{bench}" + (f"_{metric}" if metric else "") + ".pdf",
         bbox_inches="tight",
     )
+
+
+def determine_size(row):
+    if "small" in row["name"]:
+        return "small"
+    elif "medium" in row["name"]:
+        return "medium"
+    elif "large" in row["name"]:
+        return "large"
+    else:
+        return "xlarge"

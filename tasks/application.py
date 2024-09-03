@@ -85,6 +85,7 @@ def run_tensorflow(
     vm: QemuVm,
     repeat: int = 1,
     thread_cnt: Optional[int] = None,
+    metrics: bool = False,
 ):
     """Run the tensorflow benchmark on the VM.
     The results are saved in ./bench-result/application/tensorflow/{name}/{date}/
@@ -128,7 +129,9 @@ def run_tensorflow(
             print("Timeout: Benchmark not started")
             return
         time.sleep(15)
-        mpstat_id, perf_id = capture_metrics(name, 20)
+        mpstat_ids, perf_ids = (
+            capture_metrics(name, 5) if metrics else ((None, None), (None, None))
+        )
         process.join()
         output = parent_conn.recv()
         # parse output and save to db
@@ -147,8 +150,10 @@ def run_tensorflow(
                     "name": name,
                     "examples_per_sec": examples,
                     "thread_cnt": thread_cnt,
-                    "mpstat": mpstat_id,
-                    "perf": perf_id,
+                    "mpstat_host": mpstat_ids[0],
+                    "mpstat_guest": mpstat_ids[1],
+                    "perf_host": perf_ids[0],
+                    "perf_guest": perf_ids[1],
                 },
             )
         else:
@@ -162,7 +167,9 @@ def run_tensorflow(
     print(f"Results saved in {outputdir_host} and database")
 
 
-def run_npb(name: str, vm: QemuVm, prog: str = "ua", size: str = "C"):
+def run_npb(
+    name: str, vm: QemuVm, prog: str = "ua", size: str = "C", metrics: bool = False
+):
     """Run the NPB benchmark on the VM.
     The results are saved in ./bench-result/application/npb/{name}/{date}/ and the database
     """
@@ -190,7 +197,9 @@ def run_npb(name: str, vm: QemuVm, prog: str = "ua", size: str = "C"):
             target=run_benchmark, args=(child_conn, vm, cmd)
         )
         process.start()
-        mpstat_id, perf_id = capture_metrics(name, 1)
+        mpstat_ids, perf_ids = (
+            capture_metrics(name, 1) if metrics else ((None, None), (None, None))
+        )
         process.join()
         output = parent_conn.recv()
         pattern = r"Time in seconds\s*=\s*([\d.]+).*?Mop/s total\s*=\s*([\d.]+)"
@@ -210,8 +219,10 @@ def run_npb(name: str, vm: QemuVm, prog: str = "ua", size: str = "C"):
                     "threads": vm.config["resource"].cpu,
                     "time": time,
                     "mops": mops,
-                    "mpstat": mpstat_id,
-                    "perf": perf_id,
+                    "mpstat_host": mpstat_ids[0],
+                    "mpstat_guest": mpstat_ids[1],
+                    "perf_host": perf_ids[0],
+                    "perf_guest": perf_ids[1],
                 },
             )
 

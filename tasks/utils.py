@@ -13,8 +13,10 @@ import pandas as pd
 COLUMNS = {
     "date": "TIMESTAMP",
     "name": "VARCHAR(50)",
-    "mpstat": "INTEGER REFERENCES mpstat(id)",
-    "perf": "INTEGER REFERENCES perf(id)",
+    "mpstat_guest": "INTEGER REFERENCES mpstat(id)",
+    "mpstat_host": "INTEGER REFERENCES mpstat(id)",
+    "perf_guest": "INTEGER REFERENCES perf(id)",
+    "perf_host": "INTEGER REFERENCES perf(id)",
 }
 
 MPSTAT_COLS = {
@@ -40,6 +42,8 @@ PERF_COLS = {
     "branch_misses": "INTEGER",
     "instructions": "INTEGER",
     "cycles": "INTEGER",
+    "L1_misses": "INTEGER",
+    "L2_misses": "INTEGER",
 }
 
 PING_COLS = {
@@ -150,7 +154,9 @@ def insert_into_db(connection, table: str, values: dict):
     columns = ", ".join(values.keys())
     formatted_values = []
     for value in values.values():
-        if isinstance(value, str):
+        if value is None:
+            formatted_values.append("NULL")
+        elif isinstance(value, str):
             formatted_values.append(f"'{value}'")
         else:
             formatted_values.append(str(value))
@@ -196,7 +202,7 @@ def parse_mpstat(hout, gout):
                 hvals[i] += float(match[i])
         for i in range(10):
             hvals[i] /= len(hmatches)
-
+    ids = []
     for vals in [hvals, gvals]:
         usr, nice, sys, iowait, irq, soft, steal, guest, gnice, idle = vals
         id = insert_into_db(
@@ -215,7 +221,8 @@ def parse_mpstat(hout, gout):
                 "idle": idle,
             },
         )
-    return id
+        ids.append(id),
+    return ids
 
 
 def parse_perf(hout, gout):
@@ -229,7 +236,13 @@ def parse_perf(hout, gout):
     host_metrics = {
         metric.replace("-", "_"): count.replace(",", "") for count, metric in matches
     }
-    matches = re.findall(pattern, gout.decode(), re.MULTILINE)
+    matches = re.findall(
+        pattern,
+        gout.decode()
+        .replace("L1-dcache-load-misses", "L1_misses")
+        .replace("l2_cache_req_stat.ic_dc_miss_in_l2", "L2_misses"),
+        re.MULTILINE,
+    )
     guest_metrics = {
         metric.replace("-", "_"): count.replace(",", "") for count, metric in matches
     }
@@ -237,7 +250,8 @@ def parse_perf(hout, gout):
     ensure_db(connection, table="perf_guest", columns=PERF_COLS)
     ensure_db(connection, table="perf_host", columns=PERF_COLS)
     g_id = insert_into_db(connection, "perf_guest", guest_metrics)
-    return insert_into_db(connection, "perf_host", host_metrics)
+    h_id = insert_into_db(connection, "perf_host", host_metrics)
+    return h_id, g_id
 
 
 def capture_metrics(name: str, duration: int = 5, range: str = "ALL"):
@@ -285,6 +299,6 @@ def capture_metrics(name: str, duration: int = 5, range: str = "ALL"):
     print("Metrics stopped")
 
     # parse and save results
-    mpstat_id = parse_mpstat(mpstat_hout, mpstat_gout)
-    perf_id = parse_perf(perf_hout, perf_gout)
-    return mpstat_id, perf_id
+    mpstat_ids = parse_mpstat(mpstat_hout, mpstat_gout)
+    perf_ids = parse_perf(perf_hout, perf_gout)
+    return mpstat_ids, perf_ids

@@ -1010,7 +1010,7 @@ def plot_ping_db(ctx, remote: bool = False):
     )
 
     fig, ax = plt.subplots()
-    sns.barplot(
+    barplot = sns.barplot(
         data=df,
         x="pkt_size",
         y="avg",
@@ -1022,6 +1022,17 @@ def plot_ping_db(ctx, remote: bool = False):
     ax.set_xlabel("Packet size in bytes")
     ax.set_ylabel("Average latency in ms")
     ax.set_title("Lower is better ↓", fontsize=12, color="navy")
+
+    for p in barplot.patches:
+        height = p.get_height()
+        ax.text(
+            p.get_x() + p.get_width() / 2.0,
+            height + 1,
+            f"{height:.2f}",
+            ha="center",
+            va="bottom",
+        )
+
     plt.tight_layout()
     plt.savefig(
         f"plot/ping" + ("-remote" if remote else "") + ".pdf", bbox_inches="tight"
@@ -1036,16 +1047,16 @@ def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
     df = query_db(
         f"SELECT * FROM iperf WHERE proto LIKE 'tcp' AND name LIKE '%mq%' {and_clause}"
     )
+
     df["Configuration"] = df.apply(
         lambda row: row["name"]
         .replace("-direct", "")
         .replace("-medium", "")
         .replace("-mq", "")
-        .replace("amd-", ""),
+        .replace("amd-", "")
+        .replace("amd", "vm"),
         axis=1,
     )
-
-    df = df.sort_values(by=["bitrate"], ascending=True)
 
     fig, ax1 = plt.subplots()
 
@@ -1106,7 +1117,7 @@ def plot_iperf_udp(ctx, metric: Optional[str] = None, remote: bool = False):
     )
 
     fig, ax1 = plt.subplots()
-    sns.barplot(
+    barplot = sns.barplot(
         data=df,
         x="pkt_size",
         y="bitrate",
@@ -1118,6 +1129,16 @@ def plot_iperf_udp(ctx, metric: Optional[str] = None, remote: bool = False):
     ax1.set_xlabel("Packet size in bytes")
     ax1.set_ylabel("Bitrate in Gbits/sec")
     ax1.set_title("Higher is better ↑", fontsize=12, color="navy")
+
+    for p in barplot.patches:
+        height = p.get_height()
+        ax1.text(
+            p.get_x() + p.get_width() / 2.0,
+            height + 1,
+            f"{height:.2f}",
+            ha="center",
+            va="bottom",
+        )
 
     if metric:
         ax2 = ax1.twinx()
@@ -1157,7 +1178,7 @@ def plot_memtier_db(ctx, metric: Optional[str] = None, remote: bool = False):
     )
     # df = df.sort_values(by=["Protocol, TLS"], ascending=True)
     fig, ax = plt.subplots()
-    sns.barplot(
+    barplot = sns.barplot(
         data=df,
         x="Protocol, TLS",
         y=df["transfer_rate"] / 1000,
@@ -1169,6 +1190,16 @@ def plot_memtier_db(ctx, metric: Optional[str] = None, remote: bool = False):
     ax.set_xlabel("Protocol, TLS")
     ax.set_ylabel("Throughput in MBytes/s")
     ax.set_title("Higher is better ↑", fontsize=12, color="navy")
+
+    for p in barplot.patches:
+        height = p.get_height()
+        ax.text(
+            p.get_x() + p.get_width() / 2.0,
+            height + 1,
+            f"{height:.2f}",
+            ha="center",
+            va="bottom",
+        )
 
     if metric:
         ax2 = ax.twinx()
@@ -1206,7 +1237,7 @@ def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False):
         axis=1,
     )
     fig, ax = plt.subplots()
-    sns.barplot(
+    barplot = sns.barplot(
         data=df,
         x=df["TLS"],
         y=df["transfer_rate"] / 1000,
@@ -1217,6 +1248,16 @@ def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False):
     )
     ax.set_ylabel("Throughput in MBytes/s")
     ax.set_title("Higher is better ↑", fontsize=12, color="navy")
+
+    for p in barplot.patches:
+        height = p.get_height()
+        ax.text(
+            p.get_x() + p.get_width() / 2.0,
+            height + 1,
+            f"{height:.2f}",
+            ha="center",
+            va="bottom",
+        )
 
     if metric:
         ax2 = ax.twinx()
