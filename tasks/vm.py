@@ -1229,7 +1229,7 @@ def start(
     remote: bool = False,
     fio_job: str = "test",
     npb_prog: str = "ua",
-    metrics: bool = False,
+    metrics: bool = True,
     warn: bool = True,
     name_extra: str = "",
 ) -> None:
