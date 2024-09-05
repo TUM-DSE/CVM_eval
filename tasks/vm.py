@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Optional, List
 from pathlib import Path
@@ -39,36 +40,86 @@ class VMConfig:
 
 
 VMRESOURCES = {}
-VMRESOURCES["amd"] = {}
-VMRESOURCES["intel"] = {}
-VMRESOURCES["amd"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
-VMRESOURCES["amd"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0], pin_base=8)
-VMRESOURCES["amd"]["large"] = VMResource(cpu=32, memory=256, numa_node=[0], pin_base=0)
-VMRESOURCES["amd"]["numa"] = VMResource(
+# AMD servers
+VMRESOURCES["vislor"] = {}
+VMRESOURCES["vislor"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["vislor"]["medium"] = VMResource(
+    cpu=8, memory=64, numa_node=[0], pin_base=8
+)
+VMRESOURCES["vislor"]["large"] = VMResource(
+    cpu=32, memory=256, numa_node=[0], pin_base=0
+)
+VMRESOURCES["vislor"]["numa"] = VMResource(
     cpu=64, memory=512, numa_node=[0, 1], pin_base=0
 )
 
-VMRESOURCES["intel"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
-VMRESOURCES["intel"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0], pin_base=8)
-VMRESOURCES["intel"]["large"] = VMResource(
-    cpu=28, memory=128, numa_node=[0], pin_base=28
+VMRESOURCES["vislor"]["boot-mem8"] = VMResource(
+    cpu=8, memory=8, numa_node=[0], pin_base=8
 )
-VMRESOURCES["intel"]["xlarge"] = VMResource(
-    cpu=56, memory=256, numa_node=[0], pin_base=0
+VMRESOURCES["vislor"]["boot-mem16"] = VMResource(
+    cpu=8, memory=16, numa_node=[0], pin_base=8
 )
-VMRESOURCES["intel"]["numa"] = VMResource(
-    cpu=112, memory=512, numa_node=[0, 1], pin_base=0
+VMRESOURCES["vislor"]["boot-mem32"] = VMResource(
+    cpu=8, memory=32, numa_node=[0], pin_base=8
+)
+VMRESOURCES["vislor"]["boot-mem64"] = VMResource(
+    cpu=8, memory=64, numa_node=[0], pin_base=8
+)
+VMRESOURCES["vislor"]["boot-mem128"] = VMResource(
+    cpu=8, memory=128, numa_node=[0], pin_base=8
+)
+VMRESOURCES["vislor"]["boot-mem256"] = VMResource(
+    cpu=8, memory=256, numa_node=[0], pin_base=8
 )
 
+VMRESOURCES["vislor"]["boot-cpu1"] = VMResource(
+    cpu=1, memory=8, numa_node=[0], pin_base=8
+)
+VMRESOURCES["vislor"]["boot-cpu8"] = VMResource(
+    cpu=8, memory=8, numa_node=[0], pin_base=8
+)
+VMRESOURCES["vislor"]["boot-cpu16"] = VMResource(
+    cpu=16, memory=8, numa_node=[0], pin_base=8
+)
+VMRESOURCES["vislor"]["boot-cpu28"] = VMResource(
+    cpu=28, memory=8, numa_node=[0], pin_base=0
+)
+VMRESOURCES["vislor"]["boot-cpu32"] = VMResource(
+    cpu=32, memory=8, numa_node=[0], pin_base=0
+)
+VMRESOURCES["vislor"]["boot-cpu56"] = VMResource(
+    cpu=56, memory=8, numa_node=[0, 1], pin_base=0
+)
+VMRESOURCES["vislor"]["boot-cpu64"] = VMResource(
+    cpu=64, memory=8, numa_node=[0, 1], pin_base=0
+)
+
+VMRESOURCES["irene"] = deepcopy(VMRESOURCES["vislor"])
+VMRESOURCES["irene"]["large"] = VMResource(
+    cpu=32, memory=256, numa_node=[0], pin_base=8
+)
+VMRESOURCES["irene"]["xlarge"] = VMResource(
+    cpu=64, memory=512, numa_node=[0], pin_base=8
+)
+del VMRESOURCES["irene"]["numa"]
+
+# Intel servers
+VMRESOURCES["ian"] = {}
+VMRESOURCES["ian"]["small"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["ian"]["medium"] = VMResource(cpu=8, memory=64, numa_node=[0], pin_base=8)
+VMRESOURCES["ian"]["large"] = VMResource(cpu=32, memory=128, numa_node=[0], pin_base=0)
+VMRESOURCES["ian"]["numa"] = VMResource(
+    cpu=64, memory=256, numa_node=[0, 1], pin_base=0
+)
 
 # configuration when SNC (Sub Numa Clustering) enabled
-# VMRESOURCES["intel"]["large"] = VMResource(
+# VMRESOURCES["sdp"]["large"] = VMResource(
 #    cpu=28, memory=128, numa_node=[1], pin_base=28
 # )
-# VMRESOURCES["intel"]["numa"] = VMResource(
+# VMRESOURCES["sdp"]["numa"] = VMResource(
 #    cpu=56, memory=256, numa_node=[0, 1], pin_base=0
 # )
-# VMRESOURCES["intel"]["vnuma"] = VMResource(
+# VMRESOURCES["sdp"]["vnuma"] = VMResource(
 #    cpu=56,
 #    memory=256,
 #    numa_node=[0, 1],
@@ -79,90 +130,54 @@ VMRESOURCES["intel"]["numa"] = VMResource(
 #    ],
 # )
 
-VMRESOURCES["amd"]["boot-mem8"] = VMResource(cpu=8, memory=8, numa_node=[0], pin_base=8)
-VMRESOURCES["amd"]["boot-mem16"] = VMResource(
+VMRESOURCES["ian"]["boot-mem8"] = VMResource(cpu=8, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["ian"]["boot-mem16"] = VMResource(
     cpu=8, memory=16, numa_node=[0], pin_base=8
 )
-VMRESOURCES["amd"]["boot-mem32"] = VMResource(
+VMRESOURCES["ian"]["boot-mem32"] = VMResource(
     cpu=8, memory=32, numa_node=[0], pin_base=8
 )
-VMRESOURCES["amd"]["boot-mem64"] = VMResource(
+VMRESOURCES["ian"]["boot-mem64"] = VMResource(
     cpu=8, memory=64, numa_node=[0], pin_base=8
 )
-VMRESOURCES["amd"]["boot-mem128"] = VMResource(
+VMRESOURCES["ian"]["boot-mem128"] = VMResource(
     cpu=8, memory=128, numa_node=[0], pin_base=8
 )
-VMRESOURCES["amd"]["boot-mem256"] = VMResource(
+VMRESOURCES["ian"]["boot-mem256"] = VMResource(
     cpu=8, memory=256, numa_node=[0], pin_base=8
 )
-
-VMRESOURCES["amd"]["boot-cpu1"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
-VMRESOURCES["amd"]["boot-cpu8"] = VMResource(cpu=8, memory=8, numa_node=[0], pin_base=8)
-VMRESOURCES["amd"]["boot-cpu16"] = VMResource(
-    cpu=16, memory=8, numa_node=[0], pin_base=8
-)
-VMRESOURCES["amd"]["boot-cpu28"] = VMResource(
-    cpu=28, memory=8, numa_node=[0], pin_base=0
-)
-VMRESOURCES["amd"]["boot-cpu32"] = VMResource(
-    cpu=32, memory=8, numa_node=[0], pin_base=0
-)
-VMRESOURCES["amd"]["boot-cpu56"] = VMResource(
-    cpu=56, memory=8, numa_node=[0, 1], pin_base=0
-)
-VMRESOURCES["amd"]["boot-cpu64"] = VMResource(
-    cpu=64, memory=8, numa_node=[0, 1], pin_base=0
-)
-
-VMRESOURCES["intel"]["boot-mem8"] = VMResource(
-    cpu=8, memory=8, numa_node=[0], pin_base=8
-)
-VMRESOURCES["intel"]["boot-mem16"] = VMResource(
-    cpu=8, memory=16, numa_node=[0], pin_base=8
-)
-VMRESOURCES["intel"]["boot-mem32"] = VMResource(
-    cpu=8, memory=32, numa_node=[0], pin_base=8
-)
-VMRESOURCES["intel"]["boot-mem64"] = VMResource(
-    cpu=8, memory=64, numa_node=[0], pin_base=8
-)
-VMRESOURCES["intel"]["boot-mem128"] = VMResource(
-    cpu=8, memory=128, numa_node=[0], pin_base=8
-)
-VMRESOURCES["intel"]["boot-mem256"] = VMResource(
-    cpu=8, memory=256, numa_node=[0], pin_base=8
-)
-# VMRESOURCES["intel"]["boot-mem256"] = VMResource(
+# VMRESOURCES["ian"]["boot-mem256"] = VMResource(
 #    cpu=8, memory=256, numa_node=[0, 1], pin_base=8
 # )
 
-VMRESOURCES["intel"]["boot-cpu1"] = VMResource(
-    cpu=1, memory=8, numa_node=[0], pin_base=8
-)
-VMRESOURCES["intel"]["boot-cpu8"] = VMResource(
-    cpu=8, memory=8, numa_node=[0], pin_base=8
-)
-VMRESOURCES["intel"]["boot-cpu16"] = VMResource(
+VMRESOURCES["ian"]["boot-cpu1"] = VMResource(cpu=1, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["ian"]["boot-cpu8"] = VMResource(cpu=8, memory=8, numa_node=[0], pin_base=8)
+VMRESOURCES["ian"]["boot-cpu16"] = VMResource(
     cpu=16, memory=8, numa_node=[0], pin_base=0
 )
-VMRESOURCES["intel"]["boot-cpu28"] = VMResource(
+VMRESOURCES["ian"]["boot-cpu32"] = VMResource(
+    cpu=32, memory=8, numa_node=[0], pin_base=0
+)
+VMRESOURCES["ian"]["boot-cpu64"] = VMResource(
+    cpu=64, memory=8, numa_node=[0, 1], pin_base=0
+)
+
+VMRESOURCES["sdp"] = deepcopy(VMRESOURCES["ian"])
+VMRESOURCES["sdp"]["large"] = VMResource(cpu=28, memory=128, numa_node=[0], pin_base=28)
+VMRESOURCES["sdp"]["xlarge"] = VMResource(cpu=56, memory=256, numa_node=[0], pin_base=0)
+VMRESOURCES["sdp"]["numa"] = VMResource(
+    cpu=112, memory=512, numa_node=[0, 1], pin_base=0
+)
+VMRESOURCES["sdp"]["boot-cpu28"] = VMResource(
     cpu=28, memory=8, numa_node=[0], pin_base=0
 )
-VMRESOURCES["intel"]["boot-cpu56"] = VMResource(
-    cpu=56, memory=8, numa_node=[0], pin_base=0
+VMRESOURCES["sdp"]["boot-cpu56"] = VMResource(
+    cpu=56, memory=8, numa_node=[0, 1], pin_base=0
 )
-# VMRESOURCES["intel"]["boot-cpu56"] = VMResource(
-#    cpu=56, memory=8, numa_node=[0, 1], pin_base=0
-# )
-
-VMRESOURCES["snp"] = VMRESOURCES["amd"]
-VMRESOURCES["tdx"] = VMRESOURCES["intel"]
-VMRESOURCES["tdx-ubuntu"] = VMRESOURCES["intel"]
-VMRESOURCES["intel-ubuntu"] = VMRESOURCES["intel"]
 
 
-def get_vm_resource(type: str, name: str) -> VMResource:
-    return VMRESOURCES[type][name]
+def get_vm_resource(hostname: str, name: str) -> VMResource:
+    return VMRESOURCES[hostname][name]
 
 
 def get_vm_config(name: str) -> VMConfig:
@@ -215,9 +230,11 @@ def get_vm_config(name: str) -> VMConfig:
     if name == "intel":
         # use kernel same for the "tdx"
         return VMConfig(
-            qemu="/usr/bin/qemu-system-x86_64",
+            # qemu="/usr/bin/qemu-system-x86_64",
+            # ovmf="/usr/share/ovmf/OVMF.fd",
+            qemu=BUILD_DIR / "qemu-tdx/bin/qemu-system-x86_64",
             image=BUILD_DIR / "image/tdx-guest-image.qcow2",
-            ovmf="/usr/share/ovmf/OVMF.fd",
+            ovmf=BUILD_DIR / "ovmf-tdx-fd/FV/OVMF.fd",
             kernel=None,
             initrd=None,
             cmdline=None,
@@ -253,9 +270,11 @@ def get_vm_config(name: str) -> VMConfig:
         )
     if name == "tdx":
         return VMConfig(
-            qemu="/usr/bin/qemu-system-x86_64",
+            # qemu="/usr/bin/qemu-system-x86_64",
+            # ovmf="/usr/share/ovmf/OVMF.fd",
+            qemu=BUILD_DIR / "qemu-tdx/bin/qemu-system-x86_64",
             image=BUILD_DIR / "image/tdx-guest-image.qcow2",
-            ovmf="/usr/share/ovmf/OVMF.fd",
+            ovmf=BUILD_DIR / "ovmf-tdx-fd/FV/OVMF.fd",
             kernel=None,
             initrd=None,
             cmdline=None,
@@ -1162,6 +1181,7 @@ def start(
     ctx: Any,
     type: str = "amd",  # amd, snp, intel, tdx
     size: str = "medium",  # small, medium, large, numa
+    hostname: str = None,  # by default use the local hostname
     direct: bool = True,  # if True, do direct boot. otherwise boot from the disk
     action: str = "attach",
     ssh_port: int = SSH_PORT,
@@ -1197,8 +1217,12 @@ def start(
     warn: bool = True,
     name_extra: str = "",
 ) -> None:
+    if hostname is None:
+        import socket
+
+        hostname = socket.gethostname()
     config: dict = locals()
-    resource: VMResource = get_vm_resource(type, size)
+    resource: VMResource = get_vm_resource(hostname, size)
     config["resource"] = resource
 
     if direct and (type == "intel-ubuntu" or type == "tdx-ubuntu"):
