@@ -1,5 +1,3 @@
-# XXX: WIP
-
 { pkgs }:
 
 with pkgs;
@@ -8,9 +6,22 @@ qemu_full.overrideAttrs (new: old: {
     owner = "intel-staging";
     repo = "qemu-tdx";
     # branch: tdx-qemu-upstream
-    rev = "97d7eee4450ca607d36acd2bb1d6137d193687cc";
-    sha256 = "sha256-XecX9ZpJCVCYjUwGAXuoJJl3bAVsG+a91hwugzWCrQI=";
+    #rev = "97d7eee4450ca607d36acd2bb1d6137d193687cc";
+    #sha256 = "sha256-XecX9ZpJCVCYjUwGAXuoJJl3bAVsG+a91hwugzWCrQI=";
+    # branch: tdx-qemu-next
+    rev = "7a97b8940d938d0d5740c0513c9acf0053c6cb85";
+    sha256 = "sha256-uH2XZlxTAwaVmlgiUCM8N95EpNIe3haAuy9opjAuW3o=";
     fetchSubmodules = true;
+    postFetch = ''
+      cd "$out"
+      (
+        for p in subprojects/*.wrap; do
+            ${pkgs.meson}/bin/meson subprojects download "$(basename "$p" .wrap)"
+            rm -rf subprojects/$(basename "$p" .wrap/.git)
+        done
+      )
+      find subprojects -type d -name .git -prune -execdir rm -r {} +
+    '';
   };
   dontStrip = true;
   gtkSupport = false;
@@ -26,8 +37,6 @@ qemu_full.overrideAttrs (new: old: {
 
   # no patch
   patches = [ ];
-
-  dontUseMesonConfigure = true;
 
   # NOTE: The compiled binary is wrapped. (gtkSuppor=false does not prevent wrapping. why?)
   # The actual binary is ./result/bin/.qemu-system-x86_64-wrapped

@@ -14,4 +14,5 @@ OVMF.fd.overrideAttrs (old: {
     # to record boot events
     ./patches/ovmf-event-record.patch
   ];
+  env.NIX_CFLAGS_COMPILE = "-Wno-return-type" + " -Wno-error=implicit-function-declaration";
 })
