@@ -6,6 +6,41 @@
     - There are several ways to install nix, but [nix-installer](https://github.com/DeterminateSystems/nix-installer) would be handy.
 - `nix develop` (or `direnv allow`)
 
+## Quick start
+### AMD SEV-SNP
+```
+nix develop
+
+# build software
+inv build.build-qemu-snp
+inv build.build-ovmf-snp
+
+# build guest image for direct boot
+inv build.build-guest-fs
+# build linux kernel for direct boot
+just setup-linux
+
+# Start (using resource config "vislor" for test. Edit ./tasks/vm.py to change)
+inv vm.start --type snp --hostname vislor
+```
+
+### Intel TDX
+```
+nix develop
+
+# build software
+inv build.build-qemu-tdx
+inv build.build-ovmf-tdx
+
+# build guest image for direct boot
+inv build.build-guest-fs
+# build linux kernel for direct boot
+just setup-linux-tdx
+
+# Start (using resource config "ian" for test. Edit ./tasks/vm.py to change)
+inv vm.start --type tdx --hostname ian
+```
+
 ## Build software
 ```
 # build software
@@ -58,6 +93,13 @@ inv vm.start --type snp
 # start snp vm, run phoronix benchmark
 inv vm.start --type snp --action run-phoronix
 ```
+
+## VM size configuration
+`VMRESOURCES` in the [./tasks/vm.py](../tasks/vm.py) defines VM sizes. For
+example, `inv vm.start --size small` use the configuration of
+`VMRESOURES[<hostname>]["small"]`. By default the machine's hostname is
+automatically used. We can specify the hostname using `--hostname` option.
+Please update the `VMRESOURCES` when using this script with a new machine.
 
 ## File sharing
 The repository directory is mounted in `/share` in the guest using vritio-9p.
