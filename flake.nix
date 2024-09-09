@@ -116,6 +116,23 @@
             ];
           };
 
+          guest-fs-sebs = make-disk-image {
+            config = self.nixosConfigurations.fs-sebs.config;
+            inherit (pkgs) lib;
+            inherit pkgs;
+            format = "qcow2";
+            partitionTableType = "none";
+            # installBootLoader option set up /sbin/init, etc.
+            installBootLoader = true;
+            diskSize = 32768;
+            contents = [
+              {
+                source = ./benchmarks/sebs/server.py;
+                target = "/opt/sebs/server.py";
+              }
+            ];
+          };
+
           # file system images w/o kernel for serverless bench
           guest-fs-serverless-bench-c = serverless-bench {
             config = self.nixosConfigurations.fs-serverless-bench-c.config;
@@ -274,6 +291,22 @@
             system = "x86_64-linux";
             modules = [
               guestConfig
+            ];
+          };
+
+          fs-sebs = nixosSystem {
+            system = "x86_64-linux";
+            modules = [
+              (import ./nix/guest-config.nix { extraEnvPackages = [ (pkgs.python3.withPackages (python-pkgs: [ python-pkgs.minio ])) ]; _gcc = gcc; })
+              ({
+                systemd.services.serverService = {
+                  after = [ "network-online.target" ];
+                  wants = [ "network-online.target" ];
+                  wantedBy = [ "multi-user.target" ];
+                  serviceConfig.Restart = "always";
+                  serviceConfig.ExecStart = "${pkgs.python3}/bin/python3 /opt/sebs/server.py";
+                };
+              })
             ];
           };
 

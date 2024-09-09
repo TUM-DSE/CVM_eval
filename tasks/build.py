@@ -145,6 +145,19 @@ def build_guest_fs_serverless_bench(c: Any, force: bool = False) -> None:
 
 
 @task
+def build_guest_fs_sebs(c: Any, force: bool = False) -> None:
+    """Build guest fs images (w/o kernel) for sebs.
+
+    Output path is ./build/guest-fs-sebs
+
+    The build result is a read-only. Copy the image to
+    ./build/image/guest-fs-sebs-*.qcow2
+    """
+
+    build_guest_image(c, "guest-fs-sebs", force=force)
+
+
+@task
 def build_spdk(c: Any) -> None:
     """Build SPDK
 
