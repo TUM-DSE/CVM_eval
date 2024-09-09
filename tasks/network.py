@@ -159,7 +159,7 @@ def run_iperf(
         )
         time.sleep(10)
         # Capture metrics for host and guest
-        mpstat_ids, perf_ids = (
+        mpstat_ids, perf_ids, bpf_id = (
             capture_metrics(name, 10, f"{pin_start}-{pin_end}")
             if metrics
             else ((None, None), (None, None))
@@ -170,10 +170,17 @@ def run_iperf(
         last_line = re.sub(
             r"\s+", " ", out.decode().strip().split("\n")[-3]
         )  # only search relevant line
-        pattern = r"\[SUM\] .* sec (\d+\.\d+|\d+) (GBytes|MBytes) (\d+\.\d+|\d+) (Gbits/sec|Mbits/sec) .*receiver"
+        tcp_pattern = r"\[SUM\] .* sec (\d+\.\d+|\d+) (GBytes|MBytes) (\d+\.\d+|\d+) (Gbits/sec|Mbits/sec) .*receiver"
+        udp_pattern = r"\[SUM\] .* sec (\d+\.\d+|\d+) (GBytes|MBytes) (\d+\.\d+|\d+) (Gbits/sec|Mbits/sec) .*\s+(\d+)/(\d+) .*receiver"
+        pattern = udp_pattern if udp else tcp_pattern
         match = re.search(pattern, last_line, re.DOTALL)
         if match:
-            transfer, tunit, bitrate, bunit = match.groups()
+            if udp:
+                transfer, tunit, bitrate, bunit, lost, total = match.groups()
+                lost, total = map(int, [lost, total])
+            else:
+                transfer, tunit, bitrate, bunit = match.groups()
+                lost = total = None
             transfer, bitrate = map(float, [transfer, bitrate])
             transfer = transfer if tunit == "GBytes" else transfer / 1000  # in GBytes
             bitrate = (
@@ -195,6 +202,9 @@ def run_iperf(
                     "bitrate": bitrate,  # in Gbits/sec
                     "transfer": transfer,  # in GBytes
                     "proto": proto,
+                    "lost": lost,
+                    "total": total,
+                    "bpf": bpf_id,
                 },
             )
         else:
@@ -322,7 +332,7 @@ def run_memtier(
     )
     time.sleep(10)
     # Capture metrics for host and guest
-    mpstat_ids, perf_ids = (
+    mpstat_ids, perf_ids, bpf_id = (
         capture_metrics(name, 10, f"{pin_start}-{pin_end}")
         if metrics
         else ((None, None), (None, None))
@@ -361,6 +371,7 @@ def run_memtier(
                 "proto": proto,
                 "client_threads": threads,
                 "server_threads": server_threads,
+                "bpf": bpf_id,
             },
         )
 
@@ -421,7 +432,7 @@ def run_nginx(
     )
     time.sleep(10)
     # capture metrics for host and guest
-    mpstat_ids, perf_ids = (
+    mpstat_ids, perf_ids, bpf_id = (
         capture_metrics(name, 10, f"{pin_start}-{pin_end}")
         if metrics
         else ((None, None), (None, None))
@@ -456,6 +467,7 @@ def run_nginx(
                 "mpstat_guest": mpstat_ids[1],
                 "perf_host": perf_ids[0],
                 "perf_guest": perf_ids[1],
+                "bpf": bpf_id,
             },
         )
     else:
@@ -480,7 +492,7 @@ def run_nginx(
     )
     time.sleep(10)
     # capture metrics for host and guest
-    mpstat_ids, perf_ids = (
+    mpstat_ids, perf_ids, bpf_id = (
         capture_metrics(name, 10, f"{pin_start}-{pin_end}")
         if metrics
         else ((None, None), (None, None))
@@ -514,6 +526,7 @@ def run_nginx(
                 "mpstat_guest": mpstat_ids[1],
                 "perf_host": perf_ids[0],
                 "perf_guest": perf_ids[1],
+                "bpf": bpf_id,
             },
         )
     else:

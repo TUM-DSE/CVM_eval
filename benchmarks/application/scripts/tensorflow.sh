@@ -8,5 +8,5 @@ for size in medium large numa; do
     done
 
     #snp with idle polling
-    inv vm.start --type snp --size $size --action=${action} --extra-cmdline idle=poll --name-extra -poll
+    #inv vm.start --type snp --size $size --action=${action} --extra-cmdline idle=poll --name-extra -poll
 done

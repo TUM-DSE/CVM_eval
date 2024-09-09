@@ -529,6 +529,9 @@ trace-host name:
     export OUTDIR
     bash {{PROJECT_ROOT}}/trace/all.sh
 
+bpf duration:
+    timeout {{duration}}  bpftrace ./scripts/trace/amd_kvm_vmexit_count.bt
+
 perf-host name duration:
     #!/usr/bin/env bash
     DATE=$(date '+%Y-%m-%d-%H-%M-%S')

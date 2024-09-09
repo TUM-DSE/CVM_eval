@@ -17,6 +17,7 @@ COLUMNS = {
     "mpstat_host": "INTEGER REFERENCES mpstat(id)",
     "perf_guest": "INTEGER REFERENCES perf(id)",
     "perf_host": "INTEGER REFERENCES perf(id)",
+    "bpf": "INTEGER REFERENCES bpf(id)",
 }
 
 MPSTAT_COLS = {
@@ -46,6 +47,11 @@ PERF_COLS = {
     "L2_misses": "INTEGER",
 }
 
+BPF_COLS = {
+    "id": "INTEGER PRIMARY KEY",
+    "duration": "FLOAT",
+}
+
 PING_COLS = {
     **COLUMNS,
     "pkt_size": "INT",
@@ -63,6 +69,8 @@ IPERF_COLS = {
     "bitrate": "FLOAT",
     "transfer": "FLOAT",
     "proto": "VARCHAR(3)",
+    "lost": "INT",
+    "total": "INT",
     "PRIMARY KEY": "(date, pkt_size)",
 }
 
@@ -150,6 +158,7 @@ def ensure_db(connection, table: str = "test_table", columns: dict = {}):
 
 def insert_into_db(connection, table: str, values: dict):
     """Insert values into the database."""
+    add_cols_to_db(connection, table, values)
     cursor = connection.cursor()
     columns = ", ".join(values.keys())
     formatted_values = []
@@ -166,6 +175,29 @@ def insert_into_db(connection, table: str, values: dict):
     id = cursor.lastrowid
     cursor.close()
     return id
+
+
+def add_cols_to_db(connection, table: str, columns: dict):
+    """Add columns to the database."""
+    cursor = connection.cursor()
+    for name, value in columns.items():
+        if not column_exists(cursor, table, name):
+            if type(value) is int:
+                sql_type = "INTEGER"
+            elif type(value) is float:
+                sql_type = "FLOAT"
+            else:
+                sql_type = "VARCHAR(50)"
+            cursor.execute(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}")
+    connection.commit()
+    cursor.close()
+
+
+def column_exists(cursor, table, column_name):
+    """Check if a column exists in a table."""
+    cursor.execute(f"PRAGMA table_info({table})")
+    columns = [row[1] for row in cursor.fetchall()]
+    return column_name in columns
 
 
 def query_db(query: str):
@@ -254,6 +286,18 @@ def parse_perf(hout, gout):
     return h_id, g_id
 
 
+def parse_bpf(output, duration):
+    """Parse BPF output and write to database"""
+    pattern = r"^\s*([\w_]+):\s*(\d+)"
+    matches = re.findall(pattern, output.decode(), re.MULTILINE)
+    metrics = {name: count for name, count in matches}
+    metrics["duration"] = duration
+    connection = connect_to_db()
+    ensure_db(connection, table="bpf", columns=BPF_COLS)
+    id = insert_into_db(connection, "bpf", metrics)
+    return id
+
+
 def capture_metrics(name: str, duration: int = 5, range: str = "ALL"):
     """Capture some metrics and save results to the database."""
     # mpstat
@@ -278,6 +322,12 @@ def capture_metrics(name: str, duration: int = 5, range: str = "ALL"):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
+    # bpf
+    bpf = subprocess.Popen(
+        ["just", "bpf", str(duration)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
 
     print("Metrics started")
 
@@ -296,9 +346,22 @@ def capture_metrics(name: str, duration: int = 5, range: str = "ALL"):
     perf_gout, gerr = perf_guest.communicate()
     if perf_guest.returncode != 0:
         print(f"Error running perf: {gerr.decode()}")
+    bpf_out, berr = bpf.communicate()
     print("Metrics stopped")
 
     # parse and save results
     mpstat_ids = parse_mpstat(mpstat_hout, mpstat_gout)
     perf_ids = parse_perf(perf_hout, perf_gout)
-    return mpstat_ids, perf_ids
+    bpf_id = parse_bpf(bpf_out, duration)
+    return mpstat_ids, perf_ids, bpf_id
+
+
+def determine_size(row):
+    if "small" in row["name"]:
+        return "small"
+    elif "medium" in row["name"]:
+        return "medium"
+    elif "large" in row["name"]:
+        return "large"
+    else:
+        return "xlarge"

@@ -11,7 +11,7 @@ import numpy as np
 from pathlib import Path
 
 from invoke import task
-from utils import query_db
+from utils import query_db, determine_size
 from tasks.plot_metrics import METRIC_FUNCS
 
 mpl.use("Agg")
@@ -540,15 +540,15 @@ def plot_sqlite(
 
 
 @task
-def plot_tensorflow_db(ctx, metric: Optional[str] = None):
+def plot_tensorflow_db(ctx, metric: Optional[str] = None, norm: str = "ops"):
     df = query_db("SELECT * FROM tensorflow")
 
     if metric:
-        df = df[df["perf"].notnull()]
-        df = df[df["mpstat"].notnull()]
+        df = df[df["perf_guest"].notnull()]
+        df = df[df["mpstat_guest"].notnull()]
     else:
-        df = df[df["perf"].isnull()]
-        df = df[df["mpstat"].isnull()]
+        df = df[df["perf_host"].isnull()]
+        df = df[df["mpstat_host"].isnull()]
 
     df["size"] = df.apply(determine_size, axis=1)
     df["name"] = df.apply(
@@ -575,8 +575,9 @@ def plot_tensorflow_db(ctx, metric: Optional[str] = None):
     ax.set_title("Higher is better ↑", fontsize=12, color="navy")
 
     if metric:
+        df["norm"] = df["examples_per_sec"] * df["time"]
         ax2 = ax.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "size", "name", df, palette3)
+        METRIC_FUNCS[metric](sns, ax2, "size", "name", df, palette3, "1M Operations")
 
     plt.tight_layout()
     plt.savefig(
@@ -586,7 +587,7 @@ def plot_tensorflow_db(ctx, metric: Optional[str] = None):
 
 
 @task
-def plot_npb(ctx, bench: str = "ua", metric: Optional[str] = None):
+def plot_npb(ctx, bench: str = "ua", metric: Optional[str] = None, norm: str = "ops"):
     df = query_db(f"SELECT * FROM npb WHERE prog='{bench}'")
     df["size"] = df.apply(determine_size, axis=1)
     df["config"] = df.apply(
@@ -619,22 +620,19 @@ def plot_npb(ctx, bench: str = "ua", metric: Optional[str] = None):
     ax.set_title("Higher is better ↑", fontsize=12, color="navy")
 
     if metric:
+        if norm == "ops":
+            df["norm"] = df["mops"] * df["time"]
+            norm_name = "1M Operations"
+        elif norm == "insts":
+            norm_name = "1M Instructions"
         ax2 = ax.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "config", "name", df, palette3)
+        METRIC_FUNCS[metric](sns, ax2, "config", "name", df, palette3, norm_name)
 
     plt.tight_layout()
     plt.savefig(
-        f"plot/npb/{bench}" + (f"_{metric}" if metric else "") + ".pdf",
+        f"plot/npb/{bench}"
+        + (f"_{metric}" if metric else "")
+        + (f"_by_{norm}" if metric and len(metric) > 3 else "")
+        + ".pdf",
         bbox_inches="tight",
     )
-
-
-def determine_size(row):
-    if "small" in row["name"]:
-        return "small"
-    elif "medium" in row["name"]:
-        return "medium"
-    elif "large" in row["name"]:
-        return "large"
-    else:
-        return "xlarge"

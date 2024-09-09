@@ -129,7 +129,7 @@ def run_tensorflow(
             print("Timeout: Benchmark not started")
             return
         time.sleep(15)
-        mpstat_ids, perf_ids = (
+        mpstat_ids, perf_ids, bpf_id = (
             capture_metrics(name, 5) if metrics else ((None, None), (None, None))
         )
         process.join()
@@ -154,6 +154,7 @@ def run_tensorflow(
                     "mpstat_guest": mpstat_ids[1],
                     "perf_host": perf_ids[0],
                     "perf_guest": perf_ids[1],
+                    "bpf": bpf_id,
                 },
             )
         else:
@@ -197,7 +198,7 @@ def run_npb(
             target=run_benchmark, args=(child_conn, vm, cmd)
         )
         process.start()
-        mpstat_ids, perf_ids = (
+        mpstat_ids, perf_ids, bpf_id = (
             capture_metrics(name, 1) if metrics else ((None, None), (None, None))
         )
         process.join()
@@ -223,6 +224,7 @@ def run_npb(
                     "mpstat_guest": mpstat_ids[1],
                     "perf_host": perf_ids[0],
                     "perf_guest": perf_ids[1],
+                    "bpf": bpf_id,
                 },
             )
 

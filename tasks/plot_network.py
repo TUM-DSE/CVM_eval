@@ -1101,7 +1101,9 @@ def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
 
 
 @task
-def plot_iperf_udp(ctx, metric: Optional[str] = None, remote: bool = False):
+def plot_iperf_udp(
+    ctx, metric: Optional[str] = None, remote: bool = False, norm: str = "datagram"
+):
     and_clause = (
         " AND name LIKE '%remote%'" if remote else "AND name NOT LIKE '%remote%'"
     )
@@ -1130,19 +1132,16 @@ def plot_iperf_udp(ctx, metric: Optional[str] = None, remote: bool = False):
     ax1.set_ylabel("Bitrate in Gbits/sec")
     ax1.set_title("Higher is better ↑", fontsize=12, color="navy")
 
-    for p in barplot.patches:
-        height = p.get_height()
-        ax1.text(
-            p.get_x() + p.get_width() / 2.0,
-            height + 1,
-            f"{height:.2f}",
-            ha="center",
-            va="bottom",
-        )
-
     if metric:
+        if norm == "datagram":
+            df["norm"] = df["total"] - df["lost"]
+            norm_name = "Datagram"
+        elif norm == "insts":
+            norm_name = "1M Instructions"
         ax2 = ax1.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "pkt_size", "Configuration", df, palette)
+        METRIC_FUNCS[metric](
+            sns, ax2, "pkt_size", "Configuration", df, palette, norm_name
+        )
 
     sns.despine(top=True, right=False)
     plt.ticklabel_format(style="plain", axis="y")
@@ -1151,13 +1150,16 @@ def plot_iperf_udp(ctx, metric: Optional[str] = None, remote: bool = False):
         f"plot/iperf/iperf_udp"
         + (f"_{metric}" if metric else "")
         + ("_remote" if remote else "")
+        + (f"_by_{norm}" if metric and len(metric) > 3 else "")
         + ".pdf",
         bbox_inches="tight",
     )
 
 
 @task
-def plot_memtier_db(ctx, metric: Optional[str] = None, remote: bool = False):
+def plot_memtier_db(
+    ctx, metric: Optional[str] = None, remote: bool = False, norm: str = "ops"
+):
     where_clause = (
         "WHERE name LIKE '%remote%'" if remote else "WHERE name NOT LIKE '%remote%'"
     )
@@ -1176,7 +1178,7 @@ def plot_memtier_db(ctx, metric: Optional[str] = None, remote: bool = False):
         + (", TLS" if row["tls"] == 1 else ""),
         axis=1,
     )
-    # df = df.sort_values(by=["Protocol, TLS"], ascending=True)
+
     fig, ax = plt.subplots()
     barplot = sns.barplot(
         data=df,
@@ -1191,19 +1193,16 @@ def plot_memtier_db(ctx, metric: Optional[str] = None, remote: bool = False):
     ax.set_ylabel("Throughput in MBytes/s")
     ax.set_title("Higher is better ↑", fontsize=12, color="navy")
 
-    for p in barplot.patches:
-        height = p.get_height()
-        ax.text(
-            p.get_x() + p.get_width() / 2.0,
-            height + 1,
-            f"{height:.2f}",
-            ha="center",
-            va="bottom",
-        )
-
     if metric:
+        if norm == "ops":
+            df["norm"] = df["ops_per_sec"] * 30
+            norm_name = "Operation"
+        elif norm == "insts":
+            norm_name = "1M Instructions"
         ax2 = ax.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "Protocol, TLS", "Configuration", df, palette)
+        METRIC_FUNCS[metric](
+            sns, ax2, "Protocol, TLS", "Configuration", df, palette, norm_name
+        )
 
     sns.despine(top=True, right=False)
     plt.ticklabel_format(style="plain", axis="y")
@@ -1212,13 +1211,14 @@ def plot_memtier_db(ctx, metric: Optional[str] = None, remote: bool = False):
         f"plot/memtier/memtier"
         + (f"_{metric}" if metric else "")
         + ("_remote" if remote else "")
+        + (f"_by_{norm}" if metric and len(metric) > 3 else "")
         + ".pdf",
         bbox_inches="tight",
     )
 
 
 @task
-def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False):
+def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False, norm="reqs"):
     where_clause = (
         "WHERE name LIKE '%remote%'" if remote else "WHERE name NOT LIKE '%remote%'"
     )
@@ -1249,19 +1249,14 @@ def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False):
     ax.set_ylabel("Throughput in MBytes/s")
     ax.set_title("Higher is better ↑", fontsize=12, color="navy")
 
-    for p in barplot.patches:
-        height = p.get_height()
-        ax.text(
-            p.get_x() + p.get_width() / 2.0,
-            height + 1,
-            f"{height:.2f}",
-            ha="center",
-            va="bottom",
-        )
-
     if metric:
+        if norm == "reqs":
+            df["norm"] = df["req_per_sec"] * 30
+            norm_name = "Request"
+        elif norm == "insts":
+            norm_name = "1M Instructions"
         ax2 = ax.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "TLS", "Configuration", df, palette)
+        METRIC_FUNCS[metric](sns, ax2, "TLS", "Configuration", df, palette, norm_name)
 
     sns.despine(top=True, right=False)
     plt.ticklabel_format(style="plain", axis="y")
@@ -1270,6 +1265,7 @@ def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False):
         f"plot/nginx/nginx"
         + (f"_{metric}" if metric else "")
         + ("_remote" if remote else "")
+        + (f"_by_{norm}" if metric and len(metric) > 3 else "")
         + ".pdf",
         bbox_inches="tight",
     )
