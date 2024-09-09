@@ -334,7 +334,7 @@ def get_amd_vm_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 
     -drive format=qcow2,file.driver=file,file.filename={image},if=virtio,snapshot=on
     -device virtio-net-pci,netdev=net0
-    -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
+    -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22,hostfwd=tcp::9002-:9001
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
     -drive if=pflash,format=raw,unit=0,file={vmconfig.ovmf},readonly=on
 
@@ -407,7 +407,7 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 
     -drive format=qcow2,file.driver=file,file.filename={image},if=virtio,snapshot=on
     -device virtio-net-pci,netdev=net0
-    -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
+    -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22,hostfwd=tcp::9002-:9001
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
     -drive if=pflash,format=raw,unit=0,file={vmconfig.ovmf},readonly=on
 
