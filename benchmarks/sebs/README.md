@@ -1,31 +1,33 @@
 ### Installation
+#### SeBS
 ```bash
-(cd benchmarks/sebs/serverless-benchmarks && ./install.py --no-aws --azure --no-gcp --no-openwhisk --local)
+./install.py --no-aws --azure --no-gcp --no-openwhisk --local
 ```
 
-
-### Use Environment
-```bash
-nix develop
-cd benchmarks/sebs/serverless-benchmarks
-source python-venv/bin/activate
-```
-
-
-### Build Images
-#### Docker
-The minio-py version of the supplied image is too new (`AttributeError: "Minio" object has no attribute "list_objects_v2"`), so we need to build fitting images.
-
+Build cointainer images as the minio-py version of the supplied image is too new (`AttributeError: "Minio" object has no attribute "list_objects_v2"`):
 ```bash
 tools/build_docker_images.py --deployment local --language python --language-version 3.11
 tools/build_docker_images.py --deployment cvm --language python --language-version 3.11
 ```
 
 
-#### VM
-execute in CVM_eval:
+#### CVM_eval
 ```bash
+nix develop
+```
+```bash
+inv build.build-qemu-snp
+inv build.build-ovmf-snp
 inv build.build-guest-fs-sebs
+just setup-linux
+```
+
+
+### Environment
+```bash
+nix develop
+cd benchmarks/sebs/serverless-benchmarks
+source python-venv/bin/activate
 ```
 
 

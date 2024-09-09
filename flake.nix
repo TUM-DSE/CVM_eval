@@ -294,21 +294,25 @@
             ];
           };
 
-          fs-sebs = nixosSystem {
-            system = "x86_64-linux";
-            modules = [
-              (import ./nix/guest-config.nix { extraEnvPackages = [ (pkgs.python3.withPackages (python-pkgs: [ python-pkgs.minio ])) ]; _gcc = gcc; })
-              ({
-                systemd.services.serverService = {
-                  after = [ "network-online.target" ];
-                  wants = [ "network-online.target" ];
-                  wantedBy = [ "multi-user.target" ];
-                  serviceConfig.Restart = "always";
-                  serviceConfig.ExecStart = "${pkgs.python3}/bin/python3 /opt/sebs/server.py";
-                };
-              })
-            ];
-          };
+          fs-sebs =
+            let
+              python = pkgs.python3.withPackages (python-pkgs: [ python-pkgs.minio python-pkgs.bottle ]);
+            in
+            nixosSystem {
+              system = "x86_64-linux";
+              modules = [
+                (import ./nix/guest-config.nix { extraEnvPackages = [ ]; _gcc = gcc; })
+                ({
+                  systemd.services.serverService = {
+                    after = [ "network-online.target" ];
+                    wants = [ "network-online.target" ];
+                    wantedBy = [ "multi-user.target" ];
+                    serviceConfig.Restart = "always";
+                    serviceConfig.ExecStart = "${python}/bin/python3 /opt/sebs/server.py 9001";
+                  };
+                })
+              ];
+            };
 
           fs-serverless-bench-c = nixosSystem {
             system = "x86_64-linux";
