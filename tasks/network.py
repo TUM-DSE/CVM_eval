@@ -43,6 +43,11 @@ def run_ping(name: str, vm: QemuVm, pin_base=20, metrics: bool = False):
             if "remote" in name
             else subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         )
+        # Capture metrics for host and guest
+
+        mpstat_ids, perf_ids, bpf_id = (
+            capture_metrics(name, 1) if metrics else ((None, None), (None, None), None)
+        )
         # pattern matching
         pattern = re.compile(
             r"rtt min/avg/max/mdev = ([\d.]+)/([\d.]+)/([\d.]+)/([\d.]+) ms"
@@ -68,6 +73,11 @@ def run_ping(name: str, vm: QemuVm, pin_base=20, metrics: bool = False):
                     "avg": avg_rtt,
                     "max": max_rtt,
                     "mdev": mdev_rtt,
+                    "mpstat_host": mpstat_ids[0],
+                    "mpstat_guest": mpstat_ids[1],
+                    "perf_host": perf_ids[0],
+                    "perf_guest": perf_ids[1],
+                    "bpf": bpf_id,
                 },
             )
         else:
@@ -162,7 +172,7 @@ def run_iperf(
         mpstat_ids, perf_ids, bpf_id = (
             capture_metrics(name, 10, f"{pin_start}-{pin_end}")
             if metrics
-            else ((None, None), (None, None))
+            else ((None, None), (None, None), None)
         )
         out, err = bench_res.communicate()
         if bench_res.returncode != 0:
@@ -335,7 +345,7 @@ def run_memtier(
     mpstat_ids, perf_ids, bpf_id = (
         capture_metrics(name, 10, f"{pin_start}-{pin_end}")
         if metrics
-        else ((None, None), (None, None))
+        else ((None, None), (None, None), None)
     )
     out, err = bench_res.communicate()
     if bench_res.returncode != 0:
@@ -435,7 +445,7 @@ def run_nginx(
     mpstat_ids, perf_ids, bpf_id = (
         capture_metrics(name, 10, f"{pin_start}-{pin_end}")
         if metrics
-        else ((None, None), (None, None))
+        else ((None, None), (None, None), None)
     )
     out, err = bench_res.communicate()
     if bench_res.returncode != 0:
@@ -495,7 +505,7 @@ def run_nginx(
     mpstat_ids, perf_ids, bpf_id = (
         capture_metrics(name, 10, f"{pin_start}-{pin_end}")
         if metrics
-        else ((None, None), (None, None))
+        else ((None, None), (None, None), None)
     )
     out, err = bench_res.communicate()
     if bench_res.returncode != 0:

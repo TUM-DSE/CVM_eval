@@ -1023,15 +1023,15 @@ def plot_ping_db(ctx, remote: bool = False):
     ax.set_ylabel("Average latency in ms")
     ax.set_title("Lower is better ↓", fontsize=12, color="navy")
 
-    for p in barplot.patches:
-        height = p.get_height()
-        ax.text(
-            p.get_x() + p.get_width() / 2.0,
-            height + 1,
-            f"{height:.2f}",
-            ha="center",
-            va="bottom",
-        )
+    # for p in barplot.patches:
+    #     height = p.get_height()
+    #     ax.text(
+    #         p.get_x() + p.get_width() / 2.0,
+    #         height + 1,
+    #         f"{height:.2f}",
+    #         ha="center",
+    #         va="bottom",
+    #     )
 
     plt.tight_layout()
     plt.savefig(
@@ -1045,7 +1045,7 @@ def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
         " AND name LIKE '%remote%'" if remote else "AND name NOT LIKE '%remote%'"
     )
     df = query_db(
-        f"SELECT * FROM iperf WHERE proto LIKE 'tcp' AND name LIKE '%mq%' {and_clause}"
+        f"SELECT * FROM iperf WHERE proto LIKE 'tcp' AND name LIKE '%mq%' AND name NOT LIKE '%poll%'{and_clause}"
     )
 
     df["Configuration"] = df.apply(
@@ -1057,6 +1057,7 @@ def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
         .replace("amd", "vm"),
         axis=1,
     )
+    df = df.sort_values("bitrate", ascending=True)
 
     fig, ax1 = plt.subplots()
 
@@ -1087,7 +1088,7 @@ def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
 
     if metric:
         ax2 = ax1.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "name", None, df, palette)
+        METRIC_FUNCS[metric](sns, ax2, "name", None, df, palette, "1M Instructions")
 
     sns.despine(top=True, right=False)
     plt.tight_layout()

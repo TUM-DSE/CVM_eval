@@ -130,7 +130,7 @@ def run_tensorflow(
             return
         time.sleep(15)
         mpstat_ids, perf_ids, bpf_id = (
-            capture_metrics(name, 5) if metrics else ((None, None), (None, None))
+            capture_metrics(name, 5) if metrics else ((None, None), (None, None), None)
         )
         process.join()
         output = parent_conn.recv()
@@ -199,7 +199,7 @@ def run_npb(
         )
         process.start()
         mpstat_ids, perf_ids, bpf_id = (
-            capture_metrics(name, 1) if metrics else ((None, None), (None, None))
+            capture_metrics(name, 1) if metrics else ((None, None), (None, None), None)
         )
         process.join()
         output = parent_conn.recv()

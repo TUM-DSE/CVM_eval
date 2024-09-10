@@ -976,7 +976,7 @@ def run_ping(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any):
             name += f"-swiotlb"
         if kargs["config"]["remote"]:
             name += f"-remote"
-        run_ping(name, vm)
+        run_ping(name, vm, metrics=kargs["config"]["metrics"])
         vm.shutdown()
 
 

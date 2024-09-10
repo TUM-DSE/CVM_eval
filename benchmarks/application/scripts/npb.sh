@@ -9,7 +9,7 @@ for prog in ua; do #ft mg sp lu bt is ep cg
             inv vm.start --size $size --type ${type} --action=${action} --npb-prog=${prog}
         done
         #snp with idle polling
-        # inv vm.start --type snp --size $size --action=${action} --npb-prog=${prog} --extra-cmdline idle=poll --name-extra -poll
+        inv vm.start --type snp --size $size --action=${action} --npb-prog=${prog} --extra-cmdline idle=poll --name-extra -poll
     done
 
 done

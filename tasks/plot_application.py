@@ -540,15 +540,8 @@ def plot_sqlite(
 
 
 @task
-def plot_tensorflow_db(ctx, metric: Optional[str] = None, norm: str = "ops"):
+def plot_tensorflow_db(ctx, metric: Optional[str] = None, norm: str = "examples"):
     df = query_db("SELECT * FROM tensorflow")
-
-    if metric:
-        df = df[df["perf_guest"].notnull()]
-        df = df[df["mpstat_guest"].notnull()]
-    else:
-        df = df[df["perf_host"].isnull()]
-        df = df[df["mpstat_host"].isnull()]
 
     df["size"] = df.apply(determine_size, axis=1)
     df["name"] = df.apply(
@@ -575,13 +568,20 @@ def plot_tensorflow_db(ctx, metric: Optional[str] = None, norm: str = "ops"):
     ax.set_title("Higher is better ↑", fontsize=12, color="navy")
 
     if metric:
-        df["norm"] = df["examples_per_sec"] * df["time"]
+        if norm == "examples":
+            df["norm"] = df["examples_per_sec"]
+            norm_name = "Examples/s"
+        elif norm == "insts":
+            norm_name = "1M Instructions"
         ax2 = ax.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "size", "name", df, palette3, "1M Operations")
+        METRIC_FUNCS[metric](sns, ax2, "size", "name", df, palette3, norm_name)
 
     plt.tight_layout()
     plt.savefig(
-        f"plot/tensorflow/tensorflow" + (f"_{metric}" if metric else "") + ".pdf",
+        f"plot/tensorflow/tensorflow"
+        + (f"_{metric}" if metric else "")
+        + (f"_by_{norm}" if metric and len(metric) > 3 else "")
+        + ".pdf",
         bbox_inches="tight",
     )
 
@@ -621,7 +621,7 @@ def plot_npb(ctx, bench: str = "ua", metric: Optional[str] = None, norm: str = "
 
     if metric:
         if norm == "ops":
-            df["norm"] = df["mops"] * df["time"]
+            df["norm"] = df["mops"]
             norm_name = "1M Operations"
         elif norm == "insts":
             norm_name = "1M Instructions"
