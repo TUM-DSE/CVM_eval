@@ -21,7 +21,7 @@ from utils import (
 )
 
 
-def run_ping(name: str, vm: QemuVm, pin_base=20, metrics: bool = False):
+def run_ping(name: str, vm: QemuVm, pin_base=20, metrics: bool = True):
     """Ping the VM.
     The results are saved in ./bench-results/network/ping/{name}/{date}
     And in the ping table of the database.
@@ -36,7 +36,9 @@ def run_ping(name: str, vm: QemuVm, pin_base=20, metrics: bool = False):
     ensure_db(connection, table="ping", columns=PING_COLS)
     # Benchmark
     for pkt_size in [64, 128, 256, 512, 1024]:
-        cmd = f"taskset -c {pin_base} ping -c 30 -i0.1 -s {pkt_size} {VM_IP}".split(" ")
+        cmd = f"ping -c 30 -i0.1 -s {pkt_size} {VM_IP}".split(" ")
+        if "remote" not in name:
+            cmd = ["taskset", "-c", f"{pin_base}"] + cmd
         print(cmd)
         process = (
             remote_ssh_cmd(cmd)
@@ -97,7 +99,7 @@ def run_iperf(
     parallel: Optional[int] = None,
     pin_start: int = 20,
     pin_end: Optional[int] = None,
-    metrics: bool = False,
+    metrics: bool = True,
 ):
     """Run the iperf benchmark on the VM.
     The results are saved in ./bench-result/network/iperf/{name}/{proto}/{date}/
@@ -140,9 +142,6 @@ def run_iperf(
     # run client
     for pkt_size in pkt_sizes:
         cmd = [
-            "taskset",
-            "-c",
-            f"{pin_start}-{pin_end}",
             "iperf",
             "-c",
             f"{VM_IP}",
@@ -161,6 +160,8 @@ def run_iperf(
         ]
         if udp:
             cmd.append("-u")
+        if "remote" not in name:
+            cmd = ["taskset", "-c", f"{pin_start}-{pin_end}"] + cmd
         print(cmd)
         bench_res = (
             remote_ssh_cmd(cmd)
@@ -299,11 +300,9 @@ def run_memtier(
 
     if tls:
         cmd = [
-            "taskset",
-            "-c",
-            f"{pin_start}-{pin_end}",
             "memtier_benchmark",
-            f"--host={VM_IP}",
+            "-h",
+            f"{VM_IP}",
             "-p",
             f"{tls_port}",
             "-t",
@@ -320,11 +319,9 @@ def run_memtier(
         ]
     else:
         cmd = [
-            "taskset",
-            "-c",
-            f"{pin_start}-{pin_end}",
             "memtier_benchmark",
-            f"--host={VM_IP}",
+            "-h",
+            f"{VM_IP}",
             "-p",
             f"{port}",
             "-t",
@@ -335,6 +332,8 @@ def run_memtier(
             f"--protocol={proto}",
             "--test-time=30",
         ]
+    if "remote" not in name:
+        cmd = ["taskset", "-c", f"{pin_start}-{pin_end}"] + cmd
     bench_res = (
         remote_ssh_cmd(cmd)
         if "remote" in name
@@ -349,7 +348,7 @@ def run_memtier(
     )
     out, err = bench_res.communicate()
     if bench_res.returncode != 0:
-        print(f"Error running memtier: {err.decode()}")
+        print(f"Error running memtier: Stderr: {err.decode()}, Stdout: {out.decode()}")
 
     pattern = r"(\d+)\s+Threads.*?Totals\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+\.\d+)\s+\d+\.\d+\s+\d+\.\d+\s+(\d+\.\d+)\s+(\d+\.\d+)"
     match = re.search(pattern, out.decode(), re.DOTALL)
@@ -425,15 +424,14 @@ def run_nginx(
 
     # HTTP
     cmd = [
-        "taskset",
-        "-c",
-        f"{pin_start}-{pin_end}",
         "wrk",
         f"http://{VM_IP}",
         f"-t{threads}",
         f"-c{connections}",
         f"-d{duration}",
     ]
+    if "remote" not in name:
+        cmd = ["taskset", "-c", f"{pin_start}-{pin_end}"] + cmd
     print(cmd)
     bench_res = (
         remote_ssh_cmd(cmd)
@@ -485,15 +483,14 @@ def run_nginx(
     time.sleep(1)
     # HTTPS
     cmd = [
-        "taskset",
-        "-c",
-        f"{pin_start}-{pin_end}",
         "wrk",
         f"https://{VM_IP}",
         f"-t{threads}",
         f"-c{connections}",
         f"-d{duration}",
     ]
+    if "remote" not in name:
+        cmd = ["taskset", "-c", f"{pin_start}-{pin_end}"] + cmd
     print(cmd)
     bench_res = (
         remote_ssh_cmd(cmd)

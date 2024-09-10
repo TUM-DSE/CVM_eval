@@ -208,6 +208,16 @@ def query_db(query: str):
     return df
 
 
+@task
+def write_db(ctx, query: str):
+    """Write to the database with a given query."""
+    connection = connect_to_db()
+    cursor = connection.cursor()
+    cursor.execute(query)
+    connection.commit()
+    cursor.close()
+
+
 def parse_mpstat(hout, gout):
     """Parse mpstat output and save to database"""
     all_pattern = r"Average:\s+all\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)"

@@ -1228,6 +1228,7 @@ def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False, norm=
         lambda row: row["name"]
         .replace("-direct", "")
         .replace("-medium", "")
+        .replace("-remote", "")
         .replace("-mq", "")
         .replace("amd-", "")
         .replace("amd", "vm"),
@@ -1241,13 +1242,13 @@ def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False, norm=
     barplot = sns.barplot(
         data=df,
         x=df["TLS"],
-        y=df["transfer_rate"] / 1000,
+        y=df["transfer_rate"],
         ax=ax,
         hue="Configuration",
         palette=palette,
         edgecolor="black",
     )
-    ax.set_ylabel("Throughput in MBytes/s")
+    ax.set_ylabel("Throughput in KBytes/s")
     ax.set_title("Higher is better ↑", fontsize=12, color="navy")
 
     if metric:
