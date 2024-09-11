@@ -224,6 +224,7 @@
                 python3.pkgs.lxml
                 python3.pkgs.ipython
                 python3.pkgs.psutil
+                python3.pkgs.scipy
 
                 just
                 git

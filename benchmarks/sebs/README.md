@@ -24,9 +24,10 @@ just setup-linux
 
 
 ### Environment
+sudo needed for CVM
 ```bash
-nix develop
-cd benchmarks/sebs/serverless-benchmarks
+cd CVM_eval/benchmarks/sebs/serverless-benchmarks
+sudo nix develop ../../..
 source python-venv/bin/activate
 ```
 
