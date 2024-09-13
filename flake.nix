@@ -310,6 +310,7 @@
                     wantedBy = [ "multi-user.target" ];
                     serviceConfig.Restart = "always";
                     serviceConfig.ExecStart = "${python}/bin/python3 /opt/sebs/server.py 9001";
+                    serviceConfig.Environment = [ "LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib/" ];
                   };
                 })
               ];
