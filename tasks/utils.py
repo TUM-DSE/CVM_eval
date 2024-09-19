@@ -98,6 +98,7 @@ NGINX_COLS = {
     "lat_stdev": "FLOAT",
     "req_per_sec": "FLOAT",  # in Requests/s
     "transfer_rate": "FLOAT",  # in KB/s
+    "size": "INT",  # in MB
     "PRIMARY KEY": "(date, tls)",
 }
 
@@ -281,6 +282,7 @@ def parse_perf(hout, gout):
     host_metrics = {
         metric.replace("-", "_"): count.replace(",", "") for count, metric in matches
     }
+
     matches = re.findall(
         pattern,
         gout.decode()
@@ -294,7 +296,11 @@ def parse_perf(hout, gout):
     connection = connect_to_db()
     ensure_db(connection, table="perf_guest", columns=PERF_COLS)
     ensure_db(connection, table="perf_host", columns=PERF_COLS)
-    g_id = insert_into_db(connection, "perf_guest", guest_metrics)
+    g_id = (
+        insert_into_db(connection, "perf_guest", guest_metrics)
+        if guest_metrics
+        else None
+    )
     h_id = insert_into_db(connection, "perf_host", host_metrics)
     return h_id, g_id
 
@@ -330,10 +336,14 @@ def capture_metrics(name: str, duration: int = 5, range: str = "ALL"):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    perf_guest = subprocess.Popen(
-        ["just", "perf-guest", name, str(duration)],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+    perf_guest = (
+        subprocess.Popen(
+            ["just", "perf-guest", name, str(duration)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if "intel" not in name and "tdx" not in name
+        else None
     )
     # bpf
     bpf = subprocess.Popen(
@@ -356,8 +366,8 @@ def capture_metrics(name: str, duration: int = 5, range: str = "ALL"):
     perf_hout, herr = perf_host.communicate()
     if perf_host.returncode != 0:
         print(f"Error running perf: {herr.decode()}")
-    perf_gout, gerr = perf_guest.communicate()
-    if perf_guest.returncode != 0:
+    perf_gout, gerr = perf_guest.communicate() if perf_guest else (b"", b"")
+    if perf_guest and perf_guest.returncode != 0:
         print(f"Error running perf: {gerr.decode()}")
     bpf_out, berr = bpf.communicate()
     print("Metrics stopped")

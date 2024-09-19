@@ -114,6 +114,7 @@ def plot_vmexit(
         right_on="id",
         how="left",
     )
+
     df = df.merge(
         query_db("SELECT id, instructions FROM perf_guest"),
         left_on="perf_guest",

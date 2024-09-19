@@ -420,123 +420,125 @@ def run_nginx(
     server_cmd = ["just", "-f", "/share/benchmarks/network/justfile", "run-nginx"]
     vm.ssh_cmd(server_cmd)
     time.sleep(1)
-
-    # HTTP
-    cmd = [
-        "wrk",
-        f"http://{VM_IP}",
-        f"-t{threads}",
-        f"-c{connections}",
-        f"-d{duration}",
-    ]
-    if "remote" not in name:
-        cmd = ["taskset", "-c", f"{pin_start}-{pin_end}"] + cmd
-    print(cmd)
-    bench_res = (
-        remote_ssh_cmd(cmd)
-        if "remote" in name
-        else subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    )
-    time.sleep(10)
-    # capture metrics for host and guest
-    mpstat_ids, perf_ids, bpf_id = (
-        capture_metrics(name, 10, f"{pin_start}-{pin_end}")
-        if metrics
-        else ((None, None), (None, None), None)
-    )
-    out, err = bench_res.communicate()
-    if bench_res.returncode != 0:
-        print(f"Error running wrk: {err.decode()}")
-    with open(outputdir_host / f"http.log", "w") as f:
-        f.write(out.decode())
-    pattern = r"Latency\s+(\d+\.\d+).?s\s+(\d+\.\d+).s\s+(\d+\.\d+).?s.*?Requests/sec:\s+(\d+\.\d+).*?Transfer/sec:\s+(\d+\.\d+).?B"
-    match = re.search(pattern, out.decode(), re.DOTALL)
-    if match:
-        lat_avg, lat_stdev, lat_max, req_per_sec, transfer_rate = map(
-            float, match.groups()
+    for size in [1, 10, 100]:
+        # HTTP
+        cmd = [
+            "wrk",
+            f"http://{VM_IP}/{size}.txt",
+            f"-t{threads}",
+            f"-c{connections}",
+            f"-d{duration}",
+        ]
+        if "remote" not in name:
+            cmd = ["taskset", "-c", f"{pin_start}-{pin_end}"] + cmd
+        print(cmd)
+        bench_res = (
+            remote_ssh_cmd(cmd)
+            if "remote" in name
+            else subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         )
-        print(
-            f"HTTP Latency: {lat_avg}ms, Max: {lat_max}ms, Req/s: {req_per_sec}, Transfer rate: {transfer_rate}KB/s"
+        time.sleep(10)
+        # capture metrics for host and guest
+        mpstat_ids, perf_ids, bpf_id = (
+            capture_metrics(name, 10, f"{pin_start}-{pin_end}")
+            if metrics
+            else ((None, None), (None, None), None)
         )
-        insert_into_db(
-            connection,
-            "nginx",
-            {
-                "date": date,
-                "name": name,
-                "tls": False,
-                "lat_max": lat_max,
-                "lat_stdev": lat_stdev,
-                "lat_avg": lat_avg,
-                "req_per_sec": req_per_sec,
-                "transfer_rate": transfer_rate,
-                "mpstat_host": mpstat_ids[0],
-                "mpstat_guest": mpstat_ids[1],
-                "perf_host": perf_ids[0],
-                "perf_guest": perf_ids[1],
-                "bpf": bpf_id,
-            },
+        out, err = bench_res.communicate()
+        if bench_res.returncode != 0:
+            print(f"Error running wrk: {err.decode()}")
+        with open(outputdir_host / f"http.log", "w") as f:
+            f.write(out.decode())
+        pattern = r"Latency\s+(\d+\.\d+).?s\s+(\d+\.\d+).s\s+(\d+\.\d+).?s.*?Requests/sec:\s+(\d+\.\d+).*?Transfer/sec:\s+(\d+\.\d+).?B"
+        match = re.search(pattern, out.decode(), re.DOTALL)
+        if match:
+            lat_avg, lat_stdev, lat_max, req_per_sec, transfer_rate = map(
+                float, match.groups()
+            )
+            print(
+                f"HTTP Latency: {lat_avg}ms, Max: {lat_max}ms, Req/s: {req_per_sec}, Transfer rate: {transfer_rate}KB/s"
+            )
+            insert_into_db(
+                connection,
+                "nginx",
+                {
+                    "date": date,
+                    "size": size,
+                    "name": name,
+                    "tls": False,
+                    "lat_max": lat_max,
+                    "lat_stdev": lat_stdev,
+                    "lat_avg": lat_avg,
+                    "req_per_sec": req_per_sec,
+                    "transfer_rate": transfer_rate,
+                    "mpstat_host": mpstat_ids[0],
+                    "mpstat_guest": mpstat_ids[1],
+                    "perf_host": perf_ids[0],
+                    "perf_guest": perf_ids[1],
+                    "bpf": bpf_id,
+                },
+            )
+        else:
+            print("HTTP no match")
+        time.sleep(1)
+        # HTTPS
+        cmd = [
+            "wrk",
+            f"https://{VM_IP}/{size}.txt",
+            f"-t{threads}",
+            f"-c{connections}",
+            f"-d{duration}",
+        ]
+        if "remote" not in name:
+            cmd = ["taskset", "-c", f"{pin_start}-{pin_end}"] + cmd
+        print(cmd)
+        bench_res = (
+            remote_ssh_cmd(cmd)
+            if "remote" in name
+            else subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         )
-    else:
-        print("HTTP no match")
-    time.sleep(1)
-    # HTTPS
-    cmd = [
-        "wrk",
-        f"https://{VM_IP}",
-        f"-t{threads}",
-        f"-c{connections}",
-        f"-d{duration}",
-    ]
-    if "remote" not in name:
-        cmd = ["taskset", "-c", f"{pin_start}-{pin_end}"] + cmd
-    print(cmd)
-    bench_res = (
-        remote_ssh_cmd(cmd)
-        if "remote" in name
-        else subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    )
-    time.sleep(10)
-    # capture metrics for host and guest
-    mpstat_ids, perf_ids, bpf_id = (
-        capture_metrics(name, 10, f"{pin_start}-{pin_end}")
-        if metrics
-        else ((None, None), (None, None), None)
-    )
-    out, err = bench_res.communicate()
-    if bench_res.returncode != 0:
-        print(f"Error running wrk: {err.decode()}")
-    with open(outputdir_host / f"https.log", "w") as f:
-        f.write(out.decode())
-    match = re.search(pattern, out.decode(), re.DOTALL)
-    if match:
-        lat_avg, lat_stdev, lat_max, req_per_sec, transfer_rate = map(
-            float, match.groups()
+        time.sleep(10)
+        # capture metrics for host and guest
+        mpstat_ids, perf_ids, bpf_id = (
+            capture_metrics(name, 10, f"{pin_start}-{pin_end}")
+            if metrics
+            else ((None, None), (None, None), None)
         )
-        print(
-            f"HTTPS Latency: {lat_avg}ms, Max: {lat_max}ms, Req/s: {req_per_sec}, Transfer rate: {transfer_rate}KB/s"
-        )
-        insert_into_db(
-            connection,
-            "nginx",
-            {
-                "date": date,
-                "name": name,
-                "tls": True,
-                "lat_max": lat_max,
-                "lat_stdev": lat_stdev,
-                "lat_avg": lat_avg,
-                "req_per_sec": req_per_sec,
-                "transfer_rate": transfer_rate,
-                "mpstat_host": mpstat_ids[0],
-                "mpstat_guest": mpstat_ids[1],
-                "perf_host": perf_ids[0],
-                "perf_guest": perf_ids[1],
-                "bpf": bpf_id,
-            },
-        )
-    else:
-        print("HTTPS no match")
+        out, err = bench_res.communicate()
+        if bench_res.returncode != 0:
+            print(f"Error running wrk: {err.decode()}")
+        with open(outputdir_host / f"https.log", "w") as f:
+            f.write(out.decode())
+        match = re.search(pattern, out.decode(), re.DOTALL)
+        if match:
+            lat_avg, lat_stdev, lat_max, req_per_sec, transfer_rate = map(
+                float, match.groups()
+            )
+            print(
+                f"HTTPS Latency: {lat_avg}ms, Max: {lat_max}ms, Req/s: {req_per_sec}, Transfer rate: {transfer_rate}KB/s"
+            )
+            insert_into_db(
+                connection,
+                "nginx",
+                {
+                    "date": date,
+                    "size": size,
+                    "name": name,
+                    "tls": True,
+                    "lat_max": lat_max,
+                    "lat_stdev": lat_stdev,
+                    "lat_avg": lat_avg,
+                    "req_per_sec": req_per_sec,
+                    "transfer_rate": transfer_rate,
+                    "mpstat_host": mpstat_ids[0],
+                    "mpstat_guest": mpstat_ids[1],
+                    "perf_host": perf_ids[0],
+                    "perf_guest": perf_ids[1],
+                    "bpf": bpf_id,
+                },
+            )
+        else:
+            print("HTTPS no match")
     print(f"Results saved in {outputdir_host} and in the database")
 
 

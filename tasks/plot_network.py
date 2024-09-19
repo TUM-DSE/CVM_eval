@@ -1006,6 +1006,7 @@ def plot_ping_db(
     poll: bool = False,
     metric: Optional[str] = None,
     host: bool = False,
+    intel: bool = False,
 ):
     where_clause = (
         "WHERE name LIKE '%remote%'" if remote else "WHERE name NOT LIKE '%remote%'"
@@ -1072,14 +1073,19 @@ def plot_iperf_tcp(
     remote: bool = False,
     host: bool = False,
     poll: bool = False,
+    intel: bool = False,
 ):
     and_clause = (
         " AND name LIKE '%remote%'" if remote else "AND name NOT LIKE '%remote%'"
     ) + (" AND name NOT LIKE '%poll%'" if not poll else "")
     df = query_db(
-        f"SELECT * FROM iperf WHERE proto LIKE 'tcp' AND name LIKE '%mq%' AND name NOT LIKE '%poll%'{and_clause}"
+        f"SELECT * FROM iperf WHERE proto LIKE 'tcp' AND name LIKE '%mq%' {and_clause}"
     )
-
+    df = (
+        df[~df["name"].str.contains("amd|snp")]
+        if intel
+        else df[~df["name"].str.contains("intel|tdx")]
+    )
     df["Configuration"] = df.apply(
         lambda row: row["name"]
         .replace("-direct", "")
@@ -1090,8 +1096,8 @@ def plot_iperf_tcp(
         .replace("amd", "vm"),
         axis=1,
     )
-    sort_order = ["vm", "vhost", "snp", "snp-vhost", "swiotlb", "vhost-swiotlb"]
-    df = df.sort_values(by=["Configuration"], key=lambda x: x.map(sort_order.index))
+    # sort_order = ["vm", "vhost", "snp", "snp-vhost", "swiotlb", "vhost-swiotlb"]
+    # df = df.sort_values(by=["Configuration"], key=lambda x: x.map(sort_order.index))
 
     fig, ax1 = plt.subplots()
 
@@ -1130,7 +1136,9 @@ def plot_iperf_tcp(
     plt.savefig(
         f"plot/iperf/iperf_tcp"
         + (f"_{metric}" if metric else "")
+        + ("_intel" if intel else "")
         + ("_remote" if remote else "")
+        + ("_poll" if poll else "")
         + (f"_host" if host else "")
         + ".pdf",
         bbox_inches="tight",
@@ -1144,12 +1152,20 @@ def plot_iperf_udp(
     host: bool = False,
     poll: bool = False,
     remote: bool = False,
+    intel: bool = False,
     norm: str = "datagram",
 ):
     and_clause = (
         " AND name LIKE '%remote%'" if remote else "AND name NOT LIKE '%remote%'"
     ) + (" AND name NOT LIKE '%poll%'" if not poll else "")
     df = query_db(f"SELECT iperf.* FROM iperf WHERE proto LIKE 'udp' {and_clause}")
+
+    df = (
+        df[~df["name"].str.contains("amd|snp")]
+        if intel
+        else df[~df["name"].str.contains("intel|tdx")]
+    )
+
     df["Configuration"] = df.apply(
         lambda row: row["name"]
         .replace("-direct", "")
@@ -1206,6 +1222,7 @@ def plot_iperf_udp(
     plt.savefig(
         f"plot/iperf/iperf_udp"
         + (f"_{metric}" if metric else "")
+        + ("_intel" if intel else "")
         + ("_remote" if remote else "")
         + ("_poll" if poll else "")
         + (f"_by_{norm}" if metric and len(metric) > 3 else "")
@@ -1223,6 +1240,7 @@ def plot_memtier_db(
     norm: str = "ops",
     host: bool = False,
     poll: bool = False,
+    intel: bool = False,
 ):
     where_clause = (
         "WHERE name LIKE '%remote%'" if remote else "WHERE name NOT LIKE '%remote%'"
@@ -1231,6 +1249,11 @@ def plot_memtier_db(
         "AND name NOT LIKE '%poll%'" if not poll else "AND name NOT LIKE '%swiotlb%'"
     )
     df = query_db(f"SELECT * FROM memtier {where_clause} {and_clause}")
+    df = (
+        df[~df["name"].str.contains("amd|snp")]
+        if intel
+        else df[~df["name"].str.contains("intel|tdx")]
+    )
     df["Configuration"] = df.apply(
         lambda row: row["name"]
         .replace("-direct", "")
@@ -1277,6 +1300,7 @@ def plot_memtier_db(
     plt.savefig(
         f"plot/memtier/memtier"
         + (f"_{metric}" if metric else "")
+        + (f"_intel" if intel else "")
         + ("_remote" if remote else "")
         + (f"_host" if host else "")
         + (f"_poll" if poll else "")
@@ -1294,6 +1318,7 @@ def plot_nginx_db(
     norm="reqs",
     poll: bool = False,
     host: bool = False,
+    intel: bool = False,
 ):
     where_clause = (
         "WHERE name LIKE '%remote%'" if remote else "WHERE name NOT LIKE '%remote%'"
@@ -1302,6 +1327,11 @@ def plot_nginx_db(
         "AND name NOT LIKE '%poll%'" if not poll else " AND name NOT LIKE '%swiotlb%'"
     )
     df = query_db(f"SELECT * FROM nginx {where_clause} {and_clause}")
+    df = (
+        df[~df["name"].str.contains("amd|snp")]
+        if intel
+        else df[~df["name"].str.contains("intel|tdx")]
+    )
     df["Configuration"] = df.apply(
         lambda row: row["name"]
         .replace("-direct", "")
@@ -1357,6 +1387,7 @@ def plot_nginx_db(
     plt.savefig(
         f"plot/nginx/nginx"
         + (f"_{metric}" if metric else "")
+        + (f"_intel" if intel else "")
         + ("_remote" if remote else "")
         + (f"_host" if host else "")
         + (f"_poll" if poll else "")
