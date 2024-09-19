@@ -540,7 +540,13 @@ def plot_sqlite(
 
 
 @task
-def plot_tensorflow_db(ctx, metric: Optional[str] = None, norm: str = "examples"):
+def plot_tensorflow_db(
+    ctx,
+    metric: Optional[str] = None,
+    norm: str = "examples",
+    host: bool = False,
+    poll: bool = False,
+):
     df = query_db("SELECT * FROM tensorflow")
 
     df["size"] = df.apply(determine_size, axis=1)
@@ -554,7 +560,7 @@ def plot_tensorflow_db(ctx, metric: Optional[str] = None, norm: str = "examples"
     )
 
     fig, ax = plt.subplots()
-    sns.barplot(
+    barplot = sns.barplot(
         data=df,
         x="size",
         y="examples_per_sec",
@@ -574,12 +580,26 @@ def plot_tensorflow_db(ctx, metric: Optional[str] = None, norm: str = "examples"
         elif norm == "insts":
             norm_name = "1M Instructions"
         ax2 = ax.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "size", "name", df, palette3, norm_name)
+        METRIC_FUNCS[metric](ax2, "size", "name", df, palette3, norm_name, host)
+
+    for p in barplot.patches:
+        height = p.get_height()
+        if height != 0:
+            ax.text(
+                p.get_x() + p.get_width() / 1.2,
+                height + 0.1,
+                f"{height:.2f}",
+                ha="center",
+                va="bottom",
+                rotation=90,
+            )
 
     plt.tight_layout()
     plt.savefig(
         f"plot/tensorflow/tensorflow"
         + (f"_{metric}" if metric else "")
+        + (f"_host" if host else "")
+        + (f"_poll" if poll else "")
         + (f"_by_{norm}" if metric and len(metric) > 3 else "")
         + ".pdf",
         bbox_inches="tight",
@@ -587,8 +607,16 @@ def plot_tensorflow_db(ctx, metric: Optional[str] = None, norm: str = "examples"
 
 
 @task
-def plot_npb(ctx, bench: str = "ua", metric: Optional[str] = None, norm: str = "ops"):
-    df = query_db(f"SELECT * FROM npb WHERE prog='{bench}'")
+def plot_npb(
+    ctx,
+    bench: str = "ua",
+    metric: Optional[str] = None,
+    norm: str = "ops",
+    host: bool = False,
+    poll: bool = False,
+):
+    and_clause = " AND name NOT LIKE '%poll%'" if not poll else ""
+    df = query_db(f"SELECT * FROM npb WHERE prog='{bench}' {and_clause}")
     df["size"] = df.apply(determine_size, axis=1)
     df["config"] = df.apply(
         lambda row: row["size"].upper()[0] + "-" + row["policy"][0].upper(),
@@ -606,7 +634,8 @@ def plot_npb(ctx, bench: str = "ua", metric: Optional[str] = None, norm: str = "
     sort_order = ["S-P", "S-A", "M-P", "M-A", "L-P", "L-A", "X-P", "X-A"]
     df["config"] = pd.Categorical(df["config"], categories=sort_order, ordered=True)
     fig, ax = plt.subplots()
-    sns.barplot(
+
+    barplot = sns.barplot(
         data=df,
         x="config",
         y="mops",
@@ -626,12 +655,26 @@ def plot_npb(ctx, bench: str = "ua", metric: Optional[str] = None, norm: str = "
         elif norm == "insts":
             norm_name = "1M Instructions"
         ax2 = ax.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "config", "name", df, palette3, norm_name)
+        METRIC_FUNCS[metric](ax2, "config", "name", df, palette3, norm_name, host)
+
+    for p in barplot.patches:
+        height = p.get_height()
+        if height != 0:
+            ax.text(
+                p.get_x() + p.get_width() / 1.2,
+                height + 0.1,
+                f"{height:.2f}",
+                ha="center",
+                va="bottom",
+                rotation=90,
+            )
 
     plt.tight_layout()
     plt.savefig(
         f"plot/npb/{bench}"
         + (f"_{metric}" if metric else "")
+        + (f"_host" if host else "")
+        + (f"_poll" if poll else "")
         + (f"_by_{norm}" if metric and len(metric) > 3 else "")
         + ".pdf",
         bbox_inches="tight",

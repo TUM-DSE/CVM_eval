@@ -272,7 +272,10 @@ def parse_perf(hout, gout):
     pattern = r"^\s*([\d,]+)\s+([\w-]+)"
     matches = re.findall(
         pattern,
-        hout.decode().replace("kvm:kvm_exit", "vmexits"),
+        hout.decode()
+        .replace("kvm:kvm_exit", "vmexits")
+        .replace("L1-dcache-load-misses", "L1_misses")
+        .replace("l2_cache_req_stat.ic_dc_miss_in_l2", "L2_misses"),
         re.MULTILINE,
     )
     host_metrics = {

@@ -6,7 +6,7 @@ if [[ "$remote" == "true" ]]; then
     remote_flag="--remote"
 fi
 
-for action in run-memtier-memcached-text run-memtier-memcached run-memtier; do
+for action in run-memtier-memcached run-memtier; do
     for type in amd snp; do
         inv vm.start --type ${type} --virtio-nic $remote_flag --action=${action}
         inv vm.start --type ${type} --virtio-nic $remote_flag --action=${action} --virtio-nic-vhost

@@ -36,7 +36,7 @@ def run_ping(name: str, vm: QemuVm, pin_base=20, metrics: bool = True):
     ensure_db(connection, table="ping", columns=PING_COLS)
     # Benchmark
     for pkt_size in [64, 128, 256, 512, 1024]:
-        cmd = f"ping -c 30 -i0.1 -s {pkt_size} {VM_IP}".split(" ")
+        cmd = f"ping -c 100 -i0.1 -s {pkt_size} {VM_IP}".split(" ")
         if "remote" not in name:
             cmd = ["taskset", "-c", f"{pin_base}"] + cmd
         print(cmd)
@@ -46,7 +46,6 @@ def run_ping(name: str, vm: QemuVm, pin_base=20, metrics: bool = True):
             else subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         )
         # Capture metrics for host and guest
-
         mpstat_ids, perf_ids, bpf_id = (
             capture_metrics(name, 1) if metrics else ((None, None), (None, None), None)
         )

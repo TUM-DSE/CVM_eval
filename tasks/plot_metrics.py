@@ -9,7 +9,7 @@ from typing import Optional
 from utils import query_db, determine_size
 
 
-def plot_ipc(sns, ax, x, hue, df, palette, _):
+def plot_ipc(ax, x, hue, df, palette, _, host: bool = False):
     df = df.merge(
         query_db("SELECT id, instructions, cycles FROM perf_guest"),
         left_on="perf_guest",
@@ -31,9 +31,9 @@ def plot_ipc(sns, ax, x, hue, df, palette, _):
     ax.set_ylabel("Instructions per Cycle")
 
 
-def plot_cpu(sns, ax, x, hue, df, palette, _):
+def plot_cpu(ax, x, hue, df, palette, _, host: bool = False):
     df = df.merge(
-        query_db("SELECT id ,idle FROM mpstat_guest"),
+        query_db(f"SELECT id ,idle FROM {'mpstat_host' if host else 'mpstat_guest'}"),
         left_on="mpstat_guest",
         right_on="id",
         how="left",
@@ -53,14 +53,60 @@ def plot_cpu(sns, ax, x, hue, df, palette, _):
     ax.set_ylabel("CPU Utilization (%)")
 
 
-def plot_vmexit(
-    sns,
+def plot_cpu_standalone(
     ax,
     x,
     hue,
     df,
     palette,
     norm_name: str = "1M Instructions",
+    host: bool = False,
+):
+    df = df.merge(
+        query_db("SELECT id, idle FROM mpstat_guest"),
+        left_on="perf_host",
+        right_on="id",
+        how="left",
+    )
+    fig, ax1 = plt.subplots()
+    barplot = sns.barplot(
+        data=df,
+        x=x,
+        y=100 - df["idle"],
+        ax=ax1,
+        palette=palette,
+        hue=hue,
+        edgecolor="black",
+    )
+
+    for p in barplot.patches:
+        height = p.get_height()
+        if height != 0:
+            ax1.text(
+                p.get_x() + p.get_width() / 1.2,
+                height + 0.1,
+                f"{height:.2f}",
+                ha="center",
+                va="bottom",
+                rotation=90,
+            )
+
+    ax1.set_ylabel("CPU Utilization (%)")
+    ax1.set_xlabel("Protocol")
+    ax1.legend(title=None)
+    sns.despine()
+    plt.tight_layout()
+    plt.savefig("plot/cpu_guest.pdf")
+
+
+def plot_vmexit(
+    ax,
+    x,
+    hue,
+    df,
+    palette,
+    norm_name: str = "1M Instructions",
+    host: bool = False,
 ):
     df = df.merge(
         query_db("SELECT id, vmexits FROM perf_host"),
@@ -90,17 +136,113 @@ def plot_vmexit(
     ax.set_ylabel("VM Exits " + (f"per {norm_name}" if norm_name else ""))
 
 
+def plot_vmexit_standalone(
+    ax,
+    x,
+    hue,
+    df,
+    palette,
+    norm_name: str = "1M Instructions",
+    host: bool = False,
+):
+    df = df.merge(
+        query_db("SELECT id, vmexits FROM perf_host"),
+        left_on="perf_host",
+        right_on="id",
+        how="left",
+    )
+    df = df.merge(
+        query_db("SELECT id, instructions FROM perf_guest"),
+        left_on="perf_guest",
+        right_on="id",
+        how="left",
+    )
+    fig, ax1 = plt.subplots()
+    barplot = sns.barplot(
+        data=df,
+        x=x,
+        y=df["vmexits"]
+        / (df["norm"] if "norm" in df.columns else df["instructions"] * 1e-6),
+        ax=ax1,
+        palette=palette,
+        hue=hue,
+        edgecolor="black",
+    )
+
+    for p in barplot.patches:
+        height = p.get_height()
+        if height != 0:
+            ax1.text(
+                p.get_x() + p.get_width() / 1.2,
+                height + 5,
+                f"{height:.2f}",
+                ha="center",
+                va="bottom",
+                rotation=90,
+            )
+
+    ax1.set_title("Lower is better ↓", fontsize=12, color="navy")
+    ax1.set_ylabel("VM Exits " + (f"per {norm_name}" if norm_name else ""))
+    ax1.set_xlabel("Protocol")
+    sns.despine()
+    plt.tight_layout()
+    plt.savefig("plot/vmexits.pdf", bbox_inches="tight")
+
+
+def plot_branch_misses_standalone(
+    ax,
+    x,
+    hue,
+    df,
+    palette,
+    norm_name: str = "1M Instructions",
+    host: bool = False,
+):
+    df = df.merge(
+        query_db("SELECT id, branch_misses FROM perf_host"),
+        left_on="perf_host",
+        right_on="id",
+        how="left",
+    )
+    df = df.merge(
+        query_db("SELECT id, instructions FROM perf_guest"),
+        left_on="perf_guest",
+        right_on="id",
+        how="left",
+    )
+    fig, ax1 = plt.subplots()
+    barplot = sns.barplot(
+        data=df,
+        x=x,
+        y=df["branch_misses"]
+        / (df["norm"] if "norm" in df.columns else df["instructions"] * 1e-6),
+        ax=ax1,
+        palette=palette,
+        hue=hue,
+        edgecolor="black",
+    )
+
+    ax1.set_title("Lower is better ↓", fontsize=12, color="navy")
+    ax1.set_ylabel("Branch misses " + (f"per {norm_name}" if norm_name else ""))
+    ax1.set_xlabel("Packet Size in Bytes")
+    sns.despine()
+    plt.tight_layout()
+    plt.savefig("plot/branch_misses.pdf")
+
+
 def plot_iTLB_misses(
-    sns,
     ax,
     x,
     hue,
     df,
     palette,
     norm_name: Optional[str] = None,
+    host: bool = False,
 ):
     df = df.merge(
-        query_db("SELECT id, iTLB_load_misses, instructions FROM perf_guest"),
+        query_db(
+            f"SELECT id, iTLB_load_misses, instructions FROM {'perf_host' if host else 'perf_guest'}"
+        ),
         left_on="perf_guest",
         right_on="id",
         how="left",
@@ -122,16 +264,18 @@ def plot_iTLB_misses(
 
 
 def plot_dTLB_misses(
-    sns,
     ax,
     x,
     hue,
     df,
     palette,
     norm_name: Optional[str] = None,
+    host: bool = False,
 ):
     df = df.merge(
-        query_db("SELECT id, dTLB_load_misses, instructions FROM perf_guest"),
+        query_db(
+            f"SELECT id, dTLB_load_misses, instructions FROM {'perf_guest' if host else 'perf_host'}"
+        ),
         left_on="perf_guest",
         right_on="id",
         how="left",
@@ -153,16 +297,18 @@ def plot_dTLB_misses(
 
 
 def plot_cache_misses(
-    sns,
     ax,
     x,
     hue,
     df,
     palette,
     norm_name: Optional[str] = None,
+    host: bool = False,
 ):
     df = df.merge(
-        query_db("SELECT id, cache_misses, instructions FROM perf_guest"),
+        query_db(
+            f"SELECT id, cache_misses, instructions FROM {'perf_host' if host else 'perf_guest'}"
+        ),
         left_on="perf_guest",
         right_on="id",
         how="left",
@@ -184,16 +330,18 @@ def plot_cache_misses(
 
 
 def plot_branch_misses(
-    sns,
     ax,
     x,
     hue,
     df,
     palette,
     norm_name: Optional[str] = None,
+    host: bool = False,
 ):
     df = df.merge(
-        query_db("SELECT id, branch_misses, instructions FROM perf_guest"),
+        query_db(
+            f"SELECT id, branch_misses, instructions FROM {'perf_host' if host else 'perf_guest'}"
+        ),
         left_on="perf_guest",
         right_on="id",
         how="left",
@@ -215,17 +363,19 @@ def plot_branch_misses(
 
 
 def plot_l2_misses(
-    sns,
     ax,
     x,
     hue,
     df,
     palette,
     norm_name: Optional[str] = None,
+    host: bool = False,
 ):
     df = df[df["perf_guest"].notnull()]
     df = df.merge(
-        query_db("SELECT id, L2_misses, instructions FROM perf_guest"),
+        query_db(
+            f"SELECT id, L2_misses, instructions FROM {'perf_host' if host else 'perf_guest'}"
+        ),
         left_on="perf_guest",
         right_on="id",
         how="left",
@@ -247,16 +397,18 @@ def plot_l2_misses(
 
 
 def plot_l1_misses(
-    sns,
     ax,
     x,
     hue,
     df,
     palette,
     norm_name: Optional[str] = None,
+    host: bool = False,
 ):
     df = df.merge(
-        query_db("SELECT id, L1_misses, instructions FROM perf_guest"),
+        query_db(
+            f"SELECT id, L1_misses, instructions FROM {'perf_host' if host else 'perf_guest'}"
+        ),
         left_on="perf_guest",
         right_on="id",
         how="left",
@@ -277,7 +429,9 @@ def plot_l1_misses(
     ax.set_ylabel("L1 Misses " + (f"per {norm_name}" if norm_name else ""))
 
 
-def plot_instructions(sns, ax, x, hue, df, palette, norm_name: Optional[str] = None):
+def plot_instructions(
+    ax, x, hue, df, palette, norm_name: Optional[str] = None, host: bool = False
+):
     df = df.merge(
         query_db("SELECT id, instructions FROM perf_guest"),
         left_on="perf_guest",
@@ -302,23 +456,26 @@ def plot_instructions(sns, ax, x, hue, df, palette, norm_name: Optional[str] = N
 
 METRIC_FUNCS = {
     "vmexits": plot_vmexit,
+    "vmexits_standalone": plot_vmexit_standalone,
     "cpu": plot_cpu,
+    "cpu_standalone": plot_cpu_standalone,
     "ipc": plot_ipc,
     "instructions": plot_instructions,
     "dTLB_misses": plot_dTLB_misses,
     "iTLB_misses": plot_iTLB_misses,
     "cache_misses": plot_cache_misses,
     "branch_misses": plot_branch_misses,
+    "branch_misses_standalone": plot_branch_misses_standalone,
     "L2_misses": plot_l2_misses,
     "L1_misses": plot_l1_misses,
 }
 
 
 @task
-def plot_exit_reasons_ua(ctx, remote: bool = False):
+def plot_exit_reasons(ctx, remote: bool = False):
     df = query_db("SELECT * FROM bpf")
     df = df.merge(
-        query_db(f"SELECT name, bpf FROM npb WHERE prog = 'ua'"),
+        query_db(f"SELECT name, bpf FROM nginx"),
         left_on="id",
         right_on="bpf",
         how="left",

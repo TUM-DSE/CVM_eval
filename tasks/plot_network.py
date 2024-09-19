@@ -1000,13 +1000,26 @@ def plot_nginx(
 
 
 @task
-def plot_ping_db(ctx, remote: bool = False):
-    if remote:
-        df = query_db("SELECT * FROM ping WHERE name LIKE '%remote%'")
-    else:
-        df = query_db("SELECT * FROM ping WHERE name NOT LIKE '%remote%'")
+def plot_ping_db(
+    ctx,
+    remote: bool = False,
+    poll: bool = False,
+    metric: Optional[str] = None,
+    host: bool = False,
+):
+    where_clause = (
+        "WHERE name LIKE '%remote%'" if remote else "WHERE name NOT LIKE '%remote%'"
+    ) + (" AND name NOT LIKE '%poll%'" if not poll else "")
+    df = query_db(f"SELECT * FROM ping {where_clause}")
     df["name"] = df.apply(
-        lambda row: row["name"].replace("-direct", "").replace("-medium", ""), axis=1
+        lambda row: row["name"]
+        .replace("-direct", "")
+        .replace("-remote", "")
+        .replace("-medium", "")
+        .replace("amd-", "")
+        .replace("amd", "vm")
+        .replace("vhost-swiotlb", "swiotlb-vhost"),
+        axis=1,
     )
 
     fig, ax = plt.subplots()
@@ -1020,30 +1033,49 @@ def plot_ping_db(ctx, remote: bool = False):
         edgecolor="black",
     )
     ax.set_xlabel("Packet size in bytes")
-    ax.set_ylabel("Average latency in ms")
+    ax.set_ylabel("Maximal latency in ms")
     ax.set_title("Lower is better ↓", fontsize=12, color="navy")
+    ax.legend(title=None, loc="lower left")
 
-    # for p in barplot.patches:
-    #     height = p.get_height()
-    #     ax.text(
-    #         p.get_x() + p.get_width() / 2.0,
-    #         height + 1,
-    #         f"{height:.2f}",
-    #         ha="center",
-    #         va="bottom",
-    #     )
+    for p in barplot.patches:
+        height = p.get_height()
+        if height != 0:
+            ax.text(
+                p.get_x() + p.get_width() / 1.2,
+                height + 0.01,
+                f"{height:.2f}",
+                ha="center",
+                va="bottom",
+                rotation=90,
+            )
 
+    if metric:
+        df["norm"] = 100
+        ax2 = ax.twinx()
+        METRIC_FUNCS[metric](ax2, "pkt_size", "name", df, palette, "Ping", host)
+    sns.despine(top=True, right=(not metric))
     plt.tight_layout()
     plt.savefig(
-        f"plot/ping" + ("-remote" if remote else "") + ".pdf", bbox_inches="tight"
+        f"plot/ping/ping"
+        + (f"_{metric}" if metric else "")
+        + ("_remote" if remote else "")
+        + (f"_host" if host else "")
+        + ".pdf",
+        bbox_inches="tight",
     )
 
 
 @task
-def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
+def plot_iperf_tcp(
+    ctx,
+    metric: Optional[str] = None,
+    remote: bool = False,
+    host: bool = False,
+    poll: bool = False,
+):
     and_clause = (
         " AND name LIKE '%remote%'" if remote else "AND name NOT LIKE '%remote%'"
-    )
+    ) + (" AND name NOT LIKE '%poll%'" if not poll else "")
     df = query_db(
         f"SELECT * FROM iperf WHERE proto LIKE 'tcp' AND name LIKE '%mq%' AND name NOT LIKE '%poll%'{and_clause}"
     )
@@ -1051,13 +1083,15 @@ def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
     df["Configuration"] = df.apply(
         lambda row: row["name"]
         .replace("-direct", "")
+        .replace("-remote", "")
         .replace("-medium", "")
         .replace("-mq", "")
         .replace("amd-", "")
         .replace("amd", "vm"),
         axis=1,
     )
-    df = df.sort_values("bitrate", ascending=True)
+    sort_order = ["vm", "vhost", "snp", "snp-vhost", "swiotlb", "vhost-swiotlb"]
+    df = df.sort_values(by=["Configuration"], key=lambda x: x.map(sort_order.index))
 
     fig, ax1 = plt.subplots()
 
@@ -1078,17 +1112,18 @@ def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
 
     for p in barplot.patches:
         height = p.get_height()
-        ax1.text(
-            p.get_x() + p.get_width() / 2.0,
-            height + 1,
-            f"{height:.2f}",
-            ha="center",
-            va="bottom",
-        )
+        if height != 0:
+            ax1.text(
+                p.get_x() + p.get_width() / 2.0,
+                height + 1,
+                f"{height:.2f}",
+                ha="center",
+                va="bottom",
+            )
 
     if metric:
         ax2 = ax1.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "name", None, df, palette, "1M Instructions")
+        METRIC_FUNCS[metric](ax2, "name", None, df, palette, "1M Instructions", host)
 
     sns.despine(top=True, right=False)
     plt.tight_layout()
@@ -1096,6 +1131,7 @@ def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
         f"plot/iperf/iperf_tcp"
         + (f"_{metric}" if metric else "")
         + ("_remote" if remote else "")
+        + (f"_host" if host else "")
         + ".pdf",
         bbox_inches="tight",
     )
@@ -1103,19 +1139,26 @@ def plot_iperf_tcp(ctx, metric: Optional[str] = None, remote: bool = False):
 
 @task
 def plot_iperf_udp(
-    ctx, metric: Optional[str] = None, remote: bool = False, norm: str = "datagram"
+    ctx,
+    metric: Optional[str] = None,
+    host: bool = False,
+    poll: bool = False,
+    remote: bool = False,
+    norm: str = "datagram",
 ):
     and_clause = (
         " AND name LIKE '%remote%'" if remote else "AND name NOT LIKE '%remote%'"
-    )
+    ) + (" AND name NOT LIKE '%poll%'" if not poll else "")
     df = query_db(f"SELECT iperf.* FROM iperf WHERE proto LIKE 'udp' {and_clause}")
     df["Configuration"] = df.apply(
         lambda row: row["name"]
         .replace("-direct", "")
+        .replace("-remote", "")
         .replace("-medium", "")
         .replace("-mq", "")
         .replace("amd-", "")
-        .replace("amd", "vm"),
+        .replace("amd", "vm")
+        .replace("vhost-swiotlb", "swiotlb-vhost"),
         axis=1,
     )
 
@@ -1132,6 +1175,7 @@ def plot_iperf_udp(
     ax1.set_xlabel("Packet size in bytes")
     ax1.set_ylabel("Bitrate in Gbits/sec")
     ax1.set_title("Higher is better ↑", fontsize=12, color="navy")
+    ax1.legend(title=None, loc="upper left")
 
     if metric:
         if norm == "datagram":
@@ -1141,17 +1185,31 @@ def plot_iperf_udp(
             norm_name = "1M Instructions"
         ax2 = ax1.twinx()
         METRIC_FUNCS[metric](
-            sns, ax2, "pkt_size", "Configuration", df, palette, norm_name
+            ax2, "pkt_size", "Configuration", df, palette, norm_name, host
         )
 
-    sns.despine(top=True, right=False)
+    for p in barplot.patches:
+        height = p.get_height()
+        if height != 0:
+            ax1.text(
+                p.get_x() + p.get_width() / 1.2,
+                height + 0.1,
+                f"{height:.2f}",
+                ha="center",
+                va="bottom",
+                rotation=90,
+            )
+
+    sns.despine(top=True, right=(not metric))
     plt.ticklabel_format(style="plain", axis="y")
     plt.tight_layout()
     plt.savefig(
         f"plot/iperf/iperf_udp"
         + (f"_{metric}" if metric else "")
         + ("_remote" if remote else "")
+        + ("_poll" if poll else "")
         + (f"_by_{norm}" if metric and len(metric) > 3 else "")
+        + (f"_host" if host else "")
         + ".pdf",
         bbox_inches="tight",
     )
@@ -1159,12 +1217,20 @@ def plot_iperf_udp(
 
 @task
 def plot_memtier_db(
-    ctx, metric: Optional[str] = None, remote: bool = False, norm: str = "ops"
+    ctx,
+    metric: Optional[str] = None,
+    remote: bool = False,
+    norm: str = "ops",
+    host: bool = False,
+    poll: bool = False,
 ):
     where_clause = (
         "WHERE name LIKE '%remote%'" if remote else "WHERE name NOT LIKE '%remote%'"
     )
-    df = query_db(f"SELECT * FROM memtier {where_clause}")
+    and_clause = (
+        "AND name NOT LIKE '%poll%'" if not poll else "AND name NOT LIKE '%swiotlb%'"
+    )
+    df = query_db(f"SELECT * FROM memtier {where_clause} {and_clause}")
     df["Configuration"] = df.apply(
         lambda row: row["name"]
         .replace("-direct", "")
@@ -1202,16 +1268,18 @@ def plot_memtier_db(
             norm_name = "1M Instructions"
         ax2 = ax.twinx()
         METRIC_FUNCS[metric](
-            sns, ax2, "Protocol, TLS", "Configuration", df, palette, norm_name
+            ax2, "Protocol, TLS", "Configuration", df, palette, norm_name, host
         )
 
-    sns.despine(top=True, right=False)
+    sns.despine(top=True, right=(not metric))
     plt.ticklabel_format(style="plain", axis="y")
     plt.tight_layout()
     plt.savefig(
         f"plot/memtier/memtier"
         + (f"_{metric}" if metric else "")
         + ("_remote" if remote else "")
+        + (f"_host" if host else "")
+        + (f"_poll" if poll else "")
         + (f"_by_{norm}" if metric and len(metric) > 3 else "")
         + ".pdf",
         bbox_inches="tight",
@@ -1219,11 +1287,21 @@ def plot_memtier_db(
 
 
 @task
-def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False, norm="reqs"):
+def plot_nginx_db(
+    ctx,
+    metric: Optional[str] = None,
+    remote: bool = False,
+    norm="reqs",
+    poll: bool = False,
+    host: bool = False,
+):
     where_clause = (
         "WHERE name LIKE '%remote%'" if remote else "WHERE name NOT LIKE '%remote%'"
     )
-    df = query_db(f"SELECT * FROM nginx {where_clause}")
+    and_clause = (
+        "AND name NOT LIKE '%poll%'" if not poll else " AND name NOT LIKE '%swiotlb%'"
+    )
+    df = query_db(f"SELECT * FROM nginx {where_clause} {and_clause}")
     df["Configuration"] = df.apply(
         lambda row: row["name"]
         .replace("-direct", "")
@@ -1249,6 +1327,7 @@ def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False, norm=
         edgecolor="black",
     )
     ax.set_ylabel("Throughput in KBytes/s")
+    ax.set_xlabel("Protocol")
     ax.set_title("Higher is better ↑", fontsize=12, color="navy")
 
     if metric:
@@ -1258,15 +1337,29 @@ def plot_nginx_db(ctx, metric: Optional[str] = None, remote: bool = False, norm=
         elif norm == "insts":
             norm_name = "1M Instructions"
         ax2 = ax.twinx()
-        METRIC_FUNCS[metric](sns, ax2, "TLS", "Configuration", df, palette, norm_name)
+        METRIC_FUNCS[metric](ax2, "TLS", "Configuration", df, palette, norm_name, host)
 
-    sns.despine(top=True, right=False)
+    for p in barplot.patches:
+        height = p.get_height()
+        if height != 0:
+            ax.text(
+                p.get_x() + p.get_width() / 1.2,
+                height + 0.1,
+                f"{height:.2f}",
+                ha="center",
+                va="bottom",
+                rotation=90,
+            )
+
+    sns.despine(top=True, right=(not metric))
     plt.ticklabel_format(style="plain", axis="y")
     plt.tight_layout()
     plt.savefig(
         f"plot/nginx/nginx"
         + (f"_{metric}" if metric else "")
         + ("_remote" if remote else "")
+        + (f"_host" if host else "")
+        + (f"_poll" if poll else "")
         + (f"_by_{norm}" if metric and len(metric) > 3 else "")
         + ".pdf",
         bbox_inches="tight",
