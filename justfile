@@ -452,6 +452,11 @@ setup-linux:
     just configure-linux
     just build-linux
 
+setup-linux-tdx:
+    just clone-linux
+    just configure-linux-tdx
+    just build-linux
+
 
 # ------------------------------
 # network settings
