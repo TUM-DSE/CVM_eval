@@ -27,6 +27,8 @@ Build cointainer images:
 ```bash
 tools/build_docker_images.py --deployment local --language python --language-version 3.11
 tools/build_docker_images.py --deployment cvm --language python --language-version 3.11
+tools/build_docker_images.py --deployment kata_qemu --language python --language-version 3.11
+tools/build_docker_images.py --deployment kata_fc --language python --language-version 3.11
 ```
 
 
@@ -50,11 +52,13 @@ jq '.deployment.local.storage = input' config/config_template.json out_storage.j
 
 
 ### Experiments
+Specify `cvm` as `deployment.name` in `config/config_template.json`.
+
 ```bash
 BENCHMARKS="110.dynamic-html 120.uploader 210.thumbnailer 220.video-processing 311.compression 411.image-recognition 501.graph-pagerank 502.graph-mst 503.graph-bfs 504.dna-visualisation"
 for BENCHMARK in $BENCHMARKS
 do
-  jq ".deployment.local.storage = input | .deployment.cvm.storage = input | .experiments.\"perf-cost\".benchmark = \"$BENCHMARK\"" config/config_template.json out_storage.json out_storage.json > config/config.json
+  jq ".deployment.local.storage = input | .deployment.cvm.storage = input | .deployment.kata_qemu.storage = input | .deployment.kata_fc.storage = input | .experiments.\"perf-cost\".benchmark = \"$BENCHMARK\"" config/config_template.json out_storage.json out_storage.json out_storage.json out_storage.json > config/config.json
   
   ./sebs.py experiment invoke perf-cost --config config/config.json --output-dir $BENCHMARK --output-file run.log
   ./sebs.py experiment process perf-cost --config config/config.json --output-dir $BENCHMARK --output-file process.log
@@ -82,6 +86,7 @@ The connection time is not measured separately.
 ### Remove Containers
 ```bash
 docker rm -f $(docker ps -a --filter "ancestor=sebs:run.local.python.3.11" -q)
+docker rm -f $(docker ps -a --filter "ancestor=sebs:run.kata_qemu.python.3.11" -q)
 ```
 
 
