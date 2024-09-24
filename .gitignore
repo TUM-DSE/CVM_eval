@@ -31,6 +31,7 @@ modules.order
 benchmarks/network/nginx/nginx.pid
 tensorflow.log
 benchmarks/network/nginx/off
-benchmarks/network/nginx/www/1.txt
-benchmarks/network/nginx/www/10.txt
-benchmarks/network/nginx/www/100.txt
+benchmarks/network/nginx/www/1MB.txt
+benchmarks/network/nginx/www/10MB.txt
+benchmarks/network/nginx/www/100KB.txt
+benchmarks/application/npb/NPB3.4.3

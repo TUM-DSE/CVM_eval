@@ -20,10 +20,6 @@ set -u
 mkdir -p $OUTDIR
 cd $OUTDIR
 
-if [ $V = "host" ]; then
-    perf stat -e kvm:kvm_exit,instructions,cycles,branch-misses,cache-misses,dTLB-load-misses,iTLB-load-misses,L1-dcache-load-misses -a sleep $DURATION 2>&1 | tee $OUTDIR/perf-stat.txt
-else
-    perf stat -e instructions,cycles,branch-misses,cache-misses,dTLB-load-misses,iTLB-load-misses,L1-dcache-load-misses -a sleep $DURATION 2>&1 | tee $OUTDIR/perf-stat.txt
-fi
+perf kvm --$FLAG stat -e kvm:kvm_exit,instructions,branch-misses,dTLB-load-misses,L1-dcache-load-misses -a sleep $DURATION 2>&1 | tee $OUTDIR/perf-stat.txt
 
 echo "Result saved: ${OUTDIR}"

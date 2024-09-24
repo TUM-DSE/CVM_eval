@@ -534,15 +534,22 @@ trace-host name:
     export OUTDIR
     bash {{PROJECT_ROOT}}/trace/all.sh
 
-bpf duration:
-    timeout {{duration}}  bpftrace ./scripts/trace/amd_kvm_vmexit_count.bt
+bpf duration vendor="amd":
+    timeout {{duration}}  bpftrace ./scripts/trace/{{vendor}}_kvm_vmexit_count.bt
 
 perf-host name duration:
     #!/usr/bin/env bash
     DATE=$(date '+%Y-%m-%d-%H-%M-%S')
     OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host
     export OUTDIR
-    DURATION={{duration}} bash {{PROJECT_ROOT}}/trace/perf.sh
+    FLAG="host" DURATION={{duration}} bash {{PROJECT_ROOT}}/trace/perf.sh
+
+perf-host-guest name duration:
+    #!/usr/bin/env bash
+    DATE=$(date '+%Y-%m-%d-%H-%M-%S')
+    OUTDIR={{PROJECT_ROOT}}/trace-result/{{name}}/$DATE/host
+    export OUTDIR
+    FLAG="guest" DURATION={{duration}} bash {{PROJECT_ROOT}}/trace/perf.sh
 
 stat-host name:
     #!/usr/bin/env bash

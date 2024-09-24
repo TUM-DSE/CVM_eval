@@ -98,8 +98,8 @@ NGINX_COLS = {
     "lat_stdev": "FLOAT",
     "req_per_sec": "FLOAT",  # in Requests/s
     "transfer_rate": "FLOAT",  # in KB/s
-    "size": "INT",  # in MB
-    "PRIMARY KEY": "(date, tls)",
+    "size": "VARCHAR(5)",  # in MB
+    "PRIMARY KEY": "(date, tls, size)",
 }
 
 TENSORFLOW_COLS = {
@@ -296,11 +296,7 @@ def parse_perf(hout, gout):
     connection = connect_to_db()
     ensure_db(connection, table="perf_guest", columns=PERF_COLS)
     ensure_db(connection, table="perf_host", columns=PERF_COLS)
-    g_id = (
-        insert_into_db(connection, "perf_guest", guest_metrics)
-        if guest_metrics
-        else None
-    )
+    g_id = insert_into_db(connection, "perf_guest", guest_metrics)
     h_id = insert_into_db(connection, "perf_host", host_metrics)
     return h_id, g_id
 
@@ -336,18 +332,14 @@ def capture_metrics(name: str, duration: int = 5, range: str = "ALL"):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    perf_guest = (
-        subprocess.Popen(
-            ["just", "perf-guest", name, str(duration)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        if "intel" not in name and "tdx" not in name
-        else None
+    perf_guest = subprocess.Popen(
+        ["just", "perf-host-guest", name, str(duration)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
     # bpf
     bpf = subprocess.Popen(
-        ["just", "bpf", str(duration)],
+        ["just", "bpf", str(duration), "intel"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -366,7 +358,7 @@ def capture_metrics(name: str, duration: int = 5, range: str = "ALL"):
     perf_hout, herr = perf_host.communicate()
     if perf_host.returncode != 0:
         print(f"Error running perf: {herr.decode()}")
-    perf_gout, gerr = perf_guest.communicate() if perf_guest else (b"", b"")
+    perf_gout, gerr = perf_guest.communicate()
     if perf_guest and perf_guest.returncode != 0:
         print(f"Error running perf: {gerr.decode()}")
     bpf_out, berr = bpf.communicate()

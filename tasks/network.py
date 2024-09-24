@@ -420,7 +420,7 @@ def run_nginx(
     server_cmd = ["just", "-f", "/share/benchmarks/network/justfile", "run-nginx"]
     vm.ssh_cmd(server_cmd)
     time.sleep(1)
-    for size in [1, 10, 100]:
+    for size in ["100KB", "1MB", "10MB"]:
         # HTTP
         cmd = [
             "wrk",
@@ -447,7 +447,7 @@ def run_nginx(
         out, err = bench_res.communicate()
         if bench_res.returncode != 0:
             print(f"Error running wrk: {err.decode()}")
-        with open(outputdir_host / f"http.log", "w") as f:
+        with open(outputdir_host / f"http_{size}.log", "w") as f:
             f.write(out.decode())
         pattern = r"Latency\s+(\d+\.\d+).?s\s+(\d+\.\d+).s\s+(\d+\.\d+).?s.*?Requests/sec:\s+(\d+\.\d+).*?Transfer/sec:\s+(\d+\.\d+).?B"
         match = re.search(pattern, out.decode(), re.DOTALL)
@@ -456,7 +456,7 @@ def run_nginx(
                 float, match.groups()
             )
             print(
-                f"HTTP Latency: {lat_avg}ms, Max: {lat_max}ms, Req/s: {req_per_sec}, Transfer rate: {transfer_rate}KB/s"
+                f"HTTP Latency: {lat_avg}ms, Max: {lat_max}ms, Req/s: {req_per_sec}, Transfer rate: {transfer_rate}MB/s"
             )
             insert_into_db(
                 connection,
@@ -507,7 +507,7 @@ def run_nginx(
         out, err = bench_res.communicate()
         if bench_res.returncode != 0:
             print(f"Error running wrk: {err.decode()}")
-        with open(outputdir_host / f"https.log", "w") as f:
+        with open(outputdir_host / f"https_{size}.log", "w") as f:
             f.write(out.decode())
         match = re.search(pattern, out.decode(), re.DOTALL)
         if match:
@@ -515,7 +515,7 @@ def run_nginx(
                 float, match.groups()
             )
             print(
-                f"HTTPS Latency: {lat_avg}ms, Max: {lat_max}ms, Req/s: {req_per_sec}, Transfer rate: {transfer_rate}KB/s"
+                f"HTTPS Latency: {lat_avg}ms, Max: {lat_max}ms, Req/s: {req_per_sec}, Transfer rate: {transfer_rate}MB/s"
             )
             insert_into_db(
                 connection,
