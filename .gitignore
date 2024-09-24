@@ -34,4 +34,5 @@ benchmarks/network/nginx/off
 benchmarks/network/nginx/www/1MB.txt
 benchmarks/network/nginx/www/10MB.txt
 benchmarks/network/nginx/www/100KB.txt
+benchmarks/network/nginx/off
 benchmarks/application/npb/NPB3.4.3
