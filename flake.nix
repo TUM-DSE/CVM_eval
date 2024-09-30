@@ -225,6 +225,7 @@
                 python3.pkgs.ipython
                 python3.pkgs.psutil
                 python3.pkgs.scipy
+                python3.pkgs.igraph
 
                 just
                 git
@@ -305,8 +306,8 @@
                 (import ./nix/guest-config.nix { extraEnvPackages = [ ]; _gcc = gcc; })
                 ({
                   systemd.services.serverService = {
-                    after = [ "network-online.target" ];
-                    wants = [ "network-online.target" ];
+                    after = [ ];
+                    wants = [ ];
                     wantedBy = [ "multi-user.target" ];
                     serviceConfig.Restart = "always";
                     serviceConfig.ExecStart = "${python}/bin/python3 /opt/sebs/server.py 9001";
