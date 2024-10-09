@@ -27,6 +27,15 @@
 - mmio (via ept violation)
     - Only [ept violation on shared memory is handled](https://github.com/torvalds/linux/blob/v6.8/arch/x86/coco/tdx/tdx.c#L673)
 
+## Get TDX module info
+- On Linux 6.8 kernel
+```
+% ls /sys/firmware/tdx/tdx_module/
+attributes  build_date  build_num  major_version  metadata  minor_version  status  vendor_id
+% cat /sys/firmware/tdx/tdx_module/build_num
+0x000002ba
+```
+
 ## Enable TDX on Dell PowerEdge R760
 - Docs: https://infohub.delltechnologies.com/en-us/p/enabling-intel-r-tdx-on-dell-poweredge/
 
