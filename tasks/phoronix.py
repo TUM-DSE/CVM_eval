@@ -16,6 +16,7 @@ from config import PROJECT_ROOT
 from qemu import QemuVm
 
 # Based on
+# (c) 2021-2022 Jörg Thalheim
 # https://github.com/Mic92/vmsh/blob/358cd4b6ec7de0dcac05a12e32486ef30658018c/tests/measure_phoronix.py
 
 
