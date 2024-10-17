@@ -139,4 +139,4 @@ mount -t 9p -o trans=virtio,version=9p2000.L share /share
    - `nix-store --verify --check-contents --repair`
 
 ### Change ssh port
-- Edit [./tasks/config.py][./tasks/config.py]
+- Edit [tasks/config.py](../tasks/config.py)

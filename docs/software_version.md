@@ -20,6 +20,10 @@ snp-latest branch of that date.
 
 Note: The latest kernel versions (6.9 >=) has a memory performance issue by default due to disabling 2MB THP: https://github.com/AMDESE/AMDSEV/issues/225
 
+### BIOS and Kernel configuration
+- See https://github.com/AMDESE/AMDSEV/tree/snp-latest
+- See also [./amd-snp.md](./amd-snp.md)
+
 ## Intel TDX
 - Intel summarizes TDX software information [here](https://github.com/intel/tdx/wiki/TDX-KVM).
 - Also, Canonical summarizes information on TDX on Ubuntu [here](https://github.com/canonical/tdx).
@@ -68,3 +72,6 @@ merge backport lp:~kobuk-team/ubuntu/+source/qemu tdx
 % cp /usr/share/qemu/linuxboot_dma.bin .
 % cp /usr/lib/ipxe/qemu/efi-virtio.rom .
 ```
+
+### BIOS configuration
+- See [./tdx.md](./tdx.md)
