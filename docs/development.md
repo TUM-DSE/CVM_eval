@@ -154,3 +154,13 @@ inv vm.start --type amd --ssh-cmd "echo hi" --ssh-cmd "ls /"
 
 ### Change ssh port
 - Edit [tasks/config.py](../tasks/config.py)
+
+## Additionl info
+- See [./docs](./)
+    - [Attestaion](./attestation.md)
+    - [Benchmarks](./benchmark.md)
+    - [Software version](./software_version.md)
+    - [Build software manually](./how_to_build.md)
+    - [Note on Linux](./linux.md)
+    - [Note on AMD SEV-SNP](./amd-snp.md)
+    - [Note on Intel TDX](./tdx.md)

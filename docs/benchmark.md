@@ -1,5 +1,7 @@
 # Benchmark
 
+- For the detail of sigmetrics evaluation, see [sigmetrics.md](./sigmetrics.md)
+
 ## Boottime evaluation
 See [../benchmarks/boottime/](../benchmarks/boottime/)
 

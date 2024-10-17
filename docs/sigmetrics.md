@@ -63,3 +63,6 @@ dmesg > /share/bench-result/vmexit/snp.txt
 
 ### Attesttion
 - See [benchmarks/attestation](../benchmarks/attestation)
+
+### TCB evaluation
+- See [tcb.md](./tcb.md)
