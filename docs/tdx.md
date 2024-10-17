@@ -27,6 +27,32 @@
 - mmio (via ept violation)
     - Only [ept violation on shared memory is handled](https://github.com/torvalds/linux/blob/v6.8/arch/x86/coco/tdx/tdx.c#L673)
 
+## Get TDX module info
+- On Linux 6.8 kernel
+```
+% ls /sys/firmware/tdx/tdx_module/
+attributes  build_date  build_num  major_version  metadata  minor_version  status  vendor_id
+% cat /sys/firmware/tdx/tdx_module/build_num
+0x000002ba
+```
+
+### TDX capabilities
+- `/sys/firmware/tdx/tdx_module/metadata/` contains metadata
+- See "Global Metadata Fields" in the TDX ABI documentation for the meaning
+- Regarding TDX capabilities
+    - 0x1900000300000000 is "ATTRIBUTES_FIXED0", meaning these attributes must disabled
+    - 0x1900000300000001 is "ATTRIBUTES_FIXED1", meaning these attributes must enabed
+    - See "ATTRIBUTES Definition" in the TDX ABI documentation for available attributes
+- Example
+```
+% hexdump -C /sys/firmware/tdx/tdx_module/metadata/1900000300000000
+00000000  01 00 00 70 00 00 00 80                           |...p....|
+% hexdump -C /sys/firmware/tdx/tdx_module/metadata/1900000300000001
+00000000  00 00 00 00 00 00 00 00                           |........|
+```
+- In this case, bits of "ATTRIBUTES_FIXED0" (i.e., unavailable features) are
+    - Debug(1), Migratable(29), PKS (30), Perfmon (63)
+
 ## Enable TDX on Dell PowerEdge R760
 - Docs: https://infohub.delltechnologies.com/en-us/p/enabling-intel-r-tdx-on-dell-poweredge/
 
