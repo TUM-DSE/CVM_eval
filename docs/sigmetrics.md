@@ -7,7 +7,7 @@
     - The results are saved in `./bench-result`
 - [experiment/plot_all.sh](../experiment/plot_all.sh) contains plot commands
     - If the plot command fails, then probably some results are missing
-- *!!NOTE: some scripts are configured to use a physical disk (e.g., `/dev/nvme1n1`). Check the script running it and correct it if necessary*
+- *!!NOTE: some scripts are configured to use a physical disk (e.g., `/dev/nvme1n1`). Check the script before running it and correct it if necessary*
 
 ### Software
 - AMD SEV-SNP: https://github.com/TUM-DSE/CVM_eval/tree/checkpoint-sub-20240808-snp
@@ -61,3 +61,5 @@ dmesg > /share/bench-result/vmexit/snp.txt
         - Use idle polling: `--extra-cmdline idle=poll --name-extra -poll`
         - Use halt idle polling: `--extra-cmdline cpuidle_haltpoll.force=Y --name-extra -haltpoll`
 
+### Attesttion
+- See [benchmarks/attestation](../benchmarks/attestation)
