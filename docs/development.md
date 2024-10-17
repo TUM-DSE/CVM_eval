@@ -124,6 +124,15 @@ mount -t 9p -o trans=virtio,version=9p2000.L share /share
 - Use idle polling: `--extra-cmdline idle=poll --name-extra -poll`
 - Use halt idle polling: `--extra-cmdline cpuidle_haltpoll.force=Y --name-extra -haltpoll`
 
+## Run automated command
+- By default, `inv vm.start` launch a VM
+- `inv` command has `--action` arguments, which we can automate processing
+- See [../tasks/vm.py](../tasks/vm.py), specifically, `do_action()` for the detail
+- We can also use `ssh-cmd` to quickly run command in the VM
+```
+inv vm.start --type amd --ssh-cmd "echo hi" --ssh-cmd "ls /"
+```
+
 ## QA
 ### VM failes to boot (`inv vm.start` fails)
 - SNP requires root. Also some operations (e.g., using a disk for virtio-blk) require root.

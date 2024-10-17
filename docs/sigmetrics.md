@@ -22,6 +22,7 @@
 ### Memory
 - phoronix: [experiment/bench_phoronix.sh](../experiment/bench_phoronix.sh)
 - mlc: Just run `inv vm.start --type snp --action run-mlc`
+    - Note: you need to put `mlc` in [`./benchmarks/memory`](../benchmarks/memory). See the directory for the detail.
 - mmap time: [experiment/run_mmap_time.sh](../experiment/run_mmap_time.sh)
 
 ### VMEXIT

@@ -1,5 +1,15 @@
 # Benchmark
 
+- By default, `inv vm.start` launch a VM
+- `inv` command also has `--action` arguments, which we can automate processing
+
+## Add own actions
+- See [../tasks/vm.py](../tasks/vm.py), specifically, `do_action()`
+- We can also use `ssh-cmd` to quickly run command in the VM
+```
+inv vm.start --type amd --ssh-cmd "echo hi" --ssh-cmd "ls /"
+```
+
 ## Boottime evaluation
 See [../benchmarks/boottime/](../benchmarks/boottime/)
 
@@ -67,3 +77,4 @@ The result is saved as `{PROJECT_ROOT}/bench-result/fio/{vmname}/{jobname}/%Y-%m
 
 ### Add a new fio job
 - Put it `{PROJECT_ROOT}/config/fio/`
+
