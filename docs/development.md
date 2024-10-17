@@ -78,6 +78,7 @@ just start-snp-direct   # boot snp vm with direct boot
 chmod 600 ./nix/ssh_key # update permission of the ssh key
 just ssh                # ssh to the vm
 ```
+- Note: some just commands might be out dated
 
 - [tasks/vm.py](../tasks/vm.py) provides commands to launch and execute command in a controlled manner.
     - The default command attaches to the launched VM.
@@ -137,3 +138,5 @@ mount -t 9p -o trans=virtio,version=9p2000.L share /share
    - `nix-collect-garbage -d`
    - `nix-store --verify --check-contents --repair`
 
+### Change ssh port
+- Edit [./tasks/config.py][./tasks/config.py]
