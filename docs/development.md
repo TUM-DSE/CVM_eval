@@ -119,6 +119,11 @@ mount -t 9p -o trans=virtio,version=9p2000.L share /share
 - `inv vm.start --virtio-nic` command create a virtio-nic backed by a host bridge.
 - See [network.md](./network.md) for the detail.
 
+## Inv option examples
+- Force swiotlb: `--virtio-iommu --extra-cmdline swiotlb=524288,force`
+- Use idle polling: `--extra-cmdline idle=poll --name-extra -poll`
+- Use halt idle polling: `--extra-cmdline cpuidle_haltpoll.force=Y --name-extra -haltpoll`
+
 ## QA
 ### VM failes to boot (`inv vm.start` fails)
 - SNP requires root. Also some operations (e.g., using a disk for virtio-blk) require root.
