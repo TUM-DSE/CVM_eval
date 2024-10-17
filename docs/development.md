@@ -119,6 +119,20 @@ mount -t 9p -o trans=virtio,version=9p2000.L share /share
 - `inv vm.start --virtio-nic` command create a virtio-nic backed by a host bridge.
 - See [network.md](./network.md) for the detail.
 
+## Inv option examples
+- Force swiotlb: `--virtio-iommu --extra-cmdline swiotlb=524288,force`
+- Use idle polling: `--extra-cmdline idle=poll --name-extra -poll`
+- Use halt idle polling: `--extra-cmdline cpuidle_haltpoll.force=Y --name-extra -haltpoll`
+
+## Run automated command
+- By default, `inv vm.start` launch a VM
+- `inv` command has `--action` arguments, which we can automate processing
+- See [../tasks/vm.py](../tasks/vm.py), specifically, `do_action()` for the detail
+- We can also use `ssh-cmd` to quickly run command in the VM
+```
+inv vm.start --type amd --ssh-cmd "echo hi" --ssh-cmd "ls /"
+```
+
 ## QA
 ### VM failes to boot (`inv vm.start` fails)
 - SNP requires root. Also some operations (e.g., using a disk for virtio-blk) require root.
@@ -139,4 +153,14 @@ mount -t 9p -o trans=virtio,version=9p2000.L share /share
    - `nix-store --verify --check-contents --repair`
 
 ### Change ssh port
-- Edit [./tasks/config.py][./tasks/config.py]
+- Edit [tasks/config.py](../tasks/config.py)
+
+## Additionl info
+- See [./docs](./)
+    - [Attestaion](./attestation.md)
+    - [Benchmarks](./benchmark.md)
+    - [Software version](./software_version.md)
+    - [Build software manually](./how_to_build.md)
+    - [Note on Linux](./linux.md)
+    - [Note on AMD SEV-SNP](./amd-snp.md)
+    - [Note on Intel TDX](./tdx.md)

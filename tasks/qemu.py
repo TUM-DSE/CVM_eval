@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # Original version:
+# (c) 2021-2022 Jörg Thalheim
 # https://github.com/Mic92/vmsh/blob/358cd4b6ec7de0dcac05a12e32486ef30658018c/tests/qemu.py
 
 import json

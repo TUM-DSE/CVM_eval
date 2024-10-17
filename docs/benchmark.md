@@ -1,5 +1,7 @@
 # Benchmark
 
+- For the detail of sigmetrics evaluation, see [sigmetrics.md](./sigmetrics.md)
+
 ## Boottime evaluation
 See [../benchmarks/boottime/](../benchmarks/boottime/)
 
@@ -67,3 +69,4 @@ The result is saved as `{PROJECT_ROOT}/bench-result/fio/{vmname}/{jobname}/%Y-%m
 
 ### Add a new fio job
 - Put it `{PROJECT_ROOT}/config/fio/`
+

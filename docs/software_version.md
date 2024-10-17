@@ -18,7 +18,24 @@ snp-latest branch of that date.
 | 6.8.0-rc5           | [snp-host-latest-20240221](https://github.com/mmisono/linux/tree/snp-host-latest-20240221) | [snp-latest-20231110](https://github.com/mmisono/edk2/tree/snp-latest-20231110) | [snp-latest-20240221](https://github.com/mmisono/qemu/tree/snp-latest-20240221) |
 | 6.6.0-rc1           | [snp-host-latest-20231117](https://github.com/mmisono/linux/tree/snp-host-latest-20231117) | [snp-latest-20231110](https://github.com/mmisono/edk2/tree/snp-latest-20231110) | [snp-latest-20240221](https://github.com/mmisono/qemu/tree/snp-latest-20231110) |
 
-Note: The latest kernel versions (6.9 >=) has a memory performance issue by default due to disabling 2MB THP: https://github.com/AMDESE/AMDSEV/issues/225
+Note
+- The latest kernel versions (6.9 >=) has a memory performance issue by default due to disabling 2MB THP: see https://github.com/AMDESE/AMDSEV/issues/225
+    - In short, `echo 1 > /sys/module/kvm/parameters/gmem_2m_enabled` if applicable (or `gmem_2m_enabled=1` in the boot parameter)
+- Different software might require different qemu command line options
+
+### Current version
+- The current master branch is for 6.9 kernel (this would work for 6.10 as well)
+- You can check the following branches for the older version. Each branch has
+  a nix configuration to build software for that version, as well as have a
+  proper qemu command line to boot a SNP VM (see `get_snp_direct_qemu_cmd()`
+  in the [tasks/vm.py](../tasks/vm.py) for the QEMU command line)
+    - [snp_v5.19](https://github.com/TUM-DSE/CVM_eval/tree/snp_v5.19)
+    - [snp-6.6](https://github.com/TUM-DSE/CVM_eval/tree/snp-6.6)
+    - [snp-6.8](https://github.com/TUM-DSE/CVM_eval/tree/snp-6.8)
+
+### BIOS and kernel configuration
+- See https://github.com/AMDESE/AMDSEV/tree/snp-latest
+- See also [./amd-snp.md](./amd-snp.md)
 
 ## Intel TDX
 - Intel summarizes TDX software information [here](https://github.com/intel/tdx/wiki/TDX-KVM).
@@ -68,3 +85,6 @@ merge backport lp:~kobuk-team/ubuntu/+source/qemu tdx
 % cp /usr/share/qemu/linuxboot_dma.bin .
 % cp /usr/lib/ipxe/qemu/efi-virtio.rom .
 ```
+
+### BIOS configuration
+- See [./tdx.md](./tdx.md)
