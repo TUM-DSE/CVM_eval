@@ -72,19 +72,19 @@ in
   # networking.useNetworkd = true;
 
   networking.networkmanager.enable = true;
-  networking.interfaces.eth0.ipv4.addresses = [{
-    address = "10.0.2.15";
-    prefixLength = 24;
-  }];
-  networking.interfaces.eth1.ipv4.addresses = [{
-    address = "172.44.0.2";
-    prefixLength = 24;
-  }];
-  networking.useDHCP = false;
-  networking.interfaces.eth0.useDHCP = false;
-  networking.interfaces.eth1.useDHCP = false;
-  networking.defaultGateway = "10.0.2.2";
-  networking.nameservers = [ "10.0.2.3" ];
+  # networking.interfaces.eth0.ipv4.addresses = [{
+  #   address = "10.0.2.15";
+  #   prefixLength = 24;
+  # }];
+  # networking.interfaces.eth1.ipv4.addresses = [{
+  #   address = "172.44.0.2";
+  #   prefixLength = 24;
+  # }];
+  # networking.useDHCP = true;
+  networking.interfaces.eth0.useDHCP = true;
+  networking.interfaces.eth1.useDHCP = true;
+  networking.defaultGateway = "131.159.102.254";
+  networking.nameservers = [ "131.159.254.1" ];
   networking.firewall.enable = false;
 
   # don't wait for network to be online

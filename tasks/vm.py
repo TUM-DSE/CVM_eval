@@ -692,9 +692,35 @@ def qemu_option_virtio_nic(
         -device virtio-net-pci,netdev=en0,mq=on,vectors=18{iommu}
         """
     else:
+        # option = f"""
+        # -netdev tap,id=en0,ifname={tap},script=no,downscript=no,vhost={vhost_option}
+        # -device virtio-net-pci,netdev=en0,mq=off,vectors=18{iommu}
+        # """
+        #
+        # TODO: allow us to dynamically change the MAC addresses
+        #
+        ### qemu1.dos.cit.tum.de (eth0), qemu1b.dos.cit.tum.de (eth1)
+        # option = f"""
+        # -netdev bridge,id=eth0,br=doctor-bridge
+        # -net nic,macaddr=96:83:AA:A0:06:34,netdev=eth0,model=virtio
+        # -netdev bridge,id=eth1,br=doctor-bridge
+        # -net nic,macaddr=96:83:AA:A2:06:34,netdev=eth1,model=virtio
+        # """
+        #
+        ### qemu2.dos.cit.tum.de (eth0), qemu2b.dos.cit.tum.de (eth1)
+        # option = f"""
+        # -netdev bridge,id=eth0,br=doctor-bridge
+        # -net nic,macaddr=96:83:AA:A1:06:34,netdev=eth0,model=virtio
+        # -netdev bridge,id=eth1,br=doctor-bridge
+        # -net nic,macaddr=96:83:AA:A3:06:34,netdev=eth1,model=virtio
+        # """
+        #
+        ### qemu3.dos.cit.tum.de (eth0), qemu3b.dos.cit.tum.de (eth1)
         option = f"""
-        -netdev tap,id=en0,ifname={tap},script=no,downscript=no,vhost={vhost_option}
-        -device virtio-net-pci,netdev=en0,mq=off,vectors=18{iommu}
+        -netdev bridge,id=eth0,br=doctor-bridge
+        -net nic,macaddr=96:83:AA:A4:06:34,netdev=eth0,model=virtio
+        -netdev bridge,id=eth1,br=doctor-bridge
+        -net nic,macaddr=96:83:AA:A5:06:34,netdev=eth1,model=virtio
         """
         # option = f"""
         #     -netdev bridge,id=en0,br={bridge}
