@@ -10,9 +10,13 @@ OVMF := OVMF_SNP
 SNP_IMAGE := join(BUILD_DIR, "image/snp-guest-image.qcow2")
 NORMAL_IMAGE := join(BUILD_DIR, "image/normal-guest-image.qcow2")
 GUEST_FS := join(BUILD_DIR, "image/guest-fs.qcow2")
+GUEST_FS2 := join(BUILD_DIR, "image/guest2-fs.qcow2")
 SSH_PORT := "2225"
+SSH_PORT1 := "2223"
+SSH_PORT2 := "2224"
 smp := "4"
 mem := "16G"
+#mem := "256M"
 
 REV := `nix eval --raw .#lib.nixpkgsRev`
 NIX_RESULTS := justfile_directory() + "/.git/nix-results/" + REV
@@ -23,9 +27,11 @@ LINUX_REPO := "https://github.com/torvalds/linux"
 # LINUX_COMMIT := "0dd3ee31125508cd67f7e7172247f05b7fd1753a" # v6.7
 LINUX_COMMIT := "e8f897f4afef0031fe618a8e94127a0934896aba" # v6.8
 
-BRIDGE_NAME := "virbr0"
-TAP_NAME := "tap0"
-MTAP_NAME := "mtap0"
+BRIDGE_NAME := "virbr0_teo"
+TAP_NAME := "tap0_teo"
+MTAP_NAME := "mtap0_teo"
+TAP_NAME1 := "tap1_teo"
+MTAP_NAME1 := "mtap1_teo"
 
 default:
     @just --choose
@@ -55,26 +61,125 @@ start-vm-disk:
 start-vm-direct:
     sudo {{QEMU}} \
         -cpu host \
-        -smp {{smp}} \
-        -m {{mem}} \
+        -smp 1 \
+        -m 256M \
         -machine q35 \
         -enable-kvm \
         -nographic \
         -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
-        -append "root=/dev/vda console=hvc0" \
+        -append "root=/dev/vda console=hvc0 quiet" \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS}} \
         -device virtio-blk-pci,drive=q2 \
         -device virtio-net-pci,netdev=net0 \
         -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT}}-:22 \
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
-        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
         -device virtio-net-pci,netdev=en0 \
+        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
         -serial null \
         -device virtio-serial \
         -chardev stdio,mux=on,id=char0,signal=off \
         -mon chardev=char0,mode=readline \
         -device virtconsole,chardev=char0,id=vc0,nr=0
+
+#        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
+start-vm-direct-bounce1:
+    sudo {{QEMU}} \
+        -cpu host \
+        -smp 1 \
+        -m 512M \
+        -machine q35 \
+        -enable-kvm \
+        -nographic \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0 quiet swiotlb=524288,force" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS}} \
+        -device virtio-blk-pci,drive=q2 \
+        -device virtio-net-pci,netdev=net0 \
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT1}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
+        -device virtio-net-pci,netdev=en0,iommu_platform=on,disable-modern=off,disable-legacy=on \
+        -netdev tap,id=en0,ifname=tap0,script=no,downscript=no,vhost=off \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device virtconsole,chardev=char0,id=vc0,nr=0 
+
+start-vm-direct-bounce2:
+    sudo {{QEMU}} \
+        -cpu host \
+        -smp 1 \
+        -m 512M \
+        -machine q35 \
+        -enable-kvm \
+        -nographic \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0 quiet swiotlb=524288,force" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS2}} \
+        -device virtio-blk-pci,drive=q2 \
+        -device virtio-net-pci,netdev=net0 \
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT2}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
+        -device virtio-net-pci,netdev=en0,mac=02:ca:fe:f0:0d:01,iommu_platform=on,disable-modern=off,disable-legacy=on \
+        -netdev tap,id=en0,ifname=tap1,script=no,downscript=no,vhost=off \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device virtconsole,chardev=char0,id=vc0,nr=0 
+
+start-vm-direct-no-bounce1:
+    sudo {{QEMU}} \
+        -cpu host \
+        -smp 1 \
+        -m 512M \
+        -machine q35 \
+        -enable-kvm \
+        -nographic \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0 quiet" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS}} \
+        -device virtio-blk-pci,drive=q2 \
+        -device virtio-net-pci,netdev=net0 \
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT1}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
+        -device virtio-net-pci,netdev=en0 \
+        -netdev tap,id=en0,ifname=tap0,script=no,downscript=no,vhost=off \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device ivshmem-plain,memdev=hostmem -object memory-backend-file,size=1M,share=on,mem-path=/scratch/teofil/CVM-eval-masa/CVM_eval/data.dat,id=hostmem \
+        -device virtconsole,chardev=char0,id=vc0,nr=0 
+
+start-vm-direct-no-bounce2:
+    sudo {{QEMU}} \
+        -cpu host \
+        -smp 1 \
+        -m 512M \
+        -machine q35 \
+        -enable-kvm \
+        -nographic \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0 quiet" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS2}} \
+        -device virtio-blk-pci,drive=q2 \
+        -device virtio-net-pci,netdev=net0 \
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT2}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF}},readonly=on \
+        -device virtio-net-pci,netdev=en0,mac=02:ca:fe:f0:0d:01 \
+        -netdev tap,id=en0,ifname=tap1,script=no,downscript=no,vhost=off \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device ivshmem-plain,memdev=hostmem -object memory-backend-file,size=1M,share=on,mem-path=/scratch/teofil/CVM-eval-masa/CVM_eval/data.dat,id=hostmem \
+        -device virtconsole,chardev=char0,id=vc0,nr=0 
 
 start-vm-direct-vhost:
     sudo {{QEMU}} \
@@ -117,20 +222,21 @@ start-snp-disk:
         -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
         -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
         -device virtio-net-pci,netdev=en0 \
+        -device ivshmem-plain,memdev=hostmem -object memory-backend-file,size=1M,share=on,mem-path=/scratch/teofil/CVM-eval-masa/CVM_eval/data.dat,id=hostmem \
         -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on
 
 start-snp-direct:
     sudo {{QEMU_SNP}} \
         -cpu EPYC-v4,host-phys-bits=true \
-        -smp {{smp}} \
-        -m {{mem}} \
+        -smp 1 \
+        -m 256M \
         -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
         -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
         -object memory-backend-memfd-private,id=ram1,size={{mem}},share=true \
         -enable-kvm \
         -nographic \
         -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
-        -append "root=/dev/vda console=hvc0" \
+        -append "root=/dev/vda console=hvc0 quiet" \
         -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS}} \
         -device virtio-blk-pci,drive=q2 \
         -device virtio-net-pci,netdev=net0 \
@@ -144,6 +250,113 @@ start-snp-direct:
         -chardev stdio,mux=on,id=char0,signal=off \
         -mon chardev=char0,mode=readline \
         -device virtconsole,chardev=char0,id=vc0,nr=0
+
+#        -netdev tap,id=en0,ifname=tap0,script=no,downscript=no,vhost=off \
+#        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
+start-snp-direct-bounce1:
+    sudo {{QEMU_SNP}} \
+        -cpu EPYC-v4,host-phys-bits=true \
+        -smp 1 \
+        -m 256M \
+        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
+        -object memory-backend-memfd-private,id=ram1,size={{mem}},share=true \
+        -enable-kvm \
+        -nographic \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0 quiet" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS}} \
+        -device virtio-blk-pci,drive=q2 \
+        -device virtio-net-pci,netdev=net0 \
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT1}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on \
+        -netdev tap,id=en0,ifname=tap0,script=no,downscript=no,vhost=off \
+        -device virtio-net-pci,netdev=en0 \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device virtconsole,chardev=char0,id=vc0,nr=0
+
+start-snp-direct-bounce2:
+    sudo {{QEMU_SNP}} \
+        -cpu EPYC-v4,host-phys-bits=true \
+        -smp 1 \
+        -m 256M \
+        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
+        -object memory-backend-memfd-private,id=ram1,size={{mem}},share=true \
+        -enable-kvm \
+        -nographic \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0 quiet" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS2}} \
+        -device virtio-blk-pci,drive=q2 \
+        -device virtio-net-pci,netdev=net0 \
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT2}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on \
+        -netdev tap,id=en0,ifname=tap1,script=no,downscript=no,vhost=off \
+        -device virtio-net-pci,netdev=en0,mac=02:ca:fe:f0:0d:01 \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device virtconsole,chardev=char0,id=vc0,nr=0 
+
+
+start-snp-direct-no-bridge1:
+    sudo {{QEMU_SNP}} \
+        -cpu EPYC-v4,host-phys-bits=true \
+        -smp {{smp}} \
+        -m 256M \
+        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
+        -object memory-backend-memfd-private,id=ram1,size={{mem}},share=true \
+        -enable-kvm \
+        -nographic \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS}} \
+        -device virtio-blk-pci,drive=q2 \
+        -device virtio-net-pci,netdev=net0 \
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT1}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device virtconsole,chardev=char0,id=vc0,nr=0 \
+        -device ivshmem-plain,memdev=hostmem -object memory-backend-file,size=1M,share=on,mem-path=/scratch/teofil/CVM-eval-masa/CVM_eval/data.dat,id=hostmem \
+        -netdev bridge,id=en0,br={{BRIDGE_NAME}} \
+        -device virtio-net-pci,netdev=en0 \
+
+start-snp-direct-no-bridge2:
+    sudo {{QEMU_SNP}} \
+        -cpu EPYC-v4,host-phys-bits=true \
+        -smp {{smp}} \
+        -m 256M \
+        -machine q35,memory-backend=ram1,confidential-guest-support=sev0,kvm-type=protected,vmport=off \
+        -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,init-flags=0 \
+        -object memory-backend-memfd-private,id=ram1,size={{mem}},share=true \
+        -enable-kvm \
+        -nographic \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0" \
+        -blockdev qcow2,node-name=q2,file.driver=file,file.filename={{GUEST_FS2}} \
+        -device virtio-blk-pci,drive=q2 \
+        -device virtio-net-pci,netdev=net0 \
+        -netdev user,id=net0,hostfwd=tcp::{{SSH_PORT2}}-:22 \
+        -virtfs local,path={{PROJECT_ROOT}},security_model=none,mount_tag=share \
+        -drive if=pflash,format=raw,unit=0,file={{OVMF_SNP}},readonly=on \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device virtconsole,chardev=char0,id=vc0,nr=0
+
 
 # ------------------------------
 # TDX machine
@@ -259,6 +472,18 @@ ssh command="":
         -o StrictHostKeyChecking=no \
         -o NoHostAuthenticationForLocalhost=yes \
         -p {{ SSH_PORT }} root@localhost -- "{{ command }}"
+ssh1 command="":
+    ssh -i nix/ssh_key \
+        -o StrictHostKeyChecking=no \
+        -o NoHostAuthenticationForLocalhost=yes \
+        -p {{ SSH_PORT1 }} root@localhost -- "{{ command }}"
+
+ssh2 command="":
+    ssh -i nix/ssh_key \
+        -o StrictHostKeyChecking=no \
+        -o NoHostAuthenticationForLocalhost=yes \
+        -p {{ SSH_PORT2 }} root@localhost -- "{{ command }}"
+
 
 # e.g.,
 # vm to host: just scp root@localhost:/root/a .
@@ -453,7 +678,7 @@ setup_bridge:
     ip a s {{BRIDGE_NAME}} >/dev/null 2>&1
     if [ $? ]; then
         sudo brctl addbr {{BRIDGE_NAME}}
-        sudo ip a a 172.44.0.1/24 dev {{BRIDGE_NAME}}
+        sudo ip a a 172.45.0.1/24 dev {{BRIDGE_NAME}}
         sudo ip l set dev {{BRIDGE_NAME}} up
     fi
 
@@ -464,6 +689,11 @@ setup_tap:
     sudo ip tuntap add {{MTAP_NAME}} mode tap multi_queue
     sudo ip link set {{MTAP_NAME}} master {{BRIDGE_NAME}}
     sudo ip link set {{MTAP_NAME}} up
+    sudo ip tuntap add {{TAP_NAME1}} mode tap
+    sudo ip link set {{TAP_NAME1}} master {{BRIDGE_NAME}}
+    sudo ip link set {{TAP_NAME1}} up
+    sudo ip tuntap add {{MTAP_NAME1}} mode tap multi_queue
+    sudo ip link set {{MTAP_NAME1}} master {{BRIDGE_NAME}}
 
 remove_bridge:
     #!/usr/bin/env bash
@@ -471,8 +701,12 @@ remove_bridge:
     sudo ip link del {{TAP_NAME}}
     sudo ip link set dev {{MTAP_NAME}} down
     sudo ip link del {{MTAP_NAME}}
-    sudo ip link set dev {{BRIDGE_NAME}} down
+    sudo ip link set dev {{TAP_NAME1}} down
+    sudo ip link del {{TAP_NAME1}}
+    sudo ip link set dev {{MTAP_NAME1}} down
+    sudo ip link del {{MTAP_NAME1}}
     sudo brctl delbr {{BRIDGE_NAME}}
+    sudo ip link set dev {{BRIDGE_NAME}} down
 
 # These commands should show info on virbr0
 show_bridge_status:

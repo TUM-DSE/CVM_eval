@@ -76,7 +76,7 @@ in
     prefixLength = 24;
   }];
   networking.interfaces.eth1.ipv4.addresses = [{
-    address = "172.44.0.2";
+    address = "172.45.0.2";
     prefixLength = 24;
   }];
   networking.useDHCP = false;
@@ -176,6 +176,7 @@ in
     # custom tools
     outb
     test-dmcrypt
+    python3
   ] ++ extraEnvPackages;
 
   # additonal kernel parameters

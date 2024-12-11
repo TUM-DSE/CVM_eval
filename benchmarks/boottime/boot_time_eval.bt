@@ -12,6 +12,9 @@ BEGIN {
     @EVENT[230] = "Linux: kernel_start";
     @EVENT[231] = "Linux: init_start";
     @EVENT[240] = "Linux: systemd init end";
+	@EVENT[245] = "Client opens connection";
+	@EVENT[246] = "Client closes connection";
+	@EVENT[247] = "Server starts request handling";
 }
 
 // QEMU entry point
