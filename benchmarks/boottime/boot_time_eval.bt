@@ -12,51 +12,55 @@ BEGIN {
     @EVENT[230] = "Linux: kernel_start";
     @EVENT[231] = "Linux: init_start";
     @EVENT[240] = "Linux: systemd init end";
+	@EVENT[248] = "Runtime: Python starting";
+    @EVENT[249] = "Runtime: In Python environment";
+
 }
 
 // QEMU entry point
-u:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:main {
+u:../../build/qemu-amd-sev-snp/bin/qemu-system-x86_64:main {
     printf("%llu: QEMU: main\n", nsecs);
 }
 
-ur:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:main {
-    printf("%llu: QEMU: exit\n", nsecs);
+// Double space on exit to ease parsing only of boottime functions
+ur:../../build/qemu-amd-sev-snp/bin/qemu-system-x86_64:main {
+    printf("%llu:  QEMU: exit\n", nsecs);
     @ = 0;
 }
 
-u:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:sev_kvm_init {
+u:../../build/qemu-amd-sev-snp/bin/qemu-system-x86_64:sev_kvm_init {
     printf("%llu: QEMU: sev_kvm_init\n", nsecs);
 }
 
-ur:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:sev_kvm_init {
+ur:../../build/qemu-amd-sev-snp/bin/qemu-system-x86_64:sev_kvm_init {
     printf("%llu: QEMU: sev_kvm_init done\n", nsecs);
 }
 
-u:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:kvm_arch_init {
+u:../../build/qemu-amd-sev-snp/bin/qemu-system-x86_64:kvm_arch_init {
     printf("%llu: QEMU: kvm_arch_init\n", nsecs);
 }
 
-ur:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:kvm_arch_init {
+ur:../../build/qemu-amd-sev-snp/bin/qemu-system-x86_64:kvm_arch_init {
     printf("%llu: QEMU: kvm_arch_init done\n", nsecs);
 }
 
-u:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:memory_region_init_rom_device {
+u:../../build/qemu-amd-sev-snp/bin/qemu-system-x86_64:memory_region_init_rom_device {
     printf("%llu: QEMU: memory_region_init_rom_device\n", nsecs);
 }
 
-ur:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:memory_region_init_rom_device {
+ur:../../build/qemu-amd-sev-snp/bin/qemu-system-x86_64:memory_region_init_rom_device {
     printf("%llu: QEMU: memory_region_init_rom_device done\n", nsecs);
 }
 
-u:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:sev_snp_launch_finish {
+u:../../build/qemu-amd-sev-snp/bin/qemu-system-x86_64:sev_snp_launch_finish {
     printf("%llu: QEMU: sev_snp_launch_finish\n", nsecs);
 }
 
-ur:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:sev_snp_launch_finish {
+ur:../../build/qemu-amd-sev-snp/bin/qemu-system-x86_64:sev_snp_launch_finish {
     printf("%llu: QEMU: sev_snp_launch_finish done\n", nsecs);
 }
 
-u:../../build/qemu-amd-sev-snp/bin/.qemu-system-x86_64-wrapped:kvm_cpu_exec / @ == 0/ {
+u:../../build/qemu-amd-sev-snp/bin/qemu-system-x86_64:kvm_cpu_exec / @ == 0/ {
     @ = 1;
     printf("%llu: QEMU: kvm_cpu_exec\n", nsecs);
 }
