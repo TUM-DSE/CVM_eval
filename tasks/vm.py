@@ -1023,7 +1023,7 @@ def run_pytorch(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None
 
 def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     resource: VMResource = kargs["config"]["resource"]
-    virito_blk: Optional[str] = kargs["config"]["virtio_blk"]
+    virtio_blk: Optional[str] = kargs["config"]["virtio_blk"]
     pin_base: int = kargs["config"].get("pin_base", resource.pin_base)
     dbpath: str = "/tmp/test.db"
     vm: QemuVM
@@ -1034,7 +1034,7 @@ def run_sqlite(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
             vm.pin_vcpu(pin_base)
         vm.wait_for_ssh()
 
-        if virito_blk:
+        if virtio_blk:
             import storage
 
             storage.mount_disk(vm, "/dev/vdb", "/mnt", format="auto")

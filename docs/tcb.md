@@ -9,14 +9,14 @@
 just clean-linux
 just configure-linux
 ```
-- In the secon dterminal
+- In the second terminal
 ```
 just build-linux-shell
 cd ../linux
 mv .git .git.hide
 inotifywait -m -r -e open --format '%w%f' -o kernel_build.log $PWD
 ```
-- In the first teminal again
+- In the first terminal again
 ```
 just build-linux
 ```
@@ -63,7 +63,7 @@ $ ls -lh ./arch/x86/boot/vmlinux.bin
 ```
 
 ## OVMF
-- Smae as the linux kernel measurement
+- Same as the linux kernel measurement
 ```
 cd edk2
 inotifywait -m -r -e open --format '%w%f' -o build.log $PWD
