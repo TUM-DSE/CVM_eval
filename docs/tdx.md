@@ -77,4 +77,3 @@ attributes  build_date  build_num  major_version  metadata  minor_version  statu
     - TDX Secure Arbitration Mode Loader: Enabled
     - SGX On
         - We first need to enable SGX to enable TDX options
-
