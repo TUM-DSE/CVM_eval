@@ -103,7 +103,7 @@ automatically used. We can specify the hostname using `--hostname` option.
 Please update the `VMRESOURCES` when using this script with a new machine.
 
 ## File sharing
-The repository directory is mounted in `/share` in the guest using vritio-9p.
+The repository directory is mounted in `/share` in the guest using virtio-9p.
 We can also mount the directory manually:
 
 ```
@@ -115,7 +115,7 @@ mount -t 9p -o trans=virtio,version=9p2000.L share /share
 - `inv vm.start --virtio-blk <path>` command create a virtio-blk backed by the file `<path>`.
 - See the fio section in the [benchmark.md](./benchmark.md) for the detail.
 
-## Netowrk (virito-nic)
+## Network (virtio-nic)
 - `inv vm.start --virtio-nic` command create a virtio-nic backed by a host bridge.
 - See [network.md](./network.md) for the detail.
 
@@ -134,7 +134,7 @@ inv vm.start --type amd --ssh-cmd "echo hi" --ssh-cmd "ls /"
 ```
 
 ## QA
-### VM failes to boot (`inv vm.start` fails)
+### VM fails to boot (`inv vm.start` fails)
 - SNP requires root. Also some operations (e.g., using a disk for virtio-blk) require root.
 - Try `sudo su && nix develop && inv vm.start --type snp [...]`
 - Also, `inv` command does not show qemu error messages. Try manually run QEMU
@@ -155,9 +155,9 @@ inv vm.start --type amd --ssh-cmd "echo hi" --ssh-cmd "ls /"
 ### Change ssh port
 - Edit [tasks/config.py](../tasks/config.py)
 
-## Additionl info
+## Additional info
 - See [./docs](./)
-    - [Attestaion](./attestation.md)
+    - [Attestation](./attestation.md)
     - [Benchmarks](./benchmark.md)
     - [Software version](./software_version.md)
     - [Build software manually](./how_to_build.md)
