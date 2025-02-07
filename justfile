@@ -6,9 +6,9 @@ QEMU_SNP := join(BUILD_DIR, "qemu-amd-sev-snp/bin/qemu-system-x86_64")
 OVMF_SNP := join(BUILD_DIR, "ovmf-amd-sev-snp-fd/FV/OVMF.fd")
 OVMF_SNP_CODE := join(BUILD_DIR, "ovmf-amd-sev-snp-fd/FV/OVMF_CODE.fd")
 OVMF_SNP_VARS := join(BUILD_DIR, "ovmf-amd-sev-snp-fd/FV/OVMF_VARS.fd")
-# qemu and ovmf for normal guest (use SNP version for now)
-QEMU := QEMU_SNP
-OVMF := OVMF_SNP
+# qemu and ovmf for normal guest
+QEMU := join(BUILD_DIR, "qemu/bin/qemu-system-x86_64")
+OVMF := join(BUILD_DIR, "ovmf-fd/FV/OVMF.fd")
 OVMF_CODE := OVMF_SNP_CODE
 OVMF_VARS := OVMF_SNP_VARS
 SNP_IMAGE := join(BUILD_DIR, "image/snp-guest-image.qcow2")
@@ -250,6 +250,35 @@ start-intel-direct:
         -device virtconsole,chardev=char0,id=vc0,nr=0
 
 # ------------------------------
+# pKVM
+#
+
+PKVM_QEMU := join(BUILD_DIR, "qemu/bin/qemu-system-x86_64")
+PKVM_OVMF := join(BUILD_DIR, "ovmf-fd/FV/OVMF.fd")
+
+start-pkvm-vm:
+    {{PKVM_QEMU}} \
+        -cpu host \
+        -smp {{smp}} \
+        -m {{mem}} \
+        -machine q35,hpet=off,kernel_irqchip=split \
+        -enable-kvm \
+        -nographic \
+        -nodefaults \
+        -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
+        -append "root=/dev/vda console=hvc0" \
+        -device virtio-net-pci,netdev=nic0 \
+        -netdev user,id=nic0,hostfwd=tcp::{{SSH_PORT}}-:22 \
+        -drive file={{GUEST_FS}},if=none,id=virtio-disk0 \
+        -device virtio-blk-pci,drive=virtio-disk0 \
+        -drive if=pflash,format=raw,unit=0,file={{PKVM_OVMF}},readonly=on \
+        -serial null \
+        -device virtio-serial \
+        -chardev stdio,mux=on,id=char0,signal=off \
+        -mon chardev=char0,mode=readline \
+        -device virtconsole,chardev=char0,id=vc0,nr=0
+
+# ------------------------------
 # Utility commands
 
 ssh command="":
@@ -423,6 +452,37 @@ configure-linux-tdx:
       #   --enable IKCONFIG \
       #   --enable IKCONFIG_PROC \
       #   --enable IKHEADERS"
+    fi
+
+# kernel configuration for pkvm-intel, tested with pkvm-RFV-v6.11
+# - https://github.com/intel-staging/pKVM-IA/tree/RFC-v6.11
+# - the configulation is for both the host and the guest
+configure-linux-pkvm:
+    #!/usr/bin/env bash
+    set -xeuo pipefail
+    if [[ ! -f {{ LINUX_DIR }}/.config ]]; then
+      cd {{ LINUX_DIR }}
+      {{ KERNEL_SHELL }} "make defconfig kvm_guest.config"
+      {{ KERNEL_SHELL }} "scripts/config \
+         --enable X86_X2APIC \
+         --enable VIRT_DRIVERS \
+         --enable KVM \
+         --enable PKVM_INTEL \
+         --enable PKVM_GUEST \
+         --enable PKVM_INTEL_DEBUG"
+      # for debug
+      {{ KERNEL_SHELL }} "scripts/config \
+         --enable KPROBES \
+         --enable KPROBES_ON_FTRACE \
+         --enable BPF \
+         --enable BPF_SYSCALL \
+         --enable BPF_EVENTS \
+         --enable BPF_JIT \
+         --enable TRACEPOINTS \
+         --enable DEBUG_INFO_BTF \
+         --enable IKCONFIG \
+         --enable IKCONFIG_PROC \
+         --enable IKHEADERS"
     fi
 
 menuconfig:

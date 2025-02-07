@@ -38,6 +38,9 @@
           # SPDK is for SSD preconditioning
           spdk = pkgs.callPackage ./nix/spdk.nix { inherit pkgs; };
 
+          qemu = pkgs.qemu;
+          ovmf = pkgs.OVMF.fd;
+
           qemu-amd-sev-snp =
             pkgs.callPackage ./nix/qemu-amd-sev-snp.nix { inherit pkgs; };
           ovmf-amd-sev-snp =

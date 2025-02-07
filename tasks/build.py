@@ -24,6 +24,24 @@ def nix_build(what: str, build_dir: Path = BUILD_DIR) -> Any:
 
 
 @task
+def build_ovmf(c: Any) -> None:
+    """Build a normal OVMF.
+
+    Output path is ./build/ovmf-fd
+    """
+    nix_build(".#ovmf")
+
+
+@task
+def build_qemu(c: Any) -> None:
+    """Build a normal QEMU.
+
+    Output path is ./build/qemu
+    """
+    nix_build(".#qemu")
+
+
+@task
 def build_ovmf_snp(c: Any) -> None:
     """Build OVMF with AMD SEV-SNP support.
 

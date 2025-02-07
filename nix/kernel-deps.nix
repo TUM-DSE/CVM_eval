@@ -19,6 +19,7 @@
 , inotify-tools
 , cloc
 , tokei
+, direnv
 , newt
 , slang
 , libtraceevent
@@ -46,6 +47,7 @@ buildFHSUserEnv {
     inotify-tools
     cloc
     tokei
+    direnv
   ] ++ map lib.getDev [
     elfutils
     ncurses
