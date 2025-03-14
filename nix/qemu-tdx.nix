@@ -3,14 +3,11 @@
 with pkgs;
 qemu_full.overrideAttrs (new: old: {
   src = fetchFromGitHub {
-    owner = "intel-staging";
-    repo = "qemu-tdx";
-    # branch: tdx-qemu-upstream
-    #rev = "97d7eee4450ca607d36acd2bb1d6137d193687cc";
-    #sha256 = "sha256-XecX9ZpJCVCYjUwGAXuoJJl3bAVsG+a91hwugzWCrQI=";
-    # branch: tdx-qemu-next
-    rev = "7a97b8940d938d0d5740c0513c9acf0053c6cb85";
-    sha256 = "sha256-uH2XZlxTAwaVmlgiUCM8N95EpNIe3haAuy9opjAuW3o=";
+    owner = "gierens";
+    repo = "qemu-tdx-canonical";
+    # branch: master
+    rev = "1d4b179dc86bf1695f80175b2ea92d99bf2137b8";
+    sha256 = "sha256-eRKGiqK95jAzAYYk+oSS0vJ1UiMeN5FVTwDscMM1Ieg=";
     fetchSubmodules = true;
     postFetch = ''
       cd "$out"
@@ -38,6 +35,6 @@ qemu_full.overrideAttrs (new: old: {
   # no patch
   patches = [ ];
 
-  # NOTE: The compiled binary is wrapped. (gtkSuppor=false does not prevent wrapping. why?)
+  # NOTE: The compiled binary is wrapped. (gtkSupport=false does not prevent wrapping. why?)
   # The actual binary is ./result/bin/.qemu-system-x86_64-wrapped
 })
