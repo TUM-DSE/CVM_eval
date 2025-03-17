@@ -41,11 +41,13 @@ Note
 - Intel summarizes TDX software information [here](https://github.com/intel/tdx/wiki/TDX-KVM).
 - Also, Canonical summarizes information on TDX on Ubuntu [here](https://github.com/canonical/tdx).
     - Using Ubuntu would make life easier for the most cases
+- Xeon 6 processors with E-cores require the newer [software stack](https://github.com/canonical/tdx/releases/tag/3.1) to successfully boot TDX VMs.
 
 ### Sotware version table
-| host kernel version | linux | ovmf | qemu |
-| ------------------- | ----- | -----| -----|
-| 6.8.0-rc1           | [kvm-upstream-next-20240122](https://github.com/mmisono/linux/tree/tdx-kvm-upstream-next-20240122) | [TDVF-20240105](https://github.com/mmisono/edk2/tree/TDVF-20240105) | [tdx-qemu-next-20231208](https://github.com/mmisono/qemu/tree/tdx-qemu-next-20231208) |
+| host kernel version | linux | ovmf | qemu | notes |
+| ------------------- | ----- | -----| -----| ----- |
+| 6.8.0-rc1           | [kvm-upstream-next-20240122](https://github.com/mmisono/linux/tree/tdx-kvm-upstream-next-20240122) | [TDVF-20240105](https://github.com/mmisono/edk2/tree/TDVF-20240105) | [tdx-qemu-next-20231208](https://github.com/mmisono/qemu/tree/tdx-qemu-next-20231208) |   |
+| 6.11.0              | [canonical-intel-6.11.0-1006.6](https://github.com/gierens/linux-tdx-canonical) | [TDVF-20240105-subhook-patch](https://github.com/gierens/edk2-staging/tree/tdvf-update-subhook) | [canonical-kobuk-tdx-9.0.2](https://github.com/gierens/qemu-tdx-canonical) | needed for Xeon 6E |
 
 ### Ubuntu 23.10
 - Software stack: https://github.com/canonical/tdx/tree/mantic-23.10
