@@ -3,11 +3,11 @@
 with pkgs;
 OVMF.fd.overrideAttrs (old: {
   src = fetchFromGitHub {
-    owner = "tianocore";
+    owner = "gierens";
     repo = "edk2-staging";
-    # branch "TDVF"
-    rev = "c229fca09ebc3ed300845e5346d59e196461c498";
-    sha256 = "sha256-LqeGrdor6t3aH6HwEPgOqyyd6UsFRjU8EwwN1MHsreo=";
+    # branch "tdvf-upddate-subhook"
+    rev = "97a91317bd5a16ee418307c3bef13c66addfc42d";
+    sha256 = "sha256-InJjSqggLhVJnY17RqxapXWqNcvnk7tR2HP2bPdv2Ec=";
     fetchSubmodules = true;
   };
   patches = (old.patches or [ ]) ++ [
