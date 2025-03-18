@@ -57,9 +57,9 @@ inv vm.start --type snp --virtio-blk /dev/nvme1n1 --action="run-fio" --fio-job="
 ### Options
 - `--virtio-blk <path>`: A file or a device used for the virtio-blk backend
 - `--fio-job <name>`: fio job file name. Job files are in the `{PROJECT_ROOT}/config/fio/`
-- `--virito-blk-aio <name>`: QEMU's aio engine (native/threads/io_uring) (default: native)
-- `--no-virito-blk-iothread`: Don't use QEMU's iothread (default: use iothread)
-- `--no-virito-blk-direct`: Use host page cache (default: direct (QEMU uses `O_DIRECT` to open the backend file/device)
+- `--virtio-blk-aio <name>`: QEMU's aio engine (native/threads/io_uring) (default: native)
+- `--no-virtio-blk-iothread`: Don't use QEMU's iothread (default: use iothread)
+- `--no-virtio-blk-direct`: Use host page cache (default: direct (QEMU uses `O_DIRECT` to open the backend file/device)
 
 ### Result
 The result is saved as `{PROJECT_ROOT}/bench-result/fio/{vmname}/{jobname}/%Y-%m-%d-%H-%M-%S.json`
@@ -69,4 +69,3 @@ The result is saved as `{PROJECT_ROOT}/bench-result/fio/{vmname}/{jobname}/%Y-%m
 
 ### Add a new fio job
 - Put it `{PROJECT_ROOT}/config/fio/`
-
