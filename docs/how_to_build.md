@@ -4,7 +4,7 @@ We use nix to manage software we use. See [flake.nix](../flake.nix) for the deta
 
 The below describes how to build software manually.
 See [software_version.md](./software_version.md) for the software versions and
-repository urls.
+repository URLs.
 
 ## AMD SEV-SNP
 

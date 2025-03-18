@@ -9,7 +9,7 @@ the previous commits. Therefore, we use forked versions to track changes.
 A branch name "snp-latest-202311110" means that the branch is a snapshot of the
 snp-latest branch of that date.
 
-### Sotware version table
+### Software version table
 
 | host kernel version | linux | ovmf | qemu |
 | ------------------- | ----- | -----| -----|
@@ -43,7 +43,7 @@ Note
     - Using Ubuntu would make life easier for the most cases
 - Xeon 6 processors with E-cores require the newer [software stack](https://github.com/canonical/tdx/releases/tag/3.1) to successfully boot TDX VMs.
 
-### Sotware version table
+### Software version table
 | host kernel version | linux | ovmf | qemu | notes |
 | ------------------- | ----- | -----| -----| ----- |
 | 6.8.0-rc1           | [kvm-upstream-next-20240122](https://github.com/mmisono/linux/tree/tdx-kvm-upstream-next-20240122) | [TDVF-20240105](https://github.com/mmisono/edk2/tree/TDVF-20240105) | [tdx-qemu-next-20231208](https://github.com/mmisono/qemu/tree/tdx-qemu-next-20231208) |   |

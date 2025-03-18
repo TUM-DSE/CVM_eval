@@ -92,7 +92,7 @@ ark.der  ask.der
 ```
 - Requests VCEK
     - VCEK varies depending on TCB of bootloader, tee, snp, and microcode
-    - [Get these information from the attetation report](https://github.com/virtee/snpguest/blob/0d77c10075c250c31219d8219b24eafcc428e2fb/src/fetch.rs#L242)
+    - [Get these information from the attestation report](https://github.com/virtee/snpguest/blob/0d77c10075c250c31219d8219b24eafcc428e2fb/src/fetch.rs#L242)
 ```
 $ ./target/debug/snpguest fetch vcek der genoa ./certs-kds attestation-report.bin
 $ ls certs-kds/

@@ -61,7 +61,7 @@ dmesg > /share/bench-result/vmexit/snp.txt
         - Use idle polling: `--extra-cmdline idle=poll --name-extra -poll`
         - Use halt idle polling: `--extra-cmdline cpuidle_haltpoll.force=Y --name-extra -haltpoll`
 
-### Attesttion
+### Attestation
 - See [benchmarks/attestation](../benchmarks/attestation)
 
 ### TCB evaluation

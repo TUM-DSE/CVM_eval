@@ -41,7 +41,7 @@ attributes  build_date  build_num  major_version  metadata  minor_version  statu
 - See "Global Metadata Fields" in the TDX ABI documentation for the meaning
 - Regarding TDX capabilities
     - 0x1900000300000000 is "ATTRIBUTES_FIXED0", meaning these attributes must disabled
-    - 0x1900000300000001 is "ATTRIBUTES_FIXED1", meaning these attributes must enabed
+    - 0x1900000300000001 is "ATTRIBUTES_FIXED1", meaning these attributes must enabled
     - See "ATTRIBUTES Definition" in the TDX ABI documentation for available attributes
 - Example
 ```
@@ -77,4 +77,3 @@ attributes  build_date  build_num  major_version  metadata  minor_version  statu
     - TDX Secure Arbitration Mode Loader: Enabled
     - SGX On
         - We first need to enable SGX to enable TDX options
-

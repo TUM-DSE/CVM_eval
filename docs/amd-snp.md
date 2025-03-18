@@ -25,9 +25,9 @@
 ## Enable AVX 512 in the guest
 
 QEMU 8.1.5 requires to use not `-cpu host` but `-cpu EPYC-v4` to boot SNP guests, but this CPU model misses several CPUIDs.
-Especitally, AMD512-related cpuids are not enabled, resulting the guest application won't use AVX512.
+Especially, AMD512-related CPUIDs are not enabled, resulting the guest application won't use AVX512.
 This affects the performance of HPC and AI/ML applications.
-We can manually enable these cpuids so that the guest can use AVX 512.
+We can manually enable these CPUIDs so that the guest can use AVX512.
 
 ### Check available AVX instructions reported by CPUID
 
@@ -82,4 +82,4 @@ avx512_vnni
 ```
 
 ### Comment
-- Is there any other missing important cpuids?
+- Are there any other missing important CPUIDs?

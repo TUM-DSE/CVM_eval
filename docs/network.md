@@ -1,4 +1,4 @@
-## VM Netowrk Configuraiton
+## VM Network Configuration
 
 ### NIC for ssh
 - We use [QEMU user networking (SLIRP)](https://wiki.qemu.org/Documentation/Networking) for ssh.

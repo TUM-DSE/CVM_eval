@@ -69,11 +69,11 @@ Attaching 2 probes...
 - On a normal VM, virtio devices *do not use bounce buffers even with `swiotlb=force`*
 - This is because [`vring_use_dma_api`](https://github.com/torvalds/linux/blob/v6.8/drivers/virtio/virtio_ring.c#L279) is false as the virtio device does not have the `VIRTIO_F_ACCESS_PLATFORM` (also known as `VIRTIO_F_IOMMU_PLATFORM`) feature bit
     - This is for letting the guest perform direct memory access without any IOMMU involvement
-- QEMU enabes `VIRTIO_F_ACCESS_PLATFORM` feature bit when the guest is a CVM
+- QEMU enables `VIRTIO_F_ACCESS_PLATFORM` feature bit when the guest is a CVM
     - See https://github.com/qemu/qemu/commit/9f88a7a3df11a5aaa6212ea535d40d5f92561683
-- To force `VIRTIO_F_ACCES_PLATFORM` feature, add `iommu_platform=on,disable-modern=off,disable-legacy=on` to the virtio option
+- To force `VIRTIO_F_ACCESS_PLATFORM` feature, add `iommu_platform=on,disable-modern=off,disable-legacy=on` to the virtio option
     - Example: `-device virtio-net-pci,netdev=en0,iommu_platform=on,disable-modern=off,disable-legacy=on`
-- We can check the virtio features as following
+- We can check the virtio features as follows
 ```
 # cat /sys/devices/pci0000\:00/0000\:00\:03.0/virtio1/features
 0010010000000001111101010000110010000000100000000000000000000000
@@ -136,7 +136,7 @@ Attaching 2 probes...
 ### Multi queues
 - QEMU
     - Use `-device -virtio-blk-pci,num_queues=4,...`
-    - By deafult, `num-queues` is the number of vCPUs (it should be ideal)
+    - By default, `num-queues` is the number of vCPUs (it should be ideal)
     - See: https://github.com/qemu/qemu/commit/1436f32a84c3fda61d0d80302e24d641d3f3f839
 - Kernel
     - Check number of queues
@@ -164,4 +164,3 @@ Attaching 2 probes...
 ### Queue polling
 - Use `nvme.poll_queues=<N>` parameter to enable NVMe queue polling
 - Also enable `/sys/block/<disk>/io_poll`: https://docs.kernel.org/admin-guide/abi-stable.html#abi-sys-block-disk-queue-io-poll
-
