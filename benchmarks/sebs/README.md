@@ -2,7 +2,7 @@
 
 #### CVM_eval
 ```bash
-git clone git@github.com:michtum/CVM_eval.git
+git clone -b sebs git@github.com:TUM-DSE/CVM_eval.git
 cd CVM_eval
 nix develop
 ```
