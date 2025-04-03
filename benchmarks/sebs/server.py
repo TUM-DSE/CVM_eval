@@ -15,7 +15,7 @@ def alive():
         if part == "cache":
             relative_path = Path(*path.parts[path.parts.index(part) :])
             break
-    code_location = Path("/share/benchmarks/sebs/serverless-benchmarks") / relative_path
+    code_location = Path("/share/benchmarks/sebs/SeBS") / relative_path
 
     sys.path.append(os.path.join(code_location))
     sys.path.append(os.path.join(code_location, ".python_packages/lib/site-packages/"))

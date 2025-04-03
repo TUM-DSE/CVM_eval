@@ -1,0 +1,3 @@
+[submodule "benchmarks/sebs/SeBS"]
+	path = benchmarks/sebs/SeBS
+	url = git@github.com:TUM-DSE/SeBS.git
