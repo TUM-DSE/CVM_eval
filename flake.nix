@@ -179,7 +179,7 @@
           gcc = pkgs.gcc13;
           selfpkgs = self.packages.x86_64-linux;
           kernelConfig = { config, lib, pkgs, ... }: {
-            boot.kernelPackages = pkgs.linuxPackages_6_8;
+            boot.kernelPackages = pkgs.linuxPackages_6_12;
           };
           # bake in packages for running benchmarks
           extraEnvPackages =
@@ -197,6 +197,7 @@
             system = "x86_64-linux";
             modules = [
               guestConfig
+              kernelConfig
             ];
           };
 
