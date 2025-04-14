@@ -2,7 +2,7 @@
 
 { extraEnvPackages ? [ ], _gcc }:
 
-{ pkgs, lib, modulesPath, ... }:
+{ pkgs, lib, modulesPath, config, ... }:
 
 let
   keys = map (key: "${builtins.getEnv "HOME"}/.ssh/${key}") [
@@ -192,7 +192,9 @@ in
   boot.loader.initScript.enable = true;
 
   # Install nvidia packages for H100 support
-  hardware.graphics.enable = true;
+  nixpkgs.config.allowUnfree = true;
+  nixpkgs.config.nvidia.acceptLicense = true;
+  hardware.nvidia.open = true;
   hardware.nvidia.datacenter.enable = true;
   hardware.nvidia.package = config.boot.kernelPackages.nvidiaPackages.dc_565;
   systemd.services.nvidia-fabricmanager.enable = lib.mkForce false;
