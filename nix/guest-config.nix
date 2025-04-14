@@ -29,7 +29,6 @@ in
       keep-derivations = true
       auto-optimise-store = false
     '';
-  nix.package = pkgs.nixFlakes;
   nix.gc.automatic = false;
 
   # virtio-console login setting
@@ -135,7 +134,7 @@ in
   documentation.man.enable = false;
   documentation.nixos.enable = false;
   documentation.info.enable = false;
-  programs.bash.enableCompletion = false;
+  programs.bash.completion.enable = false;
   programs.command-not-found.enable = false;
 
   environment.systemPackages = with pkgs; [

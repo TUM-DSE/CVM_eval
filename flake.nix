@@ -173,10 +173,7 @@
       # nixOS configurations to create a guest image
       nixosConfigurations =
         let
-          # 2024-05-30: the latest nixosSystem of unstable seems really unstable?
-          # nix stores get easily corrupted when a VM is killed abruptly
-          # use nixpkgs-2311 for the time being
-          nixosSystem = nixpkgs-2311.lib.nixosSystem;
+          nixosSystem = nixpkgs-unstable.lib.nixosSystem;
           pkgs = nixpkgs-unstable.legacyPackages.x86_64-linux;
           # use gcc13 (same as Ubuntu 24.04)
           gcc = pkgs.gcc13;
