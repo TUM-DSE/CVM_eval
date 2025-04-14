@@ -196,6 +196,14 @@ in
   nixpkgs.config.nvidia.acceptLicense = true;
   hardware.nvidia.open = true;
   hardware.nvidia.datacenter.enable = true;
+  hardware.nvidia.gsp.enable = true;
+  hardware.firmware = [ config.boot.kernelPackages.nvidiaPackages.dc_565.firmware ];
   hardware.nvidia.package = config.boot.kernelPackages.nvidiaPackages.dc_565;
+  hardware.nvidia.nvidiaPersistenced = true;
   systemd.services.nvidia-fabricmanager.enable = lib.mkForce false;
+  boot.extraModprobeConfig = ''
+    install nvidia /run/current-system/sw/bin/modprobe ecdsa_generic ecdh; /run/current-system/sw/bin/modprobe --ignore-install nvidia
+  '';
+  systemd.services.nvidia-persistenced.serviceConfig.ExecStart = lib.mkForce "/run/current-system/sw/bin/nvidia-persistenced --uvm-persistence-mode --verbose";
+
 }
