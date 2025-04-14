@@ -123,16 +123,17 @@
               in
               with pkgs;
               [
-                python3
-                python3.pkgs.invoke
-                python3.pkgs.colorama
-                python3.pkgs.click
-                python3.pkgs.seaborn
-                python3.pkgs.pandas
-                python3.pkgs.binary
-                python3.pkgs.lxml
-                python3.pkgs.ipython
-                python3.pkgs.psutil
+                (python3.withPackages (ps: with ps; [
+                  invoke
+                  colorama
+                  click
+                  seaborn
+                  pandas
+                  binary
+                  lxml
+                  ipython
+                  psutil
+                ]))
 
                 just
                 git
