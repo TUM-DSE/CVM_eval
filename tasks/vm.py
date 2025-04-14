@@ -219,6 +219,15 @@ def get_vm_config(name: str) -> VMConfig:
             initrd=None,
             cmdline="root=/dev/vda console=hvc0",
         )
+    if name == "snp-nvidia":
+        return VMConfig(
+            qemu=BUILD_DIR / "qemu-amd-sev-snp/bin/qemu-system-x86_64",
+            image=BUILD_DIR / "image/snp-guest-image.qcow2",
+            ovmf=BUILD_DIR / "ovmf-amd-sev-snp-fd/FV/OVMF.fd",
+            kernel=None,
+            initrd=None,
+            cmdline=None,
+        )
     if name == "snp-nvidia-direct": 
         return VMConfig(
             qemu=BUILD_DIR / "qemu-amd-sev-snp/bin/qemu-system-x86_64",
@@ -423,6 +432,55 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
     -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
     -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
     -bios {vmconfig.ovmf}
+
+    -nographic
+    -serial null
+    -device virtio-serial
+    -chardev stdio,mux=on,id=char0,signal=off
+    -mon chardev=char0,mode=readline
+    -device virtconsole,chardev=char0,id=vc0,nr=0
+    """
+
+    return shlex.split(qemu_cmd)
+
+def get_snp_nvidia_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
+    vmconfig: VMConfig = get_vm_config("snp")
+    ssh_port = config["ssh_port"]
+    if config["boot_prealloc"]:
+        prealloc = "on"
+    else:
+        prealloc = "off"
+
+    # Port of https://github.com/NVIDIA/nvtrust/blob/4d55e4f2abaf43de25e961a9ffc3576aa87bf07b/host_tools/sample_kvm_scripts/launch_vm.sh#L24
+    nvidia_gpu = subprocess.run(["lspci", "-mm", "-d", "10de:"], capture_output=True).stdout.decode().split()[0]
+    nvidia_passthrough = subprocess.run(["lspci", "-mm", "-n", "-s", nvidia_gpu], capture_output=True).stdout.decode().split()[3][1:-1]
+
+    try:         
+        with open("/sys/bus/pci/drivers/vfio-pci/new_id", "a") as f:
+            f.write(f"10de {nvidia_passthrough}")
+    except FileExistsError:
+        pass
+
+    qemu_cmd = f"""
+    {vmconfig.qemu}
+    -enable-kvm
+    -cpu EPYC-v4,host-phys-bits=true
+    -smp {resource.cpu}
+    -m {resource.memory}G
+
+    -machine q35,memory-backend=ram1,memory-encryption=sev0,vmport=off
+    -object sev-snp-guest,id=sev0,cbitpos=51,reduced-phys-bits=1,policy=0x30000
+    -object memory-backend-memfd,id=ram1,size={resource.memory}G,share=true,prealloc={prealloc}
+
+    -blockdev qcow2,node-name=q2,file.driver=file,file.filename={vmconfig.image}
+    -device virtio-blk-pci,drive=q2,bootindex=0
+    -device virtio-net-pci,netdev=net0
+    -netdev user,id=net0,hostfwd=tcp::{ssh_port}-:22
+    -virtfs local,path={PROJECT_ROOT},security_model=none,mount_tag=share
+    -bios {vmconfig.ovmf}
+
+    -device pcie-root-port,id=pci.1,bus=pcie.0
+    -device vfio-pci,host={nvidia_gpu},bus=pci.1
 
     -nographic
     -serial null
@@ -1298,7 +1356,7 @@ def start(
         if direct:
             qemu_cmd = get_snp_nvidia_direct_qemu_cmd(resource, config)
         else:
-            raise NotImplemented()
+            qemu_cmd = get_snp_nvidia_qemu_cmd(resource, config)
     elif type == "intel" or type == "intel-ubuntu":
         if direct:
             qemu_cmd = get_intel_direct_qemu_cmd(resource, config)
