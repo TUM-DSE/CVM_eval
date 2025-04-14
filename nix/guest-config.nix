@@ -191,4 +191,10 @@ in
   boot.initrd.enable = false;
   boot.isContainer = true;
   boot.loader.initScript.enable = true;
+
+  # Install nvidia packages for H100 support
+  hardware.graphics.enable = true;
+  hardware.nvidia.datacenter.enable = true;
+  hardware.nvidia.package = config.boot.kernelPackages.nvidiaPackages.dc_565;
+  systemd.services.nvidia-fabricmanager.enable = lib.mkForce false;
 }
