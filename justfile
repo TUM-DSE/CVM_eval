@@ -27,6 +27,11 @@ LINUX_REPO := "https://github.com/torvalds/linux"
 # LINUX_COMMIT := "0dd3ee31125508cd67f7e7172247f05b7fd1753a" # v6.7
 LINUX_COMMIT := "e8f897f4afef0031fe618a8e94127a0934896aba" # v6.8
 
+LINUX_PKVM_REPO := "https://github.com/intel-staging/pKVM-IA"
+LINUX_PKVM_COMMIT := "824c93b7de9bdb415efaefa56aa9360531057e2f" # pvVMCS-POC-v6.12
+LINUX_PKVM_HOST_DIR := join(PROJECT_ROOT, "../linux-pkvm-host")
+LINUX_PKVM_GUEST_DIR := join(PROJECT_ROOT, "../linux-pkvm-guest")
+
 BRIDGE_NAME := "virbr_cvm"
 TAP_NAME := "tap_cvm"
 MTAP_NAME := "mtap_cvm"
