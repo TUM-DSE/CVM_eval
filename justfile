@@ -311,6 +311,40 @@ clone-linux:
     patch -d {{ LINUX_DIR }} -p1 < {{ PROJECT_ROOT }}/nix/patches/linux_tdx_allow_user_io.patch
     patch -d {{ LINUX_DIR }} -p1 < {{ PROJECT_ROOT }}/nix/patches/linux_tdx_export_hypercall.patch
 
+clone-linux-pkvm-host:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [[ -d {{ LINUX_PKVM_HOST_DIR }} ]]; then
+      echo " {{ LINUX_PKVM_HOST_DIR }} already exists, skipping clone"
+      exit 0
+    fi
+
+    git clone {{ LINUX_PKVM_REPO }} {{ LINUX_PKVM_HOST_DIR }}
+
+    set -x
+    if [[ $(git -C {{ LINUX_PKVM_HOST_DIR }} rev-parse HEAD) != "{{ LINUX_PKVM_COMMIT }}" ]]; then
+       git -C {{ LINUX_PKVM_HOST_DIR }} fetch {{ LINUX_PKVM_REPO }} {{ LINUX_PKVM_COMMIT }}
+       git -C {{ LINUX_PKVM_HOST_DIR }} checkout "{{ LINUX_PKVM_COMMIT }}"
+    fi
+
+clone-linux-pkvm-guest:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [[ -d {{ LINUX_PKVM_GUEST_DIR }} ]]; then
+      echo " {{ LINUX_PKVM_GUEST_DIR }} already exists, skipping clone"
+      exit 0
+    fi
+
+    git clone {{ LINUX_PKVM_REPO }} {{ LINUX_PKVM_GUEST_DIR }}
+
+    set -x
+    if [[ $(git -C {{ LINUX_PKVM_GUEST_DIR }} rev-parse HEAD) != "{{ LINUX_PKVM_COMMIT }}" ]]; then
+       git -C {{ LINUX_PKVM_GUEST_DIR }} fetch {{ LINUX_PKVM_REPO }} {{ LINUX_PKVM_COMMIT }}
+       git -C {{ LINUX_PKVM_GUEST_DIR }} checkout "{{ LINUX_PKVM_COMMIT }}"
+    fi
+
 # kernel configuration for SEV-SNP guest
 configure-linux-old:
     #!/usr/bin/env bash
