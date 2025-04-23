@@ -637,8 +637,10 @@ def plot_iperf2(
     ax.set_ylim(0, 4)
     apply_consistent_style(
         ax,
-        title=LOWER_BETTER_TITLE,
-        xlabel="Network performance with iPerf",
+        # title=LOWER_BETTER_TITLE,
+        title=f"(c) Network performance with iPerf ({LOWER_BETTER_TITLE})",
+        # xlabel="Network performance with iPerf",
+        xlabel="",
         ylabel="Throughput (Gbps)",
         labelpad=17,
     )
