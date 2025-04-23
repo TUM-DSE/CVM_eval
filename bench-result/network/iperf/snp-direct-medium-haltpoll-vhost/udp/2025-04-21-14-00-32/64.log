@@ -1,0 +1,131 @@
+Connecting to host 172.44.0.2, port 7175
+[  5] local 172.44.0.1 port 41160 connected to 172.44.0.2 port 7175
+[  7] local 172.44.0.1 port 56936 connected to 172.44.0.2 port 7175
+[  9] local 172.44.0.1 port 59304 connected to 172.44.0.2 port 7175
+[ 11] local 172.44.0.1 port 41715 connected to 172.44.0.2 port 7175
+[ 13] local 172.44.0.1 port 57135 connected to 172.44.0.2 port 7175
+[ 15] local 172.44.0.1 port 53812 connected to 172.44.0.2 port 7175
+[ 17] local 172.44.0.1 port 35578 connected to 172.44.0.2 port 7175
+[ 19] local 172.44.0.1 port 53553 connected to 172.44.0.2 port 7175
+[ ID] Interval           Transfer     Bitrate         Total Datagrams
+[  5]   0.00-1.00   sec  6.65 MBytes  55.8 Mbits/sec  108949  
+[  7]   0.00-1.00   sec  5.14 MBytes  43.1 Mbits/sec  84178  
+[  9]   0.00-1.00   sec  5.25 MBytes  44.0 Mbits/sec  85964  
+[ 11]   0.00-1.00   sec  4.78 MBytes  40.1 Mbits/sec  78315  
+[ 13]   0.00-1.00   sec  5.73 MBytes  48.0 Mbits/sec  93815  
+[ 15]   0.00-1.00   sec  5.58 MBytes  46.8 Mbits/sec  91485  
+[ 17]   0.00-1.00   sec  5.94 MBytes  49.8 Mbits/sec  97269  
+[ 19]   0.00-1.00   sec  5.40 MBytes  45.3 Mbits/sec  88507  
+[SUM]   0.00-1.00   sec  44.5 MBytes   373 Mbits/sec  728482  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[  5]   1.00-2.00   sec  5.55 MBytes  46.5 Mbits/sec  90953  
+[  7]   1.00-2.00   sec  4.97 MBytes  41.7 Mbits/sec  81474  
+[  9]   1.00-2.00   sec  5.40 MBytes  45.3 Mbits/sec  88493  
+[ 11]   1.00-2.00   sec  4.52 MBytes  37.9 Mbits/sec  73974  
+[ 13]   1.00-2.00   sec  4.41 MBytes  36.9 Mbits/sec  72208  
+[ 15]   1.00-2.00   sec  5.17 MBytes  43.3 Mbits/sec  84642  
+[ 17]   1.00-2.00   sec  5.58 MBytes  46.8 Mbits/sec  91451  
+[ 19]   1.00-2.00   sec  7.20 MBytes  60.4 Mbits/sec  118013  
+[SUM]   1.00-2.00   sec  42.8 MBytes   359 Mbits/sec  701208  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[  5]   2.00-3.00   sec  7.28 MBytes  61.1 Mbits/sec  119243  
+[  7]   2.00-3.00   sec  4.38 MBytes  36.7 Mbits/sec  71764  
+[  9]   2.00-3.00   sec  4.36 MBytes  36.6 Mbits/sec  71489  
+[ 11]   2.00-3.00   sec  6.76 MBytes  56.7 Mbits/sec  110813  
+[ 13]   2.00-3.00   sec  4.39 MBytes  36.9 Mbits/sec  71982  
+[ 15]   2.00-3.00   sec  4.37 MBytes  36.7 Mbits/sec  71653  
+[ 17]   2.00-3.00   sec  5.75 MBytes  48.2 Mbits/sec  94163  
+[ 19]   2.00-3.00   sec  5.73 MBytes  48.1 Mbits/sec  93924  
+[SUM]   2.00-3.00   sec  43.0 MBytes   361 Mbits/sec  705031  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[  5]   3.00-4.00   sec  5.21 MBytes  43.7 Mbits/sec  85295  
+[  7]   3.00-4.00   sec  6.28 MBytes  52.7 Mbits/sec  102936  
+[  9]   3.00-4.00   sec  5.69 MBytes  47.8 Mbits/sec  93298  
+[ 11]   3.00-4.00   sec  5.29 MBytes  44.4 Mbits/sec  86740  
+[ 13]   3.00-4.00   sec  5.79 MBytes  48.6 Mbits/sec  94809  
+[ 15]   3.00-4.00   sec  5.10 MBytes  42.8 Mbits/sec  83630  
+[ 17]   3.00-4.00   sec  7.04 MBytes  59.1 Mbits/sec  115336  
+[ 19]   3.00-4.00   sec  5.10 MBytes  42.8 Mbits/sec  83501  
+[SUM]   3.00-4.00   sec  45.5 MBytes   382 Mbits/sec  745545  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[  5]   4.00-5.00   sec  4.24 MBytes  35.6 Mbits/sec  69547  
+[  7]   4.00-5.00   sec  5.65 MBytes  47.3 Mbits/sec  92515  
+[  9]   4.00-5.00   sec  5.05 MBytes  42.4 Mbits/sec  82798  
+[ 11]   4.00-5.00   sec  5.42 MBytes  45.4 Mbits/sec  88743  
+[ 13]   4.00-5.00   sec  5.54 MBytes  46.4 Mbits/sec  90697  
+[ 15]   4.00-5.00   sec  5.23 MBytes  43.8 Mbits/sec  85695  
+[ 17]   4.00-5.00   sec  7.55 MBytes  63.3 Mbits/sec  123706  
+[ 19]   4.00-5.00   sec  5.98 MBytes  50.1 Mbits/sec  97981  
+[SUM]   4.00-5.00   sec  44.7 MBytes   374 Mbits/sec  731682  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[  5]   5.00-6.00   sec  5.06 MBytes  42.5 Mbits/sec  82977  
+[  7]   5.00-6.00   sec  4.34 MBytes  36.4 Mbits/sec  71060  
+[  9]   5.00-6.00   sec  4.07 MBytes  34.2 Mbits/sec  66765  
+[ 11]   5.00-6.00   sec  5.40 MBytes  45.3 Mbits/sec  88530  
+[ 13]   5.00-6.00   sec  6.90 MBytes  57.8 Mbits/sec  112983  
+[ 15]   5.00-6.00   sec  6.01 MBytes  50.4 Mbits/sec  98413  
+[ 17]   5.00-6.00   sec  5.97 MBytes  50.1 Mbits/sec  97875  
+[ 19]   5.00-6.00   sec  6.55 MBytes  55.0 Mbits/sec  107341  
+[SUM]   5.00-6.00   sec  44.3 MBytes   372 Mbits/sec  725944  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[  5]   6.00-7.00   sec  4.88 MBytes  40.8 Mbits/sec  79986  
+[  7]   6.00-7.00   sec  7.42 MBytes  62.0 Mbits/sec  121569  
+[  9]   6.00-7.00   sec  5.09 MBytes  42.6 Mbits/sec  83418  
+[ 11]   6.00-7.00   sec  5.67 MBytes  47.4 Mbits/sec  92834  
+[ 13]   6.00-7.00   sec  5.59 MBytes  46.7 Mbits/sec  91533  
+[ 15]   6.00-7.00   sec  4.58 MBytes  38.3 Mbits/sec  75012  
+[ 17]   6.00-7.00   sec  5.24 MBytes  43.8 Mbits/sec  85871  
+[ 19]   6.00-7.00   sec  5.01 MBytes  41.9 Mbits/sec  82116  
+[SUM]   6.00-7.00   sec  43.5 MBytes   364 Mbits/sec  712339  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[  5]   7.00-8.00   sec  4.89 MBytes  41.2 Mbits/sec  80193  
+[  7]   7.00-8.00   sec  5.92 MBytes  49.8 Mbits/sec  96956  
+[  9]   7.00-8.00   sec  4.39 MBytes  36.9 Mbits/sec  71906  
+[ 11]   7.00-8.00   sec  5.13 MBytes  43.1 Mbits/sec  83969  
+[ 13]   7.00-8.00   sec  6.93 MBytes  58.3 Mbits/sec  113570  
+[ 15]   7.00-8.00   sec  6.61 MBytes  55.6 Mbits/sec  108276  
+[ 17]   7.00-8.00   sec  4.51 MBytes  38.0 Mbits/sec  73965  
+[ 19]   7.00-8.00   sec  5.44 MBytes  45.8 Mbits/sec  89181  
+[SUM]   7.00-8.00   sec  43.8 MBytes   369 Mbits/sec  718016  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[  5]   8.00-9.00   sec  4.90 MBytes  41.1 Mbits/sec  80343  
+[  7]   8.00-9.00   sec  4.68 MBytes  39.3 Mbits/sec  76666  
+[  9]   8.00-9.00   sec  5.74 MBytes  48.2 Mbits/sec  94123  
+[ 11]   8.00-9.00   sec  4.67 MBytes  39.2 Mbits/sec  76563  
+[ 13]   8.00-9.00   sec  6.67 MBytes  56.0 Mbits/sec  109345  
+[ 15]   8.00-9.00   sec  4.67 MBytes  39.2 Mbits/sec  76513  
+[ 17]   8.00-9.00   sec  5.64 MBytes  47.3 Mbits/sec  92356  
+[ 19]   8.00-9.00   sec  6.36 MBytes  53.4 Mbits/sec  104209  
+[SUM]   8.00-9.00   sec  43.3 MBytes   364 Mbits/sec  710118  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[  5]   9.00-10.00  sec  4.95 MBytes  41.4 Mbits/sec  81154  
+[  7]   9.00-10.00  sec  4.59 MBytes  38.3 Mbits/sec  75172  
+[  9]   9.00-10.00  sec  5.97 MBytes  49.9 Mbits/sec  97756  
+[ 11]   9.00-10.00  sec  6.19 MBytes  51.7 Mbits/sec  101449  
+[ 13]   9.00-10.00  sec  5.96 MBytes  49.8 Mbits/sec  97688  
+[ 15]   9.00-10.00  sec  4.67 MBytes  39.0 Mbits/sec  76439  
+[ 17]   9.00-10.00  sec  6.25 MBytes  52.2 Mbits/sec  102368  
+[ 19]   9.00-10.00  sec  5.79 MBytes  48.4 Mbits/sec  94857  
+[SUM]   9.00-10.00  sec  44.4 MBytes   371 Mbits/sec  726883  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-10.00  sec  53.6 MBytes  45.0 Mbits/sec  0.000 ms  0/878640 (0%)  sender
+[  5]   0.00-10.01  sec  23.6 MBytes  19.8 Mbits/sec  0.019 ms  492079/878640 (56%)  receiver
+[  7]   0.00-10.00  sec  53.4 MBytes  44.7 Mbits/sec  0.000 ms  0/874290 (0%)  sender
+[  7]   0.00-10.01  sec  23.2 MBytes  19.5 Mbits/sec  0.019 ms  493635/874287 (56%)  receiver
+[  9]   0.00-10.00  sec  51.0 MBytes  42.8 Mbits/sec  0.000 ms  0/836010 (0%)  sender
+[  9]   0.00-10.01  sec  22.1 MBytes  18.5 Mbits/sec  0.007 ms  473806/836010 (57%)  receiver
+[ 11]   0.00-10.00  sec  53.8 MBytes  45.1 Mbits/sec  0.000 ms  0/881930 (0%)  sender
+[ 11]   0.00-10.01  sec  23.6 MBytes  19.8 Mbits/sec  0.020 ms  495058/881930 (56%)  receiver
+[ 13]   0.00-10.00  sec  57.9 MBytes  48.5 Mbits/sec  0.000 ms  0/948630 (0%)  sender
+[ 13]   0.00-10.01  sec  25.2 MBytes  21.1 Mbits/sec  0.010 ms  536558/948630 (57%)  receiver
+[ 15]   0.00-10.00  sec  52.0 MBytes  43.6 Mbits/sec  0.000 ms  0/851758 (0%)  sender
+[ 15]   0.00-10.01  sec  22.7 MBytes  19.0 Mbits/sec  0.012 ms  480545/851758 (56%)  receiver
+[ 17]   0.00-10.00  sec  59.5 MBytes  49.9 Mbits/sec  0.000 ms  0/974360 (0%)  sender
+[ 17]   0.00-10.01  sec  25.2 MBytes  21.1 Mbits/sec  0.484 ms  561777/974360 (58%)  receiver
+[ 19]   0.00-10.00  sec  58.6 MBytes  49.1 Mbits/sec  0.000 ms  0/959630 (0%)  sender
+[ 19]   0.00-10.01  sec  24.9 MBytes  20.9 Mbits/sec  0.008 ms  550986/959630 (57%)  receiver
+[SUM]   0.00-10.00  sec   440 MBytes   369 Mbits/sec  0.000 ms  0/7205248 (0%)  sender
+[SUM]   0.00-10.01  sec   190 MBytes   160 Mbits/sec  0.072 ms  4084444/7205245 (57%)  receiver
+
+iperf Done.
