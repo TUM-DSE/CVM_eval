@@ -444,7 +444,7 @@ def plot_iperf(
         ax.set_xticklabels([])
         # ax.set_xlabel(f"Buffer Size {pkt} byte")
         ax.set_xlabel(f"UDP iperf (pkt size 1460)", fontsize=TICKS_FONTSIZE)
-        ax.set_ylim(0, 4)
+        # ax.set_ylim(0, 4)
     else:
         ax.set_xlabel("Packet Size (byte)")
     ax.set_ylabel("Throughput (Gbps)", fontsize=TICKS_FONTSIZE)

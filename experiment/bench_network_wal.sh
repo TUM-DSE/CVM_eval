@@ -37,10 +37,8 @@
 # 4. Plot results
 # ```
 #    bash ./expleriments/plot_network_wal.sh
-#    ls ./plot/iperf_udp_1460_throughput_all.pdf
+#    ls ./plot/iperf_udp_1460_throughput.pdf
 # ```
-# - The script sets y-axis limit to 4. Adopt this value if needed.
-# (See https:/github.com/TUM-DSE/CVM_eval/blob/wal-network-bench/tasks/plot_network.py#L447)
 
 set -x
 set -e
