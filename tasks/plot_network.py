@@ -633,13 +633,14 @@ def plot_iperf2(
         width=0.8,
         err_kws={"linewidth": 1},
     )
-    ax.set_xticklabels([])
+    ax.set_xticklabels(["Networking variants"], fontsize=AXIS_LABEL_FONTSIZE)
     ax.set_ylim(0, 4)
     apply_consistent_style(
         ax,
         # title=LOWER_BETTER_TITLE,
-        title=f"(c) Network performance with iPerf ({LOWER_BETTER_TITLE})",
+        title=f"(c) Network performance with iPerf ({HIGHER_BETTER_TITLE})",
         # xlabel="Network performance with iPerf",
+        #xlabel="Networking variatnts",
         xlabel="",
         ylabel="Throughput (Gbps)",
         labelpad=17,

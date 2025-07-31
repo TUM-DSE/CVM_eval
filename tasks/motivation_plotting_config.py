@@ -499,7 +499,8 @@ def apply_consistent_style(
     ax.tick_params(
         axis="both",
         which="major",
-        labelsize=TICKS_FONTSIZE,
+        #labelsize=TICKS_FONTSIZE,
+        labelsize=AXIS_LABEL_FONTSIZE,
         pad=3,
         length=2.5,
         width=BORDER_LINE_WIDTH,
