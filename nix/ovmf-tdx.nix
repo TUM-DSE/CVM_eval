@@ -3,13 +3,14 @@
 with pkgs;
 OVMF.fd.overrideAttrs (old: {
   src = fetchFromGitHub {
-    owner = "gierens";
-    repo = "edk2-staging";
-    # branch "tdvf-upddate-subhook"
-    rev = "97a91317bd5a16ee418307c3bef13c66addfc42d";
-    sha256 = "sha256-InJjSqggLhVJnY17RqxapXWqNcvnk7tR2HP2bPdv2Ec=";
+    owner = "tianocore";
+    repo = "edk2";
+    # tag "edk2-stable202508
+    rev = "d46aa46c8361194521391aa581593e556c707c6e";
+    sha256 = "sha256-YZcjPGPkUQ9CeJS9JxdHBmpdHsAj7T0ifSZWZKyNPMk=";
     fetchSubmodules = true;
   };
+  version = "202508";
   patches = (old.patches or [ ]) ++ [
     # to record boot events
     ./patches/ovmf-event-record.patch

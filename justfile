@@ -161,10 +161,9 @@ start-tdx-vm:
         -cpu host \
         -smp {{smp}} \
         -m {{mem}} \
-        -machine q35,hpet=off,kernel_irqchip=split,memory-encryption=tdx,memory-backend=ram1 \
+        -machine q35,hpet=off,kernel_irqchip=split,confidential-guest-support=tdx \
         -enable-kvm \
         -object tdx-guest,id=tdx \
-        -object memory-backend-ram,id=ram1,size={{mem}},private=on \
         -bios {{TDVF_FIRMWARE}} \
         -nographic \
         -nodefaults \
@@ -180,10 +179,9 @@ start-tdx-direct:
         -cpu host \
         -smp {{smp}} \
         -m {{mem}} \
-        -machine q35,hpet=off,kernel_irqchip=split,memory-encryption=tdx,memory-backend=ram1 \
+        -machine q35,hpet=off,kernel_irqchip=split,confidential-guest-support=tdx \
         -enable-kvm \
         -object tdx-guest,id=tdx \
-        -object memory-backend-ram,id=ram1,size={{mem}},private=on \
         -kernel {{LINUX_DIR}}/arch/x86/boot/bzImage \
         -append "root=/dev/vda console=hvc0" \
         -bios {{TDVF_FIRMWARE}} \
