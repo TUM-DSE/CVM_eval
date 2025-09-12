@@ -3,11 +3,11 @@
 with pkgs;
 qemu_full.overrideAttrs (new: old: {
   src = fetchFromGitHub {
-    owner = "gierens";
-    repo = "qemu-tdx-canonical";
-    # branch: master
-    rev = "1d4b179dc86bf1695f80175b2ea92d99bf2137b8";
-    sha256 = "sha256-eRKGiqK95jAzAYYk+oSS0vJ1UiMeN5FVTwDscMM1Ieg=";
+    owner = "qemu";
+    repo = "qemu";
+    # tag: v10.1.0
+    rev = "f8b2f64e2336a28bf0d50b6ef8a7d8c013e9bcf3";
+    sha256 = "sha256-z9+bjpQDTQPN/Uv36hRmwS6mJlcmjuswvy/FMiAHQUw=";
     fetchSubmodules = true;
     postFetch = ''
       cd "$out"
@@ -20,17 +20,21 @@ qemu_full.overrideAttrs (new: old: {
       find subprojects -type d -name .git -prune -execdir rm -r {} +
     '';
   };
+  version = "10.1.0";
   dontStrip = true;
   gtkSupport = false;
   dontWrapGapps = true;
+  enableDocs = false;
   configureFlags = old.configureFlags ++ [
     "--disable-strip"
     "--disable-gtk"
     "--target-list=x86_64-softmmu"
+    "--disable-docs"
     # "--enable-debug"
     # requires libblkio build
     # "--enable-blkio"
   ];
+  outputs = [ "out" "ga" ];
 
   # no patch
   patches = [ ];
