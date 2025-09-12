@@ -48,6 +48,7 @@ Note
 | ------------------- | ----- | -----| -----| ----- |
 | 6.8.0-rc1           | [kvm-upstream-next-20240122](https://github.com/mmisono/linux/tree/tdx-kvm-upstream-next-20240122) | [TDVF-20240105](https://github.com/mmisono/edk2/tree/TDVF-20240105) | [tdx-qemu-next-20231208](https://github.com/mmisono/qemu/tree/tdx-qemu-next-20231208) |   |
 | 6.11.0              | [canonical-intel-6.11.0-1006.6](https://github.com/gierens/linux-tdx-canonical) | [TDVF-20240105-subhook-patch](https://github.com/gierens/edk2-staging/tree/tdvf-update-subhook) | [canonical-kobuk-tdx-9.0.2](https://github.com/gierens/qemu-tdx-canonical) | needed for Xeon 6E |
+| 6.16.5              | [linux-stable-v6.16.5](https://github.com/gregkh/linux/tree/v6.16.5) | [edk2-stable202508](https://github.com/tianocore/edk2/tree/edk2-stable202508) | [qemu-v10.1.0](https://github.com/qemu/qemu/tree/v10.1.0) | merged into stable linux and mainline qemu |
 
 ### Ubuntu 23.10
 - Software stack: https://github.com/canonical/tdx/tree/mantic-23.10
