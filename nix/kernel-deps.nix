@@ -1,4 +1,4 @@
-{ buildFHSUserEnv
+{ buildFHSEnv
 , lib
 , getopt
 , elfutils
@@ -28,7 +28,7 @@
 , babeltrace
 , runScript ? ''bash -c''
 }:
-buildFHSUserEnv {
+buildFHSEnv {
   name = "linux-kernel-build";
   targetPkgs = pkgs: ([
     getopt
