@@ -17,7 +17,7 @@ memtier_benchmark --host=172.44.0.2 -p 6379 --protocol=memcache_text // memcache
 ```
 - `-t`: number of threads (default: 4)
 - `-c`: number of clients per thread (default: 50)
-- `--pipeline`: number of concurrent piplined request (default: 1)
+- `--pipeline`: number of concurrent pipelined request (default: 1)
 
 ## Nginx
 - XXX
@@ -61,7 +61,7 @@ ping 172.44.0.2 -c30 -i 0.1 -s 56
   the actual packet size.
 
 ## Note
-Network performance largely depends on NIC configurations. (non-exhausitive
+Network performance largely depends on NIC configurations. (non-exhaustive
 but) important things are
 - vhost
 - Multiqueues

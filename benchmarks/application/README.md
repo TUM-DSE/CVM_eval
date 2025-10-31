@@ -1,3 +1,3 @@
-# Applicaiton benchmarks
+# Application benchmarks
 
 

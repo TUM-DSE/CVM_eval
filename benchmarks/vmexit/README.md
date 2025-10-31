@@ -1,6 +1,6 @@
-# VM-VMM communicaiton (VMEXIT) measurement
+# VM-VMM communication (VMEXIT) measurement
 
-[./bench/](./bench) is a kernel module that executes several instructons which
+[./bench/](./bench) is a kernel module that executes several instructions which
 normally cause VMEXIT and measure the latency.
 
 ## How to run
@@ -58,7 +58,7 @@ make -C $(nix-build -E '(import <nixpkgs> {}).linuxPackages_6_6.kernel.dev' --no
 insmod ./hello.ko
 ```
 
-- Build a kernel module for the kernel definied in the flake
+- Build a kernel module for the kernel defined in the flake
 ```
 cd ./vmexit
 make -C $(nix build --no-link --print-out-paths .#nixosConfigurations.tdx-guest.config.boot.kernelPackages.kernel.dev)/lib/modules/*/build M=$(pwd) modules
