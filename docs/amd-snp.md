@@ -24,6 +24,8 @@
 
 ## Enable AVX 512 in the guest
 
+_NOTE:_ Starting with QEMU 9.1, QEMU supports "-cpu host" for SEV-SNP [(commit)](https://github.com/qemu/qemu/commit/188569c10d5dc6996bde90ce25645083e9661ecb).
+
 QEMU 8.1.5 requires to use not `-cpu host` but `-cpu EPYC-v4` to boot SNP guests, but this CPU model misses several CPUIDs.
 Especially, AMD512-related CPUIDs are not enabled, resulting the guest application won't use AVX512.
 This affects the performance of HPC and AI/ML applications.
