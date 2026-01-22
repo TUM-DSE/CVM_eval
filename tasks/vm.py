@@ -180,7 +180,7 @@ def get_vm_resource(hostname: str, name: str) -> VMResource:
     return VMRESOURCES[hostname][name]
 
 
-def get_vm_config(name: str) -> VMConfig:
+def get_vm_config(name: str, config: dict) -> VMConfig:
     if name == "amd":
         # use kernel same for the "snp"
         return VMConfig(
@@ -207,7 +207,7 @@ def get_vm_config(name: str) -> VMConfig:
             ovmf=BUILD_DIR / "ovmf-amd-sev-snp-fd/FV/OVMF.fd",
             kernel=LINUX_DIR / "arch/x86/boot/bzImage",
             initrd=None,
-            cmdline="root=/dev/vda console=hvc0",
+            cmdline=f"root={config['root_dev']} console=hvc0",
         )
     if name == "snp":
         return VMConfig(
@@ -225,7 +225,7 @@ def get_vm_config(name: str) -> VMConfig:
             ovmf=BUILD_DIR / "ovmf-amd-sev-snp-fd/FV/OVMF.fd",
             kernel=LINUX_DIR / "arch/x86/boot/bzImage",
             initrd=None,
-            cmdline="root=/dev/vda console=hvc0",
+            cmdline=f"root={config['root_dev']} console=hvc0",
         )
     if name == "intel":
         # use kernel same for the "tdx"
@@ -257,7 +257,7 @@ def get_vm_config(name: str) -> VMConfig:
             ovmf=BUILD_DIR / "ovmf-tdx-fd/FV/OVMF.fd",
             kernel=LINUX_DIR / "arch/x86/boot/bzImage",
             initrd=None,
-            cmdline="root=/dev/vda console=hvc0",
+            cmdline=f"root={config['root_dev']} console=hvc0",
         )
     if name == "intel-ubuntu":
         return VMConfig(
@@ -288,7 +288,7 @@ def get_vm_config(name: str) -> VMConfig:
             ovmf=BUILD_DIR / "ovmf-tdx-fd/FV/OVMF.fd",
             kernel=LINUX_DIR / "arch/x86/boot/bzImage",
             initrd=None,
-            cmdline="root=/dev/vda console=hvc0",
+            cmdline=f"root={config['root_dev']} console=hvc0",
         )
     if name == "tdx-ubuntu":
         return VMConfig(
@@ -303,7 +303,7 @@ def get_vm_config(name: str) -> VMConfig:
 
 
 def get_amd_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config("amd")
+    vmconfig: VMConfig = get_vm_config("amd", config)
     ssh_port = config["ssh_port"]
 
     qemu_cmd = f"""
@@ -328,7 +328,7 @@ def get_amd_vm_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 
 
 def get_amd_vm_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config("amd-direct")
+    vmconfig: VMConfig = get_vm_config("amd-direct", config)
     ssh_port = config.get("ssh_port", SSH_PORT)
     extra_cmdline = config.get("extra_cmdline", "")
 
@@ -362,7 +362,7 @@ def get_amd_vm_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 
 
 def get_snp_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config("snp")
+    vmconfig: VMConfig = get_vm_config("snp", config)
     ssh_port = config["ssh_port"]
     if config["boot_prealloc"]:
         prealloc = "on"
@@ -394,7 +394,7 @@ def get_snp_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 
 
 def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config("amd-direct")
+    vmconfig: VMConfig = get_vm_config("amd-direct", config)
     ssh_port = config.get("ssh_port", SSH_PORT)
     extra_cmdline = config.get("extra_cmdline", "")
     if config["boot_prealloc"]:
@@ -435,7 +435,7 @@ def get_snp_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 
 
 def get_intel_qemu_cmd(type: str, resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config(type)
+    vmconfig: VMConfig = get_vm_config(type, config)
     ssh_port = config["ssh_port"]
 
     qemu_cmd = f"""
@@ -462,7 +462,7 @@ def get_intel_qemu_cmd(type: str, resource: VMResource, config: dict) -> List[st
 
 
 def get_intel_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config("intel-direct")
+    vmconfig: VMConfig = get_vm_config("intel-direct", config)
     ssh_port = config["ssh_port"]
     extra_cmdline = config.get("extra_cmdline", "")
 
@@ -512,7 +512,7 @@ def get_intel_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
 
 
 def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config(type)
+    vmconfig: VMConfig = get_vm_config(type, config)
     ssh_port = config["ssh_port"]
     guest_cid = config["guest_cid"]
     if config["boot_prealloc"]:
@@ -548,7 +548,7 @@ def get_tdx_qemu_cmd(type, resource: VMResource, config: dict) -> List[str]:
 
 
 def get_tdx_direct_qemu_cmd(resource: VMResource, config: dict) -> List[str]:
-    vmconfig: VMConfig = get_vm_config("tdx-direct")
+    vmconfig: VMConfig = get_vm_config("tdx-direct", config)
     ssh_port = config["ssh_port"]
     guest_cid = config["guest_cid"]
     extra_cmdline = config.get("extra_cmdline", "")
@@ -780,7 +780,8 @@ def boottime(name: str, qemu_cmd: List[str], pin: bool, **kargs: Any) -> None:
     import boottime
 
     type: str = kargs["config"]["type"]
-    kargs["config"]["vmconfig"] = get_vm_config(f"{type}-direct")
+    config: dict = kargs["config"]
+    kargs["config"]["vmconfig"] = get_vm_config(f"{type}-direct", config)
 
     boottime.run_boot_test(name, qemu_cmd, pin, **kargs)
 
@@ -1189,6 +1190,7 @@ def start(
     pin: bool = True,  # if True, pin vCPUs
     pin_base: Optional[int] = None,  # pinning base
     extra_cmdline: str = "",  # extra kernel cmdline (only for direct boot)
+    root_dev: str = "/dev/vda",  # root filesystem device name (only for direct boot)
     # ssh_cmd options
     ssh_cmd: [str] = [],
     # boot eval options
