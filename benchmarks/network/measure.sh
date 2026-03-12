@@ -22,6 +22,7 @@ do
     # -i 1 : report interval 1s
     # -P 8 : 8 parallel streams
     iperf -c ${DESTIP} -p ${DESTPORT} -u -b 0 -i 1 -l ${pkt} -P ${PROCESS} > ${DIR}/iperf-udp-${pkt}.txt
+    sleep 1
 done
 
 for pkt in 64 128 256 512 1K 32K 128K
@@ -30,6 +31,7 @@ do
     # -i 1 : report interval 1s
     # -P 8 : 8 parallel streams
     iperf -c ${DESTIP} -p ${DESTPORT} -b 0 -i 1 -l ${pkt} -P ${PROCESS} > ${DIR}/iperf-tcp-${pkt}.txt
+    sleep 1
 done
 
 DIR=${PROJECTPATH}/bench-result/network/ping/${VM}-direct-${SIZE}/${DATE}
@@ -38,5 +40,6 @@ mkdir -p ${DIR}
 for pkt in 64 128 256 512 1024 1460
 do
     ping -s ${pkt} ${DESTIP} -c30 -i0.1 > ${DIR}/ping-${pkt}.txt
+    sleep 1
 done
 
