@@ -15,7 +15,8 @@
         nixpkgs-direct = nixpkgs-unstable;
         pkgs = nixpkgs-unstable.legacyPackages.${system};
         pkgs-2311 = nixpkgs-2311.legacyPackages.${system};
-        make-disk-image = import (pkgs.path + "/nixos/lib/make-disk-image.nix");
+        #make-disk-image = import (pkgs.path + "/nixos/lib/make-disk-image.nix");
+        make-disk-image = import (./nix/make-disk-image.nix);
         selfpkgs = self.packages.x86_64-linux;
         python3 = nixpkgs-unstable.legacyPackages.${system}.python3;
         pre-commit-check = pre-commit-hooks.lib.${system}.run {
